@@ -288,6 +288,106 @@ try {
   } finally {
     await call('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   }
+
+  await evaluate('history.forward()');
+  await waitFor('location.pathname === "/welcome"');
+  for (const label of ['로그인', '가입하기']) {
+    await evaluate(`
+      [...document.querySelectorAll('[role="button"]')]
+        .find(node => node.getBoundingClientRect().width > 0 && node.textContent.trim() === ${JSON.stringify(label)}).click();
+    `);
+    await waitFor(
+      'location.pathname === "/main" && document.body.innerText.includes("사랑둥이와 함께한지")',
+    );
+    await waitFor(`
+      [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
+        .every(node => node.complete && node.naturalWidth > 0)
+    `);
+    const main = await evaluate(`(() => {
+      const images = [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0);
+      const character = images.find(node => node.src.includes('character.'));
+      const bounds = character.getBoundingClientRect();
+      const home = document.querySelector('[aria-label="홈"]');
+      return { text: document.body.innerText, imageCount: images.length, character: {width: bounds.width, height: bounds.height}, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, height: innerHeight };
+    })()`);
+    assert(main.text.includes('+378일'));
+    assert(main.text.includes('루틴 진행률 70%'));
+    assert(main.text.includes('오늘의 일정') && main.text.includes('AI 일기'));
+    assert.equal(main.imageCount, 15, 'All Main design assets must render');
+    assert.deepEqual(main.character, { width: 137, height: 206 });
+    assert.equal(main.homeSelected, 'true');
+    assert(
+      main.homeBottom <= main.height - 34,
+      'Navigation must avoid the home indicator safe area',
+    );
+    console.log(
+      `PASS ${label} opens Main with loaded design assets and safe bottom navigation`,
+    );
+    await evaluate(`document.querySelector('[aria-label="캘린더"]').click()`);
+    await waitFor(
+      'location.pathname === "/calendar" && document.querySelector("[aria-label=\\"2025년 11월 13일\\"]")',
+    );
+    await waitFor(`
+      [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
+        .every(node => node.complete && node.naturalWidth > 0)
+    `);
+    const calendar = await evaluate(`(() => {
+      const dateButtons = [...document.querySelectorAll('[role="button"]')].filter(node => /년 .*월 .*일$/.test(node.getAttribute('aria-label') ?? ''));
+      const tab = document.querySelector('[aria-label="캘린더"]');
+      return { count: dateButtons.length, selected: document.querySelector('[aria-label="2025년 11월 13일"]').getAttribute('aria-pressed'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, height: innerHeight, text: document.body.innerText };
+    })()`);
+    assert.equal(calendar.count, 42);
+    assert.equal(calendar.selected, 'true');
+    assert.equal(calendar.tabSelected, 'true');
+    assert(calendar.tabBottom <= calendar.height - 34);
+    assert(calendar.text.includes('일기 생성하기'));
+    await evaluate(
+      `document.querySelector('[aria-label="2025년 11월 14일"]').click()`,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[aria-label="2025년 11월 14일"]').getAttribute('aria-pressed')`,
+      ),
+      'true',
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[aria-label="2025년 11월 13일"]').getAttribute('aria-pressed')`,
+      ),
+      'false',
+    );
+    await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
+    await waitFor('document.body.innerText.includes("12월")');
+    await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
+    await waitFor(
+      'document.body.innerText.includes("1월") && document.body.innerText.includes("2026")',
+    );
+    await evaluate(
+      `document.querySelector('[aria-label="이전 달"]').click(); document.querySelector('[aria-label="이전 달"]').click()`,
+    );
+    await waitFor(
+      'document.body.innerText.includes("11월") && document.body.innerText.includes("2025")',
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[aria-label="2025년 11월 14일"]').getAttribute('aria-pressed')`,
+      ),
+      'true',
+    );
+    await evaluate(`document.querySelector('[aria-label="홈"]').click()`);
+    await waitFor('location.pathname === "/main"');
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[aria-label="홈"]').getAttribute('aria-selected')`,
+      ),
+      'true',
+    );
+    console.log(
+      'PASS calendar navigation, selected date, month/year rollover, and return to Main',
+    );
+    await evaluate('history.back()');
+    await waitFor('location.pathname === "/welcome"');
+  }
 } finally {
   socket.close();
 }
