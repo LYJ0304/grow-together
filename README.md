@@ -62,7 +62,7 @@ cd apps/ai-worker && uv sync --locked && uv run ruff check . && uv run pytest
 
 The health endpoint is `GET /api/health`; it returns `{"status":"UP","service":"growtogegher-api"}`. Spring Actuator is available at `/actuator/health`.
 
-The mobile launch transition browser check uses Node.js 22+ and Chrome's DevTools protocol, without additional test dependencies. Export the web app with `npx expo export --platform web`, serve `apps/mobile/dist` on port 8093, and run Chrome with `--remote-debugging-port=9223` and a separate temporary `--user-data-dir`. From `apps/mobile`, run `npm run test:motion`; optional site and DevTools URLs can be passed as `npm run test:motion -- http://localhost:8093 http://localhost:9223`. The check covers both title animations, fades, repeated taps, back navigation, viewport resizing, and reduced motion.
+The mobile launch transition browser check uses Node.js 22+ and Chrome's DevTools protocol, without additional test dependencies. Export the web app with `npx expo export --platform web`, serve `apps/mobile/dist` on port 8093, and run Chrome with `--remote-debugging-port=9223` and a separate temporary `--user-data-dir`. From `apps/mobile`, run `npm run test:motion`; optional site and DevTools URLs can be passed as `npm run test:motion -- http://localhost:8093 http://localhost:9223`. The check covers both title animations, fades, repeated taps, back navigation, viewport resizing, reduced motion, and automatic progression to the login/signup selection without clicks. The logo screen waits 1 second; the app-name screen waits 0.7 seconds after its transition completes. Returning to a previous screen does not replay automatic progression.
 
 ## Troubleshooting
 
