@@ -88,6 +88,17 @@ export default function MyPageScreen() {
           </View>
         ))}
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setNotice('로그아웃 기능은 준비 중입니다.')}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.logoutLabel}>로그아웃</Text>
+        </Pressable>
+
         {notice ? (
           <Text
             accessibilityRole="alert"
@@ -182,4 +193,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pressed: { opacity: 0.75 },
+  logoutButton: { alignItems: 'center', paddingVertical: 14 },
+  logoutLabel: { fontFamily: 'Jua', fontSize: 16, color: '#C62828' },
 });
