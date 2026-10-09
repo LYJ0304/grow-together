@@ -18,8 +18,11 @@ import { BottomNavigation } from '../src/components/bottom-navigation';
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
-  const [month, setMonth] = useState(() => new Date(2025, 10, 1));
-  const [selected, setSelected] = useState(() => new Date(2025, 10, 13));
+  const [initialDate] = useState(() => new Date());
+  const [month, setMonth] = useState(
+    () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
+  );
+  const [selected, setSelected] = useState(initialDate);
   const [notice, setNotice] = useState('');
   const firstWeekday = month.getDay();
   const days = Array.from(

@@ -325,7 +325,7 @@ try {
     );
     await evaluate(`document.querySelector('[aria-label="캘린더"]').click()`);
     await waitFor(
-      'location.pathname === "/calendar" && document.querySelector("[aria-label=\\"2025년 11월 13일\\"]")',
+      'location.pathname === "/calendar" && [...document.querySelectorAll("[aria-pressed=\\"true\\"]")].some(node => /년 .*월 .*일$/.test(node.getAttribute("aria-label") ?? ""))',
     );
     await waitFor(`
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
@@ -333,45 +333,41 @@ try {
     `);
     const calendar = await evaluate(`(() => {
       const dateButtons = [...document.querySelectorAll('[role="button"]')].filter(node => /년 .*월 .*일$/.test(node.getAttribute('aria-label') ?? ''));
+      const selected = dateButtons.find(node => node.getAttribute('aria-pressed') === 'true');
       const tab = document.querySelector('[aria-label="캘린더"]');
-      return { count: dateButtons.length, selected: document.querySelector('[aria-label="2025년 11월 13일"]').getAttribute('aria-pressed'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, height: innerHeight, text: document.body.innerText };
+      const today = new Date();
+      const todayLabel = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
+      const monthPrefix = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ';
+      const anotherDate = dateButtons.find(node => node.getAttribute('aria-label') !== todayLabel && node.getAttribute('aria-label')?.startsWith(monthPrefix));
+      return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, height: innerHeight, text: document.body.innerText };
     })()`);
     assert.equal(calendar.count, 42);
-    assert.equal(calendar.selected, 'true');
+    assert.equal(calendar.selected, calendar.todayLabel);
+    assert(calendar.anotherDate);
     assert.equal(calendar.tabSelected, 'true');
     assert(calendar.tabBottom <= calendar.height - 34);
     assert(calendar.text.includes('일기 생성하기'));
-    await evaluate(
-      `document.querySelector('[aria-label="2025년 11월 14일"]').click()`,
-    );
+    await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`);
     assert.equal(
-      await evaluate(
-        `document.querySelector('[aria-label="2025년 11월 14일"]').getAttribute('aria-pressed')`,
-      ),
+      await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`),
       'true',
     );
     assert.equal(
-      await evaluate(
-        `document.querySelector('[aria-label="2025년 11월 13일"]').getAttribute('aria-pressed')`,
-      ),
+      await evaluate(`document.querySelector('[aria-label="${calendar.todayLabel}"]').getAttribute('aria-pressed')`),
       'false',
     );
     await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
-    await waitFor('document.body.innerText.includes("12월")');
+    const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+    await waitFor(`document.body.innerText.includes("${nextMonth.getMonth() + 1}월") && document.body.innerText.includes("${nextMonth.getFullYear()}")`);
     await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
-    await waitFor(
-      'document.body.innerText.includes("1월") && document.body.innerText.includes("2026")',
-    );
+    const monthAfterNext = new Date(new Date().getFullYear(), new Date().getMonth() + 2, 1);
+    await waitFor(`document.body.innerText.includes("${monthAfterNext.getMonth() + 1}월") && document.body.innerText.includes("${monthAfterNext.getFullYear()}")`);
     await evaluate(
       `document.querySelector('[aria-label="이전 달"]').click(); document.querySelector('[aria-label="이전 달"]').click()`,
     );
-    await waitFor(
-      'document.body.innerText.includes("11월") && document.body.innerText.includes("2025")',
-    );
+    await waitFor(`document.body.innerText.includes("${new Date().getMonth() + 1}월") && document.body.innerText.includes("${new Date().getFullYear()}")`);
     assert.equal(
-      await evaluate(
-        `document.querySelector('[aria-label="2025년 11월 14일"]').getAttribute('aria-pressed')`,
-      ),
+      await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`),
       'true',
     );
     await evaluate(`document.querySelector('[aria-label="홈"]').click()`);
