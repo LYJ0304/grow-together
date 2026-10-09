@@ -2,6 +2,7 @@ spring:
   application:
     name: growtogether-api
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
   datasource:
@@ -10,3 +11,10 @@ spring:
     password: ${POSTGRES_PASSWORD:local_dev_password}
 management:
   endpoints.web.exposure.include: health
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8082,http://localhost:19006}
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-token-seconds: ${JWT_ACCESS_TOKEN_SECONDS:900}
+    refresh-session-seconds: ${JWT_REFRESH_SESSION_SECONDS:1209600}
