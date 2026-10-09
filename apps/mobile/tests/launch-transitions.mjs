@@ -308,7 +308,7 @@ try {
       const character = images.find(node => node.src.includes('character.'));
       const bounds = character.getBoundingClientRect();
       const home = document.querySelector('[aria-label="홈"]');
-      return { text: document.body.innerText, imageCount: images.length, character: {width: bounds.width, height: bounds.height}, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, height: innerHeight };
+      return { text: document.body.innerText, imageCount: images.length, character: {width: bounds.width, height: bounds.height}, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
     assert(main.text.includes('+378일'));
     assert(main.text.includes('루틴 진행률 70%'));
@@ -316,6 +316,7 @@ try {
     assert.equal(main.imageCount, 15, 'All Main design assets must render');
     assert.deepEqual(main.character, { width: 137, height: 206 });
     assert.equal(main.homeSelected, 'true');
+    assert(main.navHeight <= 56, 'Navigation row should stay compact');
     assert(
       main.homeBottom <= main.height - 8,
       'Navigation must keep a small gap from the screen edge',
@@ -339,12 +340,13 @@ try {
       const todayLabel = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
       const monthPrefix = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ';
       const anotherDate = dateButtons.find(node => node.getAttribute('aria-label') !== todayLabel && node.getAttribute('aria-label')?.startsWith(monthPrefix));
-      return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, height: innerHeight, text: document.body.innerText };
+      return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight, text: document.body.innerText };
     })()`);
     assert.equal(calendar.count, 42);
     assert.equal(calendar.selected, calendar.todayLabel);
     assert(calendar.anotherDate);
     assert.equal(calendar.tabSelected, 'true');
+    assert(calendar.navHeight <= 56);
     assert(calendar.tabBottom <= calendar.height - 8);
     assert(calendar.text.includes('일기 생성하기'));
     await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`);

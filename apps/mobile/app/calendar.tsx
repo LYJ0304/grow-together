@@ -18,7 +18,10 @@ import { BottomNavigation } from '../src/components/bottom-navigation';
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
-  const [initialDate] = useState(() => new Date());
+  const [initialDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  });
   const [month, setMonth] = useState(
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
   );
