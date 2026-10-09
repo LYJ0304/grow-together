@@ -1,11 +1,11 @@
-package com.growtogegher;
+package com.growtogether;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class GrowtogegherApplication {
+public class GrowTogetherApplication {
     public static void main(String[] args) {
-        SpringApplication.run(GrowtogegherApplication.class, args);
+        SpringApplication.run(GrowTogetherApplication.class, args);
     }
 }
