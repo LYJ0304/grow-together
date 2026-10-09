@@ -1,41 +1,88 @@
-import { useQuery } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-
-import { getHealth } from '../src/lib/api/client';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const health = useQuery({
-    queryKey: ['health'],
-    queryFn: getHealth,
-    retry: 1,
+  const [fontsLoaded, fontError] = useFonts({
+    Jua: require('../assets/fonts/Jua-Regular.ttf'),
   });
-  const message = health.isPending
-    ? 'Checking API connection…'
-    : health.isError
-      ? 'API is unavailable. Check EXPO_PUBLIC_API_URL.'
-      : `${health.data.service} is ${health.data.status}`;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <Text style={styles.title}>Growtogegher</Text>
-      <Text style={styles.subtitle}>Your AI-enabled growth companion</Text>
-      <Text accessibilityRole="summary" style={styles.status}>
-        {message}
-      </Text>
-    </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.logoSection}>
+          <Image
+            source={require('../assets/images/grow-together-logo.png')}
+            style={styles.logo}
+            contentFit="contain"
+            accessible={false}
+          />
+        </View>
+        <View style={styles.footer}>
+          {(fontsLoaded || fontError) && (
+            <>
+              <Text accessibilityRole="header" style={styles.title}>
+                같이 키우기
+              </Text>
+              <Text accessibilityLabel="Version 1.0" style={styles.version}>
+                Version<Text style={styles.versionNumber}> 1.0</Text>
+              </Text>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FAF9F9',
   },
-  title: { fontSize: 32, fontWeight: '700', color: '#1B1B1B' },
-  subtitle: { marginTop: 8, fontSize: 16, color: '#666' },
-  status: { marginTop: 32, fontSize: 14, color: '#3E6B4A' },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 21,
+  },
+  logoSection: {
+    flex: 1,
+    minHeight: 253,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 84,
+    paddingBottom: 24,
+  },
+  logo: {
+    width: 145,
+    height: 145,
+    transform: [{ translateX: -2 }],
+  },
+  footer: {
+    alignItems: 'center',
+    gap: 24,
+  },
+  title: {
+    fontFamily: 'Jua',
+    fontSize: 35,
+    letterSpacing: -0.7,
+    color: '#D26A5C',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.08)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  version: {
+    fontFamily: 'Jua',
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.28,
+    color: '#C2C3CB',
+  },
+  versionNumber: {
+    fontSize: 14,
+  },
 });
