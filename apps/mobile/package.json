@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier --check app src/lib eslint.config.js tsconfig.json package.json"
+    "test:motion": "node tests/launch-transitions.mjs",
+    "format:check": "prettier --check app src tests eslint.config.js tsconfig.json package.json"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.5",

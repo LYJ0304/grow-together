@@ -1,15 +1,23 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLaunchTransition } from '../src/components/launch-transition';
 
 export default function HomeScreen() {
+  const motion = useLaunchTransition('/');
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.nextScreen}>
+        <Animated.View style={[styles.nextScreen, motion.fadeStyle]}>
           <View style={styles.logoSection}>
             <Image
               source={require('../assets/images/grow-together-logo.png')}
@@ -19,7 +27,12 @@ export default function HomeScreen() {
             />
           </View>
           <View style={styles.footer}>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text
+              ref={motion.titleRef}
+              onLayout={motion.onTitleLayout}
+              accessibilityRole="header"
+              style={[styles.title, motion.titleHidden && { opacity: 0 }]}
+            >
               같이 키우기
             </Text>
             <Text accessibilityLabel="Version 1.0" style={styles.version}>
@@ -29,10 +42,11 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="앱 이름 화면으로 이동"
-            onPress={() => router.push('/app-name')}
+            disabled={motion.busy}
+            onPress={() => motion.navigate('/app-name')}
             style={StyleSheet.absoluteFill}
           />
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -71,6 +85,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Jua',
     fontSize: 35,
+    lineHeight: 44,
     letterSpacing: -0.7,
     color: '#D26A5C',
     textAlign: 'center',
