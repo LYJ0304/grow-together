@@ -17,3 +17,159 @@ paths:
                 properties:
                   status: { type: string, example: UP }
                   service: { type: string, example: growtogether-api }
+  /api/v1/auth/signup:
+    post:
+      operationId: signup
+      summary: Create an email/password account
+      description: Email is stored lowercased. Passwords are hashed with BCrypt; UTF-8 input must not exceed 72 bytes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string, example: Signup Successful }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Issue an access JWT and a refresh token
+      description: Each login creates an independent session. Incorrect email and password use the same error response.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/refresh:
+    post:
+      operationId: refresh
+      summary: Rotate a refresh token and issue a new access JWT
+      description: >-
+        Authenticated by the refresh token in the JSON body; no access JWT is required.
+        Session lifetime is absolute (14 days by default). Reuse of a previously consumed
+        refresh token revokes that session, including its access JWTs. Clients must serialize
+        refresh requests and atomically replace stored refresh tokens after success.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Revoke the session identified by a refresh token
+      description: >-
+        Access tokens for that session become invalid immediately. Other device sessions
+        remain active. Unknown and previously revoked tokens return 204, making logout
+        idempotent. A consumed refresh token may also revoke its session. The client must
+        clear its local tokens after logout.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '204': { description: Session revoked or already absent }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        API access JWT. Signature, issuer, expiration, and persisted session status are
+        validated on each authenticated request. Authentication endpoints use their JSON
+        credentials instead; an Authorization header on those endpoints is ignored.
+  schemas:
+    SignUpRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50, pattern: '\S' }
+        email: { type: string, format: email, maxLength: 254 }
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          maxLength: 72
+          description: Also limited to 72 UTF-8 bytes; whitespace is not trimmed.
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          maxLength: 72
+          description: Also limited to 72 UTF-8 bytes; whitespace is not trimmed.
+    TokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 1, maxLength: 200, pattern: '\S', writeOnly: true }
+    LoginResponse:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string, description: Signed access JWT }
+        refreshToken: { type: string, description: Opaque random token; only its SHA-256 digest is stored }
+        tokenType: { type: string, enum: [Bearer] }
+        expiresIn: { type: integer, format: int64, minimum: 1, description: Access-token lifetime in seconds }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, INTERNAL_ERROR]
+        message: { type: string }
+  responses:
+    Tokens:
+      description: Tokens issued; response must not be cached
+      headers:
+        Cache-Control: { schema: { type: string, const: no-store } }
+        Pragma: { schema: { type: string, const: no-cache } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/LoginResponse' }
+    InvalidRequest:
+      description: Invalid request fields or malformed JSON
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Invalid credentials, expired/revoked token, or refresh-token reuse
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
