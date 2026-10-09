@@ -184,7 +184,13 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
-  content: { paddingHorizontal: 26, paddingBottom: 24, alignItems: 'center' },
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 26,
+    paddingBottom: 24,
+    alignItems: 'center',
+  },
   monthHeader: {
     flexDirection: 'row',
     width: '100%',
@@ -214,7 +220,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: '#4F4F4F',
   },
-  calendar: { width: '100%', maxWidth: 320 },
+  calendar: { width: '100%', maxWidth: 360 },
   weekdays: { flexDirection: 'row', marginTop: 18, gap: 15 },
   weekday: {
     flex: 1,
@@ -248,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 26,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 12,
   },
   generateButton: {
     width: '100%',

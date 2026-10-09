@@ -60,7 +60,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
 
   return (
     <View
-      style={[styles.container, { paddingBottom: Math.max(30, insets.bottom) }]}
+      style={[styles.container, { paddingBottom: Math.max(8, insets.bottom) }]}
     >
       <View accessibilityRole="tablist" style={styles.row}>
         {items.map((item) => (

@@ -179,7 +179,12 @@ export default function MainScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
-  content: { paddingHorizontal: 17, paddingBottom: 26 },
+  content: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 17,
+    paddingBottom: 26,
+  },
   header: { paddingHorizontal: 11, marginBottom: 21 },
   eyebrow: {
     fontFamily: 'Jua',

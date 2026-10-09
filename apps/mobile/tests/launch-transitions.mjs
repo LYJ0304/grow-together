@@ -317,8 +317,8 @@ try {
     assert.deepEqual(main.character, { width: 137, height: 206 });
     assert.equal(main.homeSelected, 'true');
     assert(
-      main.homeBottom <= main.height - 34,
-      'Navigation must avoid the home indicator safe area',
+      main.homeBottom <= main.height - 8,
+      'Navigation must keep a small gap from the screen edge',
     );
     console.log(
       `PASS ${label} opens Main with loaded design assets and safe bottom navigation`,
@@ -345,7 +345,7 @@ try {
     assert.equal(calendar.selected, calendar.todayLabel);
     assert(calendar.anotherDate);
     assert.equal(calendar.tabSelected, 'true');
-    assert(calendar.tabBottom <= calendar.height - 34);
+    assert(calendar.tabBottom <= calendar.height - 8);
     assert(calendar.text.includes('일기 생성하기'));
     await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`);
     assert.equal(
