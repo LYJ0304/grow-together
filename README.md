@@ -1,0 +1,69 @@
+# Growtogegher
+
+Growtogegher is a mobile application platform for AI-assisted growth. This repository provides the initial, independently runnable foundation for mobile, API, database, and general-purpose AI work. It intentionally contains no provider-specific AI or RAG business logic.
+
+## Stack
+
+- Mobile: Expo SDK 55, React Native 0.83, TypeScript, Expo Router, TanStack Query, Zustand
+- API: Java 21, Spring Boot 4.1, Gradle
+- AI worker: Python 3.12, uv, Pydantic Settings, Ruff, Pytest
+- Data: PostgreSQL 16 with pgvector
+- Infrastructure: Docker Compose; CI: GitHub Actions
+
+## Layout
+
+```text
+apps/mobile       Expo mobile client
+apps/api          Spring Boot API
+apps/ai-worker    independent AI job runner
+contracts         OpenAPI contracts
+infra             Compose and PostgreSQL initialization
+```
+
+## Local setup
+
+Copy the example configuration, then adjust only local values:
+
+```bash
+cp .env.example .env
+docker compose -f infra/compose.yaml up --build
+```
+
+The compose stack starts PostgreSQL and the API. Run the one-shot example worker explicitly:
+
+```bash
+docker compose -f infra/compose.yaml --profile worker run --rm ai-worker
+```
+
+`pgvector` is enabled by `infra/postgres/init.sql` when the database volume is first created. To re-run initialization during local development, remove only the named `growtogegher_postgres-data` volume after confirming it has no needed data.
+
+## Run apps without Compose
+
+```bash
+# API (requires a reachable PostgreSQL instance)
+cd apps/api && ./gradlew bootRun
+
+# AI worker
+cd apps/ai-worker && uv sync && uv run python -m app.main
+
+# Mobile
+cd apps/mobile && npm install && npm start
+```
+
+Set `EXPO_PUBLIC_API_URL` for the mobile client. `http://localhost:8080` is appropriate for web/iOS Simulator; Android Emulator typically uses `http://10.0.2.2:8080`, and a physical device needs the host machine's LAN address. Never put LLM keys or backend secrets in Expo public variables.
+
+## Tests and checks
+
+```bash
+cd apps/mobile && npm run typecheck && npm run lint && npm run format:check
+cd apps/api && ./gradlew build
+cd apps/ai-worker && uv sync --locked && uv run ruff check . && uv run pytest
+```
+
+The health endpoint is `GET /api/health`; it returns `{"status":"UP","service":"growtogegher-api"}`. Spring Actuator is available at `/actuator/health`.
+
+## Troubleshooting
+
+- If API startup cannot connect, verify PostgreSQL with `docker compose -f infra/compose.yaml ps` and confirm `.env` values match.
+- If pgvector is missing in an existing local database, run `CREATE EXTENSION IF NOT EXISTS vector;` as a database administrator.
+- Expo device networking is not equivalent to desktop `localhost`; use the address appropriate to the device or emulator.

@@ -1,0 +1,8 @@
+node_modules
+.expo
+src/components
+src/constants
+src/hooks
+src/global.css
+scripts
+assets

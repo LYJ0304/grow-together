@@ -1,0 +1,16 @@
+[project]
+name = "growtogegher-ai-worker"
+version = "0.1.0"
+description = "Independent execution worker for Growtogegher AI workloads."
+requires-python = ">=3.12"
+dependencies = ["pydantic-settings>=2.12,<3"]
+
+[dependency-groups]
+dev = ["pytest>=9.0,<10", "ruff>=0.14,<1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

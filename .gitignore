@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.expo/
+apps/mobile/.expo/
+apps/api/.gradle/
+apps/api/build/
+apps/ai-worker/.venv/
+apps/ai-worker/.pytest_cache/
+__pycache__/
+*.py[cod]
+.DS_Store
