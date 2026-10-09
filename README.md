@@ -1,6 +1,6 @@
-# Growtogegher
+# GrowTogether
 
-Growtogegher is a mobile application platform for AI-assisted growth. This repository provides the initial, independently runnable foundation for mobile, API, database, and general-purpose AI work. It intentionally contains no provider-specific AI or RAG business logic.
+GrowTogether is a mobile application platform for AI-assisted growth. This repository provides the initial, independently runnable foundation for mobile, API, database, and general-purpose AI work. It intentionally contains no provider-specific AI or RAG business logic.
 
 ## Stack
 
@@ -35,7 +35,9 @@ The compose stack starts PostgreSQL and the API. Run the one-shot example worker
 docker compose -f infra/compose.yaml --profile worker run --rm ai-worker
 ```
 
-`pgvector` is enabled by `infra/postgres/init.sql` when the database volume is first created. To re-run initialization during local development, remove only the named `growtogegher_postgres-data` volume after confirming it has no needed data.
+`pgvector` is enabled by `infra/postgres/init.sql` when the database volume is first created. To re-run initialization during local development, remove only the named `growtogether_postgres-data` volume after confirming it has no needed data.
+
+The corrected defaults use project, database, and user name `growtogether`. If you already have a database volume created with earlier names, retain its existing `COMPOSE_PROJECT_NAME`, `POSTGRES_DB`, and `POSTGRES_USER` values in `.env` to reuse it. Changing the Compose project name changes the default volume name; it does not rename or migrate existing volumes or databases. The mobile URL scheme is now `growtogether`; native builds must be rebuilt to register the corrected scheme.
 
 ## Run apps without Compose
 
@@ -60,7 +62,9 @@ cd apps/api && ./gradlew build
 cd apps/ai-worker && uv sync --locked && uv run ruff check . && uv run pytest
 ```
 
-The health endpoint is `GET /api/health`; it returns `{"status":"UP","service":"growtogegher-api"}`. Spring Actuator is available at `/actuator/health`.
+The health endpoint is `GET /api/health`; it returns `{"status":"UP","service":"growtogether-api"}`. Spring Actuator is available at `/actuator/health`.
+
+When run standalone, the API defaults to database and user `growtogether`. To use an existing database with a different name, set `DATABASE_URL` and `POSTGRES_USER` explicitly. Compose passes these values from its existing PostgreSQL configuration; this does not rename or migrate an existing database.
 
 The mobile launch transition browser check uses Node.js 22+ and Chrome's DevTools protocol, without additional test dependencies. Export the web app with `npx expo export --platform web`, serve `apps/mobile/dist` on port 8093, and run Chrome with `--remote-debugging-port=9223` and a separate temporary `--user-data-dir`. From `apps/mobile`, run `npm run test:motion`; optional site and DevTools URLs can be passed as `npm run test:motion -- http://localhost:8093 http://localhost:9223`. The check covers both title animations, fades, repeated taps, back navigation, viewport resizing, reduced motion, and automatic progression to the login/signup selection without clicks. The logo screen waits 1 second; the app-name screen waits 0.7 seconds after its transition completes. Returning to a previous screen does not replay automatic progression.
 

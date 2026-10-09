@@ -1,12 +1,12 @@
 spring:
   application:
-    name: growtogegher-api
+    name: growtogether-api
   jpa:
     hibernate:
       ddl-auto: validate
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/growtogegher}
-    username: ${POSTGRES_USER:growtogegher}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/growtogether}
+    username: ${POSTGRES_USER:growtogether}
     password: ${POSTGRES_PASSWORD:local_dev_password}
 management:
   endpoints.web.exposure.include: health

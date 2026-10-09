@@ -1,4 +1,4 @@
-# Growtogegher development rules
+# GrowTogether development rules
 
 1. Prefer readable, maintainable code over cleverness.
 2. Do not add abstractions or infrastructure before a concrete requirement needs them.

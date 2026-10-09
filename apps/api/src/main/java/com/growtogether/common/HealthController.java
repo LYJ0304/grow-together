@@ -1,4 +1,4 @@
-package com.growtogegher.common;
+package com.growtogether.common;
 
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,5 +8,5 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/health")
 class HealthController {
-    @GetMapping Map<String, String> health() { return Map.of("status", "UP", "service", "growtogegher-api"); }
+    @GetMapping Map<String, String> health() { return Map.of("status", "UP", "service", "growtogether-api"); }
 }

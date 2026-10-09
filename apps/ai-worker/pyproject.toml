@@ -1,7 +1,7 @@
 [project]
-name = "growtogegher-ai-worker"
+name = "growtogether-ai-worker"
 version = "0.1.0"
-description = "Independent execution worker for Growtogegher AI workloads."
+description = "Independent execution worker for GrowTogether AI workloads."
 requires-python = ">=3.12"
 dependencies = ["pydantic-settings>=2.12,<3"]
 

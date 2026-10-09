@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Growtogegher API
+  title: GrowTogether API
   version: 0.1.0
 paths:
   /api/health:
@@ -16,4 +16,4 @@ paths:
                 required: [status, service]
                 properties:
                   status: { type: string, example: UP }
-                  service: { type: string, example: growtogegher-api }
+                  service: { type: string, example: growtogether-api }

@@ -1,11 +1,11 @@
-name: growtogegher
+name: growtogether
 
 services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-growtogegher}
-      POSTGRES_USER: ${POSTGRES_USER:-growtogegher}
+      POSTGRES_DB: ${POSTGRES_DB:-growtogether}
+      POSTGRES_USER: ${POSTGRES_USER:-growtogether}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -20,8 +20,8 @@ services:
     build: ../apps/api
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
-      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogegher}
-      POSTGRES_USER: ${POSTGRES_USER:-growtogegher}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
+      POSTGRES_USER: ${POSTGRES_USER:-growtogether}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
     ports: ["8080:8080"]
     depends_on:

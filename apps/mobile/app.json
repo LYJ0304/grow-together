@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "growtogegher-mobile",
-    "slug": "growtogegher-mobile",
+    "name": "growtogether-mobile",
+    "slug": "growtogether-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "growtogegher",
+    "scheme": "growtogether",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
