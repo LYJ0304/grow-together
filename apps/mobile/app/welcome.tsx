@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLaunchTransition } from '../src/components/launch-transition';
 
 export default function WelcomeScreen() {
-  const [notice, setNotice] = useState('');
   const motion = useLaunchTransition('/welcome');
 
   return (
@@ -48,9 +47,9 @@ export default function WelcomeScreen() {
           <View style={styles.buttons}>
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="로그인 기능은 준비 중입니다"
+              accessibilityHint="UI 미리보기 메인 화면으로 이동합니다"
               disabled={motion.busy}
-              onPress={() => setNotice('로그인 기능은 준비 중입니다.')}
+              onPress={() => router.navigate('/main')}
               style={({ pressed }) => [
                 styles.button,
                 styles.primaryButton,
@@ -63,9 +62,9 @@ export default function WelcomeScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="회원가입 기능은 준비 중입니다"
+              accessibilityHint="UI 미리보기 메인 화면으로 이동합니다"
               disabled={motion.busy}
-              onPress={() => setNotice('회원가입 기능은 준비 중입니다.')}
+              onPress={() => router.navigate('/main')}
               style={({ pressed }) => [
                 styles.button,
                 styles.secondaryButton,
@@ -77,15 +76,6 @@ export default function WelcomeScreen() {
               </Text>
             </Pressable>
           </View>
-          {notice ? (
-            <Text
-              accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
-              style={styles.notice}
-            >
-              {notice}
-            </Text>
-          ) : null}
           <View style={styles.bottomSpace} />
         </Animated.View>
       </ScrollView>
@@ -134,11 +124,4 @@ const styles = StyleSheet.create({
   },
   primaryLabel: { color: '#FFFFFF' },
   secondaryLabel: { color: '#D26A5C' },
-  notice: {
-    marginTop: 16,
-    fontFamily: 'Jua',
-    fontSize: 16,
-    color: '#D26A5C',
-    textAlign: 'center',
-  },
 });

@@ -64,6 +64,10 @@ The health endpoint is `GET /api/health`; it returns `{"status":"UP","service":"
 
 The mobile launch transition browser check uses Node.js 22+ and Chrome's DevTools protocol, without additional test dependencies. Export the web app with `npx expo export --platform web`, serve `apps/mobile/dist` on port 8093, and run Chrome with `--remote-debugging-port=9223` and a separate temporary `--user-data-dir`. From `apps/mobile`, run `npm run test:motion`; optional site and DevTools URLs can be passed as `npm run test:motion -- http://localhost:8093 http://localhost:9223`. The check covers both title animations, fades, repeated taps, back navigation, viewport resizing, reduced motion, and automatic progression to the login/signup selection without clicks. The logo screen waits 1 second; the app-name screen waits 0.7 seconds after its transition completes. Returning to a previous screen does not replay automatic progression.
 
+For UI QA, both login and signup selection buttons open the Figma Main screen directly. This is a preview flow, not authentication; the child age, routine progress, schedule, and AI diary use the Figma sample data. The browser check verifies both entry buttons, Main assets, and safe bottom navigation.
+
+The bottom calendar tab opens the diary calendar, initially matching Figma's November 2025 view with November 13 selected. Users can change months and select dates; the home tab returns to Main. Diary generation currently shows a preparation notice rather than invoking an AI service. The browser check includes calendar navigation, date selection, and month/year rollover.
+
 ## Troubleshooting
 
 - If API startup cannot connect, verify PostgreSQL with `docker compose -f infra/compose.yaml ps` and confirm `.env` values match.
