@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
-  active: '홈' | '캘린더';
+  active: '홈' | '캘린더' | '마이';
   onReselect: () => void;
   onUnavailable: (label: string) => void;
 };
@@ -15,7 +15,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     label: string;
     icon: number;
     size: number;
-    href: '/main' | '/calendar' | null;
+    href: '/main' | '/calendar' | '/mypage' | null;
   }[] = [
     {
       label: '캘린더',
@@ -50,11 +50,13 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     {
       label: '마이',
       icon:
-        active === '캘린더'
-          ? require('../../assets/images/calendar/user.svg')
-          : require('../../assets/images/main/user.svg'),
-      size: 24,
-      href: null,
+        active === '마이'
+          ? require('../../assets/images/calendar/user-selected.svg')
+          : active === '캘린더'
+            ? require('../../assets/images/calendar/user.svg')
+            : require('../../assets/images/main/user.svg'),
+      size: active === '마이' ? 48 : 24,
+      href: '/mypage',
     },
   ];
 
