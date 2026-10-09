@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLaunchTransition } from '../src/components/launch-transition';
 
 export default function HomeScreen() {
-  const motion = useLaunchTransition('/');
+  const motion = useLaunchTransition('/', '/app-name');
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />

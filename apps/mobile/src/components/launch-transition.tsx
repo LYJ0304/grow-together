@@ -94,44 +94,46 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
     return () => animation.stop();
   }, [transition, pathname, progress, clear]);
 
-  const navigate = async (destination: LaunchRoute, title: Text | null) => {
-    if (pending.current) return;
-    pending.current = true;
-    const reduceMotion = await AccessibilityInfo.isReduceMotionEnabled().catch(
-      () => true,
-    );
-    if (reduceMotion || !title || !root.current) {
-      router.push(destination);
-      pending.current = false;
-      return;
-    }
-    root.current.measureInWindow((rootX, rootY) => {
-      title.measureInWindow((x, y, width) => {
-        if (width <= 0) {
-          router.push(destination);
-          pending.current = false;
-          return;
-        }
-        progress.setValue(0);
-        outgoingOpacity.setValue(1);
-        setTransition({
-          source: pathname,
-          destination,
-          from: { x: x - rootX, y: y - rootY, width },
-          origin: { x: rootX, y: rootY },
-        });
-        requestAnimationFrame(() => {
-          Animated.timing(outgoingOpacity, {
-            toValue: 0,
-            duration: 120,
-            useNativeDriver: Platform.OS !== 'web',
-          }).start(({ finished }) => {
-            if (finished) router.push(destination);
+  const navigate = useCallback(
+    async (destination: LaunchRoute, title: Text | null) => {
+      if (pending.current) return;
+      pending.current = true;
+      const reduceMotion =
+        await AccessibilityInfo.isReduceMotionEnabled().catch(() => true);
+      if (reduceMotion || !title || !root.current) {
+        router.push(destination);
+        pending.current = false;
+        return;
+      }
+      root.current.measureInWindow((rootX, rootY) => {
+        title.measureInWindow((x, y, width) => {
+          if (width <= 0) {
+            router.push(destination);
+            pending.current = false;
+            return;
+          }
+          progress.setValue(0);
+          outgoingOpacity.setValue(1);
+          setTransition({
+            source: pathname,
+            destination,
+            from: { x: x - rootX, y: y - rootY, width },
+            origin: { x: rootX, y: rootY },
+          });
+          requestAnimationFrame(() => {
+            Animated.timing(outgoingOpacity, {
+              toValue: 0,
+              duration: 120,
+              useNativeDriver: Platform.OS !== 'web',
+            }).start(({ finished }) => {
+              if (finished) router.push(destination);
+            });
           });
         });
       });
-    });
-  };
+    },
+    [pathname, progress, outgoingOpacity],
+  );
 
   const setDestination = useCallback(
     (screen: LaunchRoute, position: Position) => {
@@ -214,12 +216,39 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
   );
 }
 
-export function useLaunchTransition(screen: LaunchRoute) {
+export function useLaunchTransition(
+  screen: LaunchRoute,
+  automaticDestination?: LaunchRoute,
+) {
   const context = useContext(TransitionContext);
   if (!context) throw new Error('LaunchTransitionProvider is required');
   const titleRef = useRef<Text>(null);
+  const advanced = useRef(false);
   const pathname = usePathname();
-  const { transition, setDestination } = context;
+  const { transition, setDestination, navigate: startTransition } = context;
+
+  const navigate = useCallback(
+    (destination: LaunchRoute) => {
+      advanced.current = true;
+      startTransition(destination, titleRef.current);
+    },
+    [startTransition],
+  );
+
+  useEffect(() => {
+    if (
+      !automaticDestination ||
+      pathname !== screen ||
+      transition ||
+      advanced.current
+    )
+      return;
+    const timer = setTimeout(
+      () => navigate(automaticDestination),
+      screen === '/' ? 1000 : 700,
+    );
+    return () => clearTimeout(timer);
+  }, [automaticDestination, pathname, screen, transition, navigate]);
 
   const measureTitle = useCallback(() => {
     if (
@@ -255,8 +284,7 @@ export function useLaunchTransition(screen: LaunchRoute) {
             ? context.outgoingOpacity
             : 1,
     },
-    navigate: (destination: LaunchRoute) =>
-      context.navigate(destination, titleRef.current),
+    navigate,
   };
 }
 

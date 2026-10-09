@@ -215,6 +215,79 @@ try {
   console.log(
     'PASS reduced motion skips both animations on a small safe-area viewport',
   );
+
+  const { identifier } = await call('Page.addScriptToEvaluateOnNewDocument', {
+    source: `
+      window.launchFrames = [];
+      window.launchClicks = 0;
+      document.addEventListener('click', () => window.launchClicks++);
+      const started = performance.now();
+      function sampleLaunch() {
+        const overlay = document.querySelector('[data-testid="launch-transition-title"]');
+        window.launchFrames.push({
+          route: location.pathname,
+          y: overlay ? overlay.getBoundingClientRect().top : null,
+          time: performance.now() - started,
+        });
+        if (performance.now() - started < 6000) requestAnimationFrame(sampleLaunch);
+      }
+      requestAnimationFrame(sampleLaunch);
+    `,
+  });
+  try {
+    for (const reduced of [false, true]) {
+      await call('Emulation.setEmulatedMedia', {
+        features: [
+          {
+            name: 'prefers-reduced-motion',
+            value: reduced ? 'reduce' : 'no-preference',
+          },
+        ],
+      });
+      await call('Page.navigate', { url: siteUrl });
+      await waitFor(
+        'location.pathname === "/welcome" && !document.querySelector("[data-testid=launch-transition]")',
+      );
+      const { frames, clicks } = await evaluate(
+        '({frames: window.launchFrames, clicks: window.launchClicks})',
+      );
+      assert.equal(clicks, 0, 'Initial flow must not require clicks');
+      const routes = frames
+        .map((frame) => frame.route)
+        .filter((route, index, all) => index === 0 || route !== all[index - 1]);
+      assert.deepEqual(routes, ['/', '/app-name', '/welcome']);
+      for (const route of ['/app-name', '/welcome']) {
+        const motion = frames.filter(
+          (frame) => frame.route === route && frame.y !== null,
+        );
+        if (reduced) assert.equal(motion.length, 0);
+        else
+          assert(
+            motion.length >= 5,
+            `Automatic ${route} transition must animate`,
+          );
+      }
+      await evaluate('history.back()');
+      await waitFor('location.pathname === "/app-name"');
+      await evaluate('new Promise(resolve => setTimeout(resolve, 1500))');
+      assert.equal(
+        await evaluate('location.pathname'),
+        '/app-name',
+        'Back navigation must not restart automatic progression',
+      );
+      assert.equal(
+        await evaluate(
+          '!!document.querySelector("[data-testid=launch-transition]")',
+        ),
+        false,
+      );
+      console.log(
+        `PASS automatic flow without clicks, reduced motion=${reduced}, no replay on back`,
+      );
+    }
+  } finally {
+    await call('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  }
 } finally {
   socket.close();
 }

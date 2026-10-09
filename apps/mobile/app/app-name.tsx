@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLaunchTransition } from '../src/components/launch-transition';
 
 export default function AppNameScreen() {
-  const motion = useLaunchTransition('/app-name');
+  const motion = useLaunchTransition('/app-name', '/welcome');
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
