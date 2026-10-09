@@ -1,35 +1,26 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function HomeScreen() {
+export default function AppNameScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.nextScreen}>
-          <View style={styles.logoSection}>
-            <Image
-              source={require('../assets/images/grow-together-logo.png')}
-              style={styles.logo}
-              contentFit="contain"
-              accessible={false}
-            />
-          </View>
-          <View style={styles.footer}>
+          <View style={styles.titleSection}>
             <Text accessibilityRole="header" style={styles.title}>
               같이 키우기
             </Text>
-            <Text accessibilityLabel="Version 1.0" style={styles.version}>
-              Version<Text style={styles.versionNumber}> 1.0</Text>
-            </Text>
           </View>
+          <Text accessibilityLabel="Version 1.0" style={styles.version}>
+            Version<Text style={styles.versionNumber}> 1.0</Text>
+          </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="앱 이름 화면으로 이동"
-            onPress={() => router.push('/app-name')}
+            accessibilityLabel="로그인 및 가입 선택 화면으로 이동"
+            onPress={() => router.push('/welcome')}
             style={StyleSheet.absoluteFill}
           />
         </View>
@@ -39,34 +30,14 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 21 },
+  nextScreen: { flex: 1, alignItems: 'center' },
+  titleSection: {
     flex: 1,
-    backgroundColor: '#FAF9F9',
-  },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 21,
-  },
-  nextScreen: {
-    flex: 1,
-  },
-  logoSection: {
-    flex: 1,
-    minHeight: 253,
-    alignItems: 'center',
+    minHeight: 180,
     justifyContent: 'center',
-    paddingTop: 84,
-    paddingBottom: 24,
-  },
-  logo: {
-    width: 145,
-    height: 145,
-    transform: [{ translateX: -2 }],
-  },
-  footer: {
-    alignItems: 'center',
-    gap: 24,
+    paddingBottom: 32,
   },
   title: {
     fontFamily: 'Jua',
@@ -85,7 +56,5 @@ const styles = StyleSheet.create({
     letterSpacing: -0.28,
     color: '#C2C3CB',
   },
-  versionNumber: {
-    fontSize: 14,
-  },
+  versionNumber: { fontSize: 14 },
 });
