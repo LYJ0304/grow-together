@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { LaunchTransitionProvider } from '../src/components/launch-transition';
 
 const queryClient = new QueryClient();
 
@@ -13,7 +14,9 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <LaunchTransitionProvider>
+        <Stack screenOptions={{ headerShown: false, animation: 'none' }} />
+      </LaunchTransitionProvider>
     </QueryClientProvider>
   );
 }
