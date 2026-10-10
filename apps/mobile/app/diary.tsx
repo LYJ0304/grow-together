@@ -1,8 +1,10 @@
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,14 +17,88 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const moments = [
-  '잘 먹었어요',
-  '즐겁게 놀았어요',
-  '낮잠을 잤어요',
-  '새로운 걸 해냈어요',
+const diaryRecords = [
+  {
+    time: '07:00',
+    title: '기상 & 기저귀 갈기',
+    description: '아이가 깼어요. 기저귀를 갈아주세요.',
+    tag: '#기본 루틴',
+  },
+  {
+    time: '07:30',
+    title: '아침 이유식',
+    description: '아침 식사 시간이에요. 새로운 재료를 시도해요.',
+    tag: '#식습관 안정화',
+  },
+  {
+    time: '09:00',
+    title: '놀이 & 탐색',
+    description: '탐색 놀이 시간이에요. 블록이나 촉감놀이 추천!',
+    tag: '#발달 자극',
+  },
+  {
+    time: '10:00',
+    title: '낮잠 (1~1.5시간)',
+    description: '졸려할 수 있어요. 조용한 환경을 만들어주세요.',
+    tag: '#휴식 루틴',
+  },
+  {
+    time: '12:30',
+    title: '산책 & 외부 활동',
+    description: '햇볕을 쬐면 비타민 D 합성에 좋아요.',
+    tag: '#활동/면역',
+  },
+  {
+    time: '14:00',
+    title: '책 읽기 & 놀이',
+    description: '짧은 그림책을 같이 읽어주세요.',
+    tag: '#언어 발달',
+  },
+  {
+    time: '15:00',
+    title: '낮잠 (1시간)',
+    description: '점심 시간이에요. 새로운 식감 시도도 좋아요.',
+    tag: '#피로 회복',
+  },
+  {
+    time: '17:30',
+    title: '산책 / 외부 활동',
+    description: '밥을 잘 먹을 수 있도록 산책을 해요.',
+    tag: '#발달 자극',
+  },
+  {
+    time: '18:00',
+    title: '저녁 이유식',
+    description: '저녁 식사 시간이에요. 단백질 식품을 포함해보세요.',
+    tag: '#성장 #영양',
+  },
+  {
+    time: '19:30',
+    title: '책 읽기 & 차분한 놀이',
+    description: '짧은 그림책을 읽어주며 하루를 마무리해요.',
+    tag: '#언어 발달 #정서 안정',
+  },
+  {
+    time: '20:00',
+    title: '취침 준비',
+    description: '잔잔한 조명과 음악으로 잠잘 분위기를 만들어주세요.',
+    tag: '#수면 유도',
+  },
+  {
+    time: '21:00',
+    title: '취침',
+    description: '오늘 하루가 끝났어요. 아기를 재워주세요.',
+    tag: '#마무리',
+  },
 ];
-const moods = ['기분 좋은 하루', '평범하고 편안한 하루', '조금 힘든 하루'];
-const tones = ['다정하고 따뜻하게', '짧고 담백하게', '재미있고 발랄하게'];
+const growthTags = ['#성취/시도', '#언어/표현', '#감정'];
+// shortcut: sample interpretations for UI preview; replace with the AI response when connected.
+const sampleGrowthPoints = [
+  '자립심 발달: 숟가락을 스스로 잡으려는 시도가 늘었어요.',
+  '집중력 향상: 블록 놀이에서 전보다 긴 시간 집중했어요.',
+  '관심 표현: 산책 중 사물을 가리키며 표현하려 했어요.',
+  '정서 안정: 부모와 함께하는 책 읽기에 차분하게 집중했어요.',
+];
 
 function formatDate(value?: string) {
   const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -42,233 +118,445 @@ function formatDate(value?: string) {
 export default function DiaryScreen() {
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
   const [date] = useState(() => formatDate(dateParam));
-  const dateLabel = `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
   const [step, setStep] = useState(1);
-  const [mood, setMood] = useState(moods[0]);
-  const [selectedMoments, setSelectedMoments] = useState<string[]>([]);
-  const [memo, setMemo] = useState('');
-  const [tone, setTone] = useState(tones[0]);
+  const [selectedRecordTimes, setSelectedRecordTimes] = useState<string[]>([]);
+  const selectedRecords = diaryRecords.filter((record) =>
+    selectedRecordTimes.includes(record.time),
+  );
+  const [growthNote, setGrowthNote] = useState('');
+  const [selectedGrowthTags, setSelectedGrowthTags] = useState<string[]>([]);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const photoUri = photoUris[0] ?? null;
+  const [photoNotice, setPhotoNotice] = useState('');
   const [draft, setDraft] = useState('');
+  const [regenerationsRemaining, setRegenerationsRemaining] = useState(3);
   const [confirmExit, setConfirmExit] = useState(false);
 
+  useEffect(() => {
+    if (step !== 3) return;
+    // shortcut: show a sample after the loading preview; replace with the AI response when connected.
+    const timer = setTimeout(() => setStep(4), 3000);
+    return () => clearTimeout(timer);
+  }, [step]);
+
   const createPreview = () => {
-    const highlights = selectedMoments.length
-      ? selectedMoments.join(' 하고 ')
-      : '엄마 아빠와 함께 시간을 보냈어요';
+    const highlights = selectedRecords.length
+      ? selectedRecords.map((record) => record.title).join(', ')
+      : '엄마 아빠와 함께한 시간';
     setDraft(
-      `${date.getMonth() + 1}월 ${date.getDate()}일, ${mood}였어요.\n\n오늘은 ${highlights}. ${memo.trim() ? `${memo.trim()} ` : ''}하루하루 자라나는 모습이 참 사랑스러워요. 내일은 또 어떤 새로운 순간을 만나게 될까요?`,
+      `${date.getMonth() + 1}월 ${date.getDate()}일의 기록\n\n오늘 기억하고 싶은 순간은 ${highlights}이에요. 하루하루 자라나는 모습이 참 사랑스러워요. 내일은 또 어떤 새로운 순간을 만나게 될까요?${growthNote.trim() ? `\n\n오늘의 성장 기록\n${growthNote.trim()}` : ''}${selectedGrowthTags.length ? `\n\n${selectedGrowthTags.join(' ')}` : ''}`,
     );
+    Keyboard.dismiss();
     setStep(3);
-    setTimeout(() => setStep(4), 1200);
   };
 
-  const toggleMoment = (moment: string) => {
-    setSelectedMoments((current) =>
-      current.includes(moment)
-        ? current.filter((item) => item !== moment)
-        : [...current, moment],
+  const toggleRecord = (time: string) => {
+    setSelectedRecordTimes((current) =>
+      current.includes(time)
+        ? current.filter((item) => item !== time)
+        : [...current, time],
     );
   };
 
-  const goBack = () => {
-    if (step === 1) router.back();
-    else if (step === 2) setStep(1);
-    else if (step === 4) setStep(2);
-    else if (step === 5) setStep(4);
+  const toggleGrowthTag = (tag: string) => {
+    setSelectedGrowthTags((current) =>
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag],
+    );
+  };
+
+  const selectPhoto = async () => {
+    setPhotoNotice('');
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 3,
+        quality: 0.8,
+      });
+      if (!result.canceled)
+        setPhotoUris(result.assets.slice(0, 3).map((asset) => asset.uri));
+    } catch {
+      setPhotoNotice('사진을 선택하지 못했어요. 다시 시도해주세요.');
+    }
   };
 
   return (
     <SafeAreaView
       edges={['top', 'left', 'right', 'bottom']}
-      style={styles.container}
+      style={[styles.container, styles.recordContainer]}
     >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={step === 1 ? '캘린더로 돌아가기' : '이전 단계'}
-            onPress={goBack}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.backIcon}>‹</Text>
-          </Pressable>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>오늘의 일기</Text>
-            <Text style={styles.headerDate}>{dateLabel}</Text>
-          </View>
-          <Text style={styles.stepLabel}>
-            {step === 3 ? 'AI' : `${Math.min(step, 5)} / 5`}
+        <View style={styles.recordHeader}>
+          <Text accessibilityRole="header" style={styles.recordHeading}>
+            AI 육아 일기 생성
+          </Text>
+          <Text style={styles.recordStep}>
+            {step === 1
+              ? 'STEP 01 : 남기고 싶은 기억을 골라봐요!'
+              : step >= 4
+                ? 'STEP 04 : 추가로 남기고 싶은 기록이 있나요?'
+                : 'STEP 02 : 추가로 남기고 싶은 기록이 있나요?'}
+          </Text>
+          <Text style={styles.recordHint}>
+            {step === 1
+              ? '아이와 오늘 한 활동을 선택해주세요.'
+              : step >= 4
+                ? '아이의 하루가 하나의 이야기로 완성되었습니다.'
+                : '오늘 아이에게 어떤 변화가 있었나요? 작은 시도나 웃음도 괜찮아요.'}
           </Text>
         </View>
 
         {step === 1 && (
           <>
             <ScrollView
-              contentContainerStyle={styles.content}
+              style={styles.recordScroll}
+              contentContainerStyle={styles.recordList}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.title}>오늘은 어떤 하루였나요?</Text>
-              <Text style={styles.subtitle}>사랑둥이의 하루를 들려주세요.</Text>
-
-              <Text style={styles.sectionTitle}>오늘의 기분</Text>
-              <View style={styles.optionList}>
-                {moods.map((item) => (
-                  <Choice
-                    key={item}
-                    label={item}
-                    selected={mood === item}
-                    onPress={() => setMood(item)}
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.sectionTitle}>오늘 있었던 일</Text>
-              <Text style={styles.helper}>여러 개 선택할 수 있어요</Text>
-              <View style={styles.chips}>
-                {moments.map((item) => (
-                  <Choice
-                    key={item}
-                    label={item}
-                    selected={selectedMoments.includes(item)}
-                    onPress={() => toggleMoment(item)}
-                    chip
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.sectionTitle}>기억하고 싶은 순간</Text>
-              <TextInput
-                accessibilityLabel="기억하고 싶은 순간"
-                multiline
-                maxLength={300}
-                placeholder="작은 이야기라도 좋아요"
-                placeholderTextColor="#A0A3B1"
-                value={memo}
-                onChangeText={setMemo}
-                style={styles.memo}
-                textAlignVertical="top"
-              />
-              <Text style={styles.counter}>{memo.length} / 300</Text>
+              {diaryRecords.map((record) => {
+                const selected = selectedRecordTimes.includes(record.time);
+                return (
+                  <Pressable
+                    key={record.time}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={`${record.time} ${record.title}`}
+                    aria-checked={selected}
+                    onPress={() => toggleRecord(record.time)}
+                    style={({ pressed }) => [
+                      styles.recordCard,
+                      selected && styles.recordSelected,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.recordCopy}>
+                      <View style={styles.recordTitleRow}>
+                        <Text style={styles.recordTime}>{record.time}</Text>
+                        <Text style={styles.recordTitle}>{record.title}</Text>
+                      </View>
+                      <Text style={styles.recordDescription}>
+                        {record.description}
+                      </Text>
+                      <Text style={styles.recordTag}>{record.tag}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.recordCheck,
+                        selected && styles.recordCheckSelected,
+                      ]}
+                    >
+                      {selected ? (
+                        <Text style={styles.recordCheckLabel}>✓</Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
-            <Footer label="다음" onPress={() => setStep(2)} />
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <ScrollView contentContainerStyle={styles.content}>
-              <Text style={styles.title}>일기 분위기를 골라주세요</Text>
-              <Text style={styles.subtitle}>
-                마음에 드는 말투로 하루를 기록해요.
-              </Text>
-              <View style={styles.previewCard}>
-                <Text style={styles.previewEyebrow}>오늘의 기록</Text>
-                <Text style={styles.previewLine}>{mood}</Text>
-                <Text style={styles.previewLine}>
-                  {selectedMoments.length
-                    ? selectedMoments.join(' · ')
-                    : '함께한 소중한 하루'}
-                </Text>
-                {memo ? <Text style={styles.memoPreview}>{memo}</Text> : null}
-              </View>
-              <Text style={styles.sectionTitle}>원하는 말투</Text>
-              <View style={styles.optionList}>
-                {tones.map((item) => (
-                  <Choice
-                    key={item}
-                    label={item}
-                    selected={tone === item}
-                    onPress={() => setTone(item)}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-            <Footer label="일기 생성하기 ✨" onPress={createPreview} />
-          </>
-        )}
-
-        {step === 3 && (
-          <View style={styles.loadingScreen}>
-            <View style={styles.loadingCard}>
-              <ActivityIndicator size="large" color="#D26A5C" />
-              <Text style={styles.loadingTitle}>
-                오늘의 일기를 만들고 있어요
-              </Text>
-              <Text style={styles.loadingSubtitle}>
-                사랑둥이의 소중한 순간을 정리하는 중이에요.
-              </Text>
-              <View style={styles.loadingDots}>
-                <Text style={styles.dot}>●</Text>
-                <Text style={styles.dot}>●</Text>
-                <Text style={styles.dot}>●</Text>
-              </View>
+            <View style={styles.recordFooter}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setStep(2)}
+                style={({ pressed }) => [
+                  styles.recordNext,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.recordNextLabel}>다음으로</Text>
+              </Pressable>
             </View>
-          </View>
+          </>
         )}
 
-        {step === 4 && (
+        {(step === 2 || step === 3) && (
           <>
             <ScrollView
-              contentContainerStyle={styles.content}
+              style={styles.recordScroll}
+              contentContainerStyle={styles.growthContent}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.title}>오늘의 일기가 완성됐어요</Text>
-              <Text style={styles.subtitle}>
-                마음에 들도록 자유롭게 다듬어보세요.
-              </Text>
-              <View style={styles.diaryCard}>
-                <Text style={styles.previewEyebrow}>
-                  {dateLabel} · {tone}
+              <View style={styles.growthCard}>
+                <Text accessibilityRole="header" style={styles.growthTitle}>
+                  오늘의 성장 한 줄 기록
+                </Text>
+                <Text style={styles.growthSubtitle}>
+                  오늘 아이에게 어떤 변화가 있었나요?
                 </Text>
                 <TextInput
-                  accessibilityLabel="생성된 일기 수정"
+                  accessibilityLabel="오늘의 성장 한 줄 기록"
+                  placeholder="예: 오늘은 혼자서 숟가락을 잡으려 했어요."
+                  placeholderTextColor="#858585"
                   multiline
-                  value={draft}
-                  onChangeText={setDraft}
-                  style={styles.draftInput}
+                  maxLength={1000}
+                  value={growthNote}
+                  onChangeText={setGrowthNote}
                   textAlignVertical="top"
+                  style={styles.growthInput}
                 />
+                <View style={styles.growthTags}>
+                  {growthTags.map((tag) => (
+                    <Pressable
+                      key={tag}
+                      accessibilityRole="button"
+                      aria-pressed={selectedGrowthTags.includes(tag)}
+                      onPress={() => toggleGrowthTag(tag)}
+                      style={({ pressed }) => [
+                        styles.growthTag,
+                        {
+                          flex:
+                            tag === '#감정'
+                              ? 0.8
+                              : tag === '#언어/표현'
+                                ? 1.1
+                                : 1,
+                        },
+                        selectedGrowthTags.includes(tag) &&
+                          styles.growthTagSelected,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={styles.growthTagLabel}>{tag}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={styles.growthHint}>
+                  짧은 문장이라도 괜찮아요. AI가 의미를 분석해드려요.
+                </Text>
+                <View style={styles.growthDivider} />
+                <Text style={styles.photoLabel}>사진 첨부 (선택)</Text>
+                <View style={styles.photoRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      photoUri ? '첨부 사진 변경' : '사진 첨부'
+                    }
+                    onPress={selectPhoto}
+                    style={({ pressed }) => [
+                      styles.photoButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {photoUri ? (
+                      <Image
+                        source={{ uri: photoUri }}
+                        style={styles.attachedPhoto}
+                        contentFit="cover"
+                        accessibilityLabel="첨부 사진"
+                      />
+                    ) : (
+                      <Text style={styles.photoPlus}>+</Text>
+                    )}
+                    {photoUris.length > 1 ? (
+                      <View style={styles.photoCount}>
+                        <Text style={styles.photoCountLabel}>
+                          {photoUris.length}장
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                  {photoUri ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="첨부 사진 삭제"
+                      onPress={() => setPhotoUris([])}
+                      style={styles.photoRemove}
+                    >
+                      <Text style={styles.photoRemoveLabel}>삭제</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {photoNotice ? (
+                  <Text accessibilityRole="alert" style={styles.photoNotice}>
+                    {photoNotice}
+                  </Text>
+                ) : null}
               </View>
-              <Text style={styles.disclaimer}>
-                화면 확인을 위한 예시 미리보기예요. 실제 AI 생성·저장은 아직
-                연결되지 않았어요.
-              </Text>
             </ScrollView>
-            <Footer label="미리보기 확인" onPress={() => setStep(5)} />
+            <View style={styles.recordFooter}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={createPreview}
+                style={({ pressed }) => [
+                  styles.recordNext,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.recordNextLabel}>일기 생성하기</Text>
+              </Pressable>
+            </View>
           </>
         )}
 
-        {step === 5 && (
+        {(step === 4 || step === 5) && (
           <>
-            <ScrollView contentContainerStyle={styles.content}>
-              <View style={styles.successMark}>
-                <Text style={styles.successIcon}>✓</Text>
+            <ScrollView
+              key={`result-${step}`}
+              style={styles.recordScroll}
+              contentContainerStyle={styles.resultContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {step === 5 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.photoGallery}
+                  contentContainerStyle={styles.photoGalleryContent}
+                  accessibilityLabel="일기 사진 목록"
+                >
+                  {(photoUris.length ? photoUris : [null, null, null]).map(
+                    (uri, index) => (
+                      <View key={index} style={styles.galleryTile}>
+                        {uri ? (
+                          <Image
+                            source={{ uri }}
+                            style={styles.galleryPhoto}
+                            contentFit="cover"
+                            accessibilityLabel={`일기 사진 ${index + 1}`}
+                          />
+                        ) : (
+                          <Text style={styles.galleryPlaceholder}>
+                            사진 없음
+                          </Text>
+                        )}
+                      </View>
+                    ),
+                  )}
+                </ScrollView>
+              ) : null}
+              <View style={[styles.resultCard, styles.resultDiaryCard]}>
+                <View style={styles.resultHeadingRow}>
+                  <View style={styles.resultIcon} />
+                  <Text accessibilityRole="header" style={styles.resultHeading}>
+                    오늘의 일기
+                  </Text>
+                </View>
+                {photoUri && step === 4 ? (
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={[styles.diaryPhoto, styles.resultPhoto]}
+                    contentFit="cover"
+                    accessibilityLabel="일기 첨부 사진"
+                  />
+                ) : null}
+                <Text style={styles.resultBody}>{draft}</Text>
               </View>
-              <Text style={[styles.title, styles.center]}>
-                일기 미리보기가 준비됐어요
-              </Text>
-              <Text style={[styles.subtitle, styles.center]}>
-                작성한 내용을 확인했어요. 아직 서버에 저장되지는 않아요.
-              </Text>
-              <View style={styles.diaryCard}>
-                <Text style={styles.previewEyebrow}>{dateLabel}</Text>
-                <Text style={styles.finalDraft}>{draft}</Text>
+              <View style={styles.resultCard}>
+                <View style={styles.resultHeadingRow}>
+                  <View style={styles.resultIcon} />
+                  <Text accessibilityRole="header" style={styles.resultHeading}>
+                    오늘의 감정
+                  </Text>
+                </View>
+                <Text style={styles.resultBody}>
+                  성취감, 호기심, 만족스러움, 차분함
+                </Text>
+              </View>
+              <View style={[styles.resultCard, styles.resultGrowthCard]}>
+                <View style={styles.resultHeadingRow}>
+                  <View style={styles.resultIcon} />
+                  <Text accessibilityRole="header" style={styles.resultHeading}>
+                    성장 포인트
+                  </Text>
+                </View>
+                <View style={styles.resultGrowthPoints}>
+                  {sampleGrowthPoints.map((point) => (
+                    <Text key={point} style={styles.resultGrowthPoint}>
+                      · {point}
+                    </Text>
+                  ))}
+                </View>
               </View>
             </ScrollView>
-            <Footer
-              label="캘린더로 돌아가기"
-              onPress={() => setConfirmExit(true)}
-            />
+            <View style={styles.resultFooter}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
+                disabled={regenerationsRemaining === 0}
+                onPress={() => {
+                  setRegenerationsRemaining((remaining) => remaining - 1);
+                  createPreview();
+                }}
+                style={({ pressed }) => [
+                  styles.regenerateButton,
+                  (pressed || regenerationsRemaining === 0) && styles.pressed,
+                ]}
+              >
+                <Text style={styles.regenerateLabel}>
+                  다시 생성하기{'\n'}(1일 {regenerationsRemaining}/3번)
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => (step === 4 ? setStep(5) : setConfirmExit(true))}
+                style={({ pressed }) => [
+                  styles.resultSave,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.resultSaveLabel}>저장하기</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </KeyboardAvoidingView>
+      <Modal
+        visible={step === 3}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStep(2)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            accessibilityViewIsModal
+            style={styles.loadingCard}
+            contentContainerStyle={styles.loadingContent}
+          >
+            <Text accessibilityRole="header" style={styles.loadingTitle}>
+              AI 일기 생성 중입니다...
+            </Text>
+            <Text style={styles.loadingSubtitle}>
+              오늘의 기록을 바탕으로 아이의 하루를 정리하고 있어요.
+            </Text>
+            <Text style={styles.loadingDetails}>
+              성장 의미 + 내일 조언이 포함돼요.
+            </Text>
+            <View style={styles.loadingSummary}>
+              <Text
+                accessibilityRole="header"
+                style={styles.loadingSummaryTitle}
+              >
+                일기에는 이런 내용이 들어가요
+              </Text>
+              <View style={styles.loadingItems}>
+                {[
+                  '오늘의 루틴 요약 (기상·식사·놀이·휴식)',
+                  '메모 키워드 분석 (행복, 성취, 피곤 등)',
+                  '사진/메모 연동 (선택)',
+                ].map((label) => (
+                  <View key={label} style={styles.loadingItem}>
+                    <View style={styles.loadingBullet} />
+                    <Text style={styles.loadingItemLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+              <View
+                accessibilityRole="progressbar"
+                accessibilityLabel="일기 생성 중"
+                style={styles.loadingProgress}
+              >
+                <Text style={styles.loadingProgressLabel}>
+                  AI가 성장 포인트를 찾아 정리해요
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
       <Modal
         visible={confirmExit}
         transparent
@@ -314,296 +602,373 @@ export default function DiaryScreen() {
   );
 }
 
-function Choice({
-  label,
-  selected,
-  onPress,
-  chip = false,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  chip?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      aria-pressed={selected}
-      onPress={onPress}
-      style={({ pressed }) => [
-        chip ? styles.chip : styles.option,
-        selected && (chip ? styles.selectedChip : styles.selectedOption),
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text
-        style={[
-          chip ? styles.chipText : styles.optionText,
-          selected && styles.selectedText,
-        ]}
-      >
-        {label}
-      </Text>
-      {!chip ? (
-        <Text style={[styles.radio, selected && styles.selectedRadio]}>
-          {selected ? '✓' : ''}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function Footer({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <View style={styles.footer}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.primaryButton,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Text style={styles.primaryLabel}>{label}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
   flex: { flex: 1 },
-  header: {
-    minHeight: 64,
-    paddingHorizontal: 22,
+  recordContainer: { backgroundColor: '#FFFFFF' },
+  recordHeader: {
+    paddingTop: 26,
+    paddingBottom: 24,
+    paddingHorizontal: 28,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0px 3px 5px rgba(0, 0, 0, 0.12)',
+    zIndex: 1,
+  },
+  recordHeading: {
+    fontFamily: 'Jua',
+    fontSize: 24,
+    lineHeight: 32,
+    color: '#D26A5C',
+  },
+  recordStep: {
+    marginTop: 18,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: '#4F4F4F',
+  },
+  recordHint: { marginTop: 7, fontSize: 12, lineHeight: 18, color: '#222222' },
+  recordScroll: { backgroundColor: '#FAF9F9' },
+  recordList: {
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
+    paddingLeft: 18,
+    paddingRight: 25,
+    paddingTop: 24,
+    paddingBottom: 105,
+    gap: 20,
+  },
+  recordCard: {
+    minHeight: 90,
+    paddingLeft: 16,
+    paddingRight: 20,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEDEC',
+    gap: 10,
   },
-  backButton: {
-    width: 42,
-    height: 42,
+  recordSelected: { borderColor: '#D26A5C', backgroundColor: '#FFF5F2' },
+  recordCopy: { flex: 1 },
+  recordTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
+  recordTime: {
+    width: 36,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: '#4F4F4F',
+  },
+  recordTitle: { flex: 1, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  recordDescription: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#4F4F4F',
+  },
+  recordTag: { marginTop: 1, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  recordCheck: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D26A5C',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 15,
-    backgroundColor: '#FFFFFF',
   },
-  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
-  headerText: { flex: 1, marginLeft: 13 },
-  headerTitle: { fontFamily: 'Jua', fontSize: 18, color: '#4F4F4F' },
-  headerDate: {
-    marginTop: 2,
-    fontFamily: 'Jua',
-    fontSize: 12,
-    color: '#99939A',
-  },
-  stepLabel: { fontFamily: 'Jua', fontSize: 13, color: '#D26A5C' },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 28,
-  },
-  title: { fontFamily: 'Jua', fontSize: 24, lineHeight: 32, color: '#4F4F4F' },
-  subtitle: {
-    marginTop: 7,
-    fontFamily: 'Jua',
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#97929A',
-  },
-  sectionTitle: {
-    marginTop: 30,
-    marginBottom: 11,
-    fontFamily: 'Jua',
-    fontSize: 16,
-    color: '#4F4F4F',
-  },
-  helper: {
-    marginTop: -6,
-    marginBottom: 13,
-    fontFamily: 'Jua',
-    fontSize: 12,
-    color: '#A0A3B1',
-  },
-  optionList: { gap: 10 },
-  option: {
-    minHeight: 55,
-    paddingHorizontal: 17,
-    borderWidth: 1,
-    borderColor: '#EFEDEC',
-    borderRadius: 17,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
+  recordCheckSelected: { backgroundColor: '#D26A5C' },
+  recordCheckLabel: { fontSize: 12, lineHeight: 16, color: '#FFFFFF' },
+  recordFooter: {
+    position: 'absolute',
+    bottom: 26,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  selectedOption: { borderColor: '#D26A5C', backgroundColor: '#FFF5F2' },
-  optionText: { fontFamily: 'Jua', fontSize: 14, color: '#5B5758' },
-  selectedText: { color: '#D26A5C' },
-  radio: {
-    width: 21,
-    height: 21,
-    borderWidth: 1.5,
-    borderColor: '#D8D4D3',
-    borderRadius: 11,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
-  selectedRadio: { borderColor: '#D26A5C', backgroundColor: '#D26A5C' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  chip: {
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: '#EAE6E5',
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  selectedChip: { borderColor: '#F3C9BD', backgroundColor: '#FFF0EB' },
-  chipText: { fontFamily: 'Jua', fontSize: 13, color: '#706A6B' },
-  memo: {
-    minHeight: 112,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EFEDEC',
-    borderRadius: 17,
-    backgroundColor: '#FFFFFF',
-    fontFamily: 'Jua',
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#4F4F4F',
-  },
-  counter: {
-    marginTop: 6,
-    textAlign: 'right',
-    fontFamily: 'Jua',
-    fontSize: 11,
-    color: '#A0A3B1',
-  },
-  footer: {
-    paddingHorizontal: 25,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1EFEE',
-    backgroundColor: '#FAF9F9',
-  },
-  primaryButton: {
-    minHeight: 54,
-    borderRadius: 16,
+  recordNext: {
+    width: 239,
+    minHeight: 51,
+    borderRadius: 14,
     backgroundColor: '#D26A5C',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
   },
-  primaryLabel: { fontFamily: 'Jua', fontSize: 18, color: '#FFFFFF' },
-  previewCard: {
-    marginTop: 27,
-    padding: 21,
+  recordNextLabel: {
+    fontFamily: 'Jua',
+    fontSize: 24,
+    lineHeight: 32,
+    color: '#FFFFFF',
+  },
+  growthContent: {
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
+    paddingHorizontal: 21.5,
+    paddingTop: 18,
+    paddingBottom: 105,
+  },
+  growthCard: {
+    paddingHorizontal: 18,
+    paddingTop: 23,
+    paddingBottom: 30,
     borderWidth: 1,
-    borderColor: '#F0E6E2',
-    borderRadius: 22,
-    backgroundColor: '#FFF5F2',
-    gap: 11,
+    borderColor: '#D9D9D9',
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
   },
-  previewEyebrow: {
-    marginBottom: 8,
+  growthTitle: {
     fontFamily: 'Jua',
+    fontSize: 24,
+    lineHeight: 32,
+    color: '#4F4F4F',
+  },
+  growthSubtitle: {
+    marginTop: 5,
     fontSize: 12,
-    color: '#D26A5C',
+    lineHeight: 18,
+    color: '#4F4F4F',
   },
-  previewLine: {
-    fontFamily: 'Jua',
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#5C5553',
-  },
-  memoPreview: {
-    marginTop: 4,
-    fontFamily: 'Jua',
-    fontSize: 13,
+  growthInput: {
+    height: 188,
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 12,
+    fontSize: 12,
     lineHeight: 20,
-    color: '#8D8581',
+    color: '#4F4F4F',
   },
-  loadingScreen: {
+  growthTags: { marginTop: 12, flexDirection: 'row', gap: 9 },
+  growthTag: {
     flex: 1,
+    minHeight: 31,
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#FFE4DE',
+    borderRadius: 12,
+    backgroundColor: '#FFF5F2',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+  },
+  growthTagSelected: { borderColor: '#D26A5C', backgroundColor: '#FDEDE6' },
+  growthTagLabel: { fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  growthHint: { marginTop: 13, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  growthDivider: {
+    marginTop: 26,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  photoLabel: {
+    marginTop: 14,
+    marginBottom: 8,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#4F4F4F',
+  },
+  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  photoButton: {
+    width: 102,
+    height: 81,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoPlus: { fontSize: 23, fontWeight: '700', color: '#D26A5C' },
+  attachedPhoto: { width: '100%', height: '100%' },
+  photoCount: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#D26A5C',
+  },
+  photoCountLabel: { fontSize: 11, lineHeight: 16, color: '#FFFFFF' },
+  photoRemove: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  photoRemoveLabel: { fontSize: 12, color: '#D26A5C' },
+  photoNotice: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#D26A5C' },
+  diaryPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 15,
   },
   loadingCard: {
     width: '100%',
-    minHeight: 320,
-    padding: 28,
-    borderRadius: 24,
+    maxWidth: 350,
+    maxHeight: '90%',
+    flexGrow: 0,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0px 8px 30px rgba(84, 87, 92, 0.12)',
+  },
+  loadingContent: { paddingTop: 24, paddingHorizontal: 24, paddingBottom: 20 },
+  loadingTitle: {
+    fontFamily: 'Jua',
+    fontSize: 24,
+    lineHeight: 32,
+    color: '#D26A5C',
+  },
+  loadingSubtitle: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#606060',
+  },
+  loadingDetails: {
+    marginTop: 18,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#606060',
+  },
+  loadingSummary: {
+    marginTop: 18,
+    minHeight: 256,
+    marginHorizontal: -4,
+    padding: 22,
+    borderWidth: 2,
+    borderColor: '#F0F0F0',
+    borderRadius: 16,
+    backgroundColor: '#FAF9F9',
+  },
+  loadingSummaryTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: '#111111',
+  },
+  loadingItems: { marginTop: 19, gap: 16 },
+  loadingItem: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  loadingBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E58A78',
+  },
+  loadingItemLabel: { flex: 1, fontSize: 12, lineHeight: 20, color: '#111111' },
+  loadingProgress: {
+    marginTop: 24,
+    minHeight: 36,
+    borderWidth: 2,
+    borderColor: '#FFE4DE',
+    borderRadius: 18,
+    backgroundColor: '#FFF5F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  loadingProgressLabel: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#D26A5C',
+  },
+  resultContent: {
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 110,
+    gap: 12,
+  },
+  resultCard: {
+    padding: 18,
+    borderWidth: 2,
+    borderColor: '#F2F2F2',
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  resultDiaryCard: { minHeight: 252 },
+  resultHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  resultIcon: { width: 16, height: 16, backgroundColor: '#4F4F4F' },
+  resultHeading: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#4F4F4F',
+  },
+  resultBody: { marginTop: 8, fontSize: 12, lineHeight: 20, color: '#606060' },
+  resultPhoto: { marginTop: 12, marginBottom: 0 },
+  resultGrowthCard: { minHeight: 186 },
+  resultGrowthPoints: { marginTop: 14, gap: 8 },
+  resultGrowthPoint: { fontSize: 12, lineHeight: 20, color: '#606060' },
+  resultFooter: {
+    position: 'absolute',
+    bottom: 26,
+    left: 0,
+    right: 0,
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    gap: 22,
+  },
+  regenerateButton: {
+    flex: 1,
+    minHeight: 49,
+    borderWidth: 2,
+    borderColor: '#C2C3CB',
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 8px 30px rgba(84, 87, 92, 0.12)',
+    paddingHorizontal: 5,
+    paddingVertical: 5,
   },
-  loadingTitle: {
-    marginTop: 27,
-    fontFamily: 'Jua',
-    fontSize: 19,
-    textAlign: 'center',
-    color: '#4F4F4F',
-  },
-  loadingSubtitle: {
-    marginTop: 9,
-    fontFamily: 'Jua',
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-    color: '#969098',
-  },
-  loadingDots: { marginTop: 22, flexDirection: 'row', gap: 8 },
-  dot: { fontSize: 9, color: '#E7A18F' },
-  diaryCard: {
-    marginTop: 26,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: '#F0E6E2',
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-  },
-  draftInput: {
-    minHeight: 250,
-    fontFamily: 'Jua',
-    fontSize: 15,
-    lineHeight: 25,
-    color: '#575152',
-  },
-  disclaimer: {
-    marginTop: 15,
+  regenerateLabel: {
     fontFamily: 'Jua',
     fontSize: 12,
     lineHeight: 18,
-    color: '#9E9797',
+    color: '#A0A3B1',
+    textAlign: 'center',
   },
-  successMark: {
-    width: 62,
-    height: 62,
-    marginTop: 14,
-    marginBottom: 24,
-    alignSelf: 'center',
+  resultSave: {
+    flex: 1,
+    minHeight: 49,
+    borderRadius: 10,
+    backgroundColor: '#D26A5C',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 31,
-    backgroundColor: '#FDEDE6',
   },
-  successIcon: { fontSize: 31, color: '#D26A5C' },
-  center: { textAlign: 'center' },
-  finalDraft: {
+  resultSaveLabel: {
     fontFamily: 'Jua',
-    fontSize: 15,
-    lineHeight: 25,
-    color: '#575152',
+    fontSize: 20,
+    lineHeight: 28,
+    color: '#FFFFFF',
   },
+  photoGallery: { height: 130, flexGrow: 0, flexShrink: 0, marginRight: -24 },
+  photoGalleryContent: { gap: 20 },
+  galleryTile: {
+    width: 130,
+    height: 130,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#F0EBE9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryPhoto: { width: '100%', height: '100%' },
+  galleryPlaceholder: { fontSize: 12, color: '#A0A3B1' },
   modalOverlay: {
     flex: 1,
     paddingHorizontal: 20,

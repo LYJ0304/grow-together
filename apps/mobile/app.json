@@ -26,6 +26,14 @@
     "plugins": [
       ["expo-router", { "root": "./app" }],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "일기에 사진을 첨부하려면 사진 접근을 허용해주세요.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FAF9F9",
