@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
-  active: '홈' | '캘린더' | '마이';
+  active: '홈' | '캘린더' | '투두' | '마이';
   onReselect: () => void;
   onUnavailable: (label: string) => void;
 };
@@ -15,7 +15,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     label: string;
     icon: number;
     size: number;
-    href: '/main' | '/calendar' | '/mypage' | null;
+    href: '/main' | '/calendar' | '/todo' | '/mypage' | null;
   }[] = [
     {
       label: '캘린더',
@@ -30,7 +30,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
       label: '투두',
       icon: require('../../assets/images/main/todo.svg'),
       size: 44,
-      href: null,
+      href: '/todo',
     },
     {
       label: '홈',
@@ -82,11 +82,19 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
               style={[
                 styles.icon,
                 item.label === '홈' && active === '홈' && styles.selectedHome,
+                item.label === '투두' &&
+                  active === '투두' &&
+                  styles.selectedTodo,
               ]}
             >
               <Image
                 source={item.icon}
                 style={{ width: item.size, height: item.size }}
+                tintColor={
+                  item.label === '투두' && active === '투두'
+                    ? '#FFFFFF'
+                    : undefined
+                }
                 contentFit="contain"
                 accessible={false}
               />
@@ -118,5 +126,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedHome: { backgroundColor: '#D26A5C', borderRadius: 18 },
+  selectedTodo: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#D26A5C',
+    borderRadius: 12,
+  },
   pressed: { opacity: 0.8 },
 });
