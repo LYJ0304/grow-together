@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:motion": "node tests/launch-transitions.mjs",
+    "test:plan": "node tests/add-plan.mjs",
     "format:check": "prettier --check app src tests eslint.config.js tsconfig.json package.json"
   },
   "dependencies": {
