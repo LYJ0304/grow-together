@@ -30,6 +30,7 @@ public class Todo {
     @Column(name = "plan_name", nullable = false, length = 80)
     private String planName;
 
+    @Size(max = 255)
     private String content;
 
     @NotNull
