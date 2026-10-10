@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
+import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -15,11 +16,24 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import {
+  diaryDateKey,
+  parseDiaryDate,
+  savedDiaryDates,
+} from '../src/lib/diary-storage';
 
 export default function CalendarScreen() {
+  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
+  useEffect(() => setHydrated(true), []);
+  const { date: dateParam, saved } = useLocalSearchParams<{
+    date?: string;
+    saved?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [initialDate] = useState(() => {
+    const fromRoute = parseDiaryDate(dateParam);
+    if (fromRoute) return fromRoute;
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
@@ -28,6 +42,33 @@ export default function CalendarScreen() {
   );
   const [selected, setSelected] = useState(initialDate);
   const [notice, setNotice] = useState('');
+  const {
+    data: dates,
+    isFetching: loadingDiaries,
+    error: diaryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['savedDiaryDates'],
+    queryFn: savedDiaryDates,
+    retry: false,
+  });
+  const savedDates = new Set(dates ?? []);
+  const diaryNotice = diaryError instanceof Error ? diaryError.message : '';
+  const selectedHasDiary = savedDates.has(diaryDateKey(selected));
+
+  useEffect(() => {
+    const fromRoute = parseDiaryDate(dateParam);
+    if (!fromRoute) return;
+    setSelected(fromRoute);
+    setMonth(new Date(fromRoute.getFullYear(), fromRoute.getMonth(), 1));
+    setNotice(saved === 'true' ? '일기를 저장했어요.' : '');
+  }, [dateParam, saved]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
   const firstWeekday = month.getDay();
   const days = Array.from(
     { length: 42 },
@@ -42,6 +83,16 @@ export default function CalendarScreen() {
     );
     setNotice('');
   };
+
+  if (!hydrated)
+    return (
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={[styles.content, { flex: 1 }]}>
+          <Text style={styles.notice}>캘린더를 불러오는 중이에요.</Text>
+        </View>
+      </SafeAreaView>
+    );
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
@@ -114,11 +165,12 @@ export default function CalendarScreen() {
                 {days.slice(week * 7, week * 7 + 7).map((date) => {
                   const isSelected = date.getTime() === selected.getTime();
                   const outsideMonth = date.getMonth() !== month.getMonth();
+                  const hasDiary = savedDates.has(diaryDateKey(date));
                   return (
                     <Pressable
                       key={date.getTime()}
                       accessibilityRole="button"
-                      accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`}
+                      accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${hasDiary ? ', 일기 있음' : ''}`}
                       aria-pressed={isSelected}
                       onPress={() => {
                         setSelected(date);
@@ -143,6 +195,15 @@ export default function CalendarScreen() {
                       >
                         {date.getDate()}
                       </Text>
+                      {hasDiary ? (
+                        <View
+                          accessible={false}
+                          style={[
+                            styles.diaryDot,
+                            isSelected && styles.selectedDiaryDot,
+                          ]}
+                        />
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -150,36 +211,62 @@ export default function CalendarScreen() {
             ))}
           </View>
         </View>
+        {savedDates.size > 0 ? (
+          <Text style={styles.diaryLegend}>● 일기가 저장된 날</Text>
+        ) : null}
       </ScrollView>
 
       <View style={styles.actions}>
-        {notice ? (
+        {diaryNotice || notice ? (
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
             style={styles.notice}
           >
-            {notice}
+            {diaryNotice || notice}
           </Text>
+        ) : null}
+        {diaryNotice ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => refetch()}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
+          </Pressable>
         ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="선택한 날짜의 일기 생성하기"
+          accessibilityLabel={
+            selectedHasDiary
+              ? '선택한 날짜의 일기 보기'
+              : '선택한 날짜의 일기 생성하기'
+          }
+          disabled={loadingDiaries || !!diaryNotice}
           onPress={() =>
             router.push({
               pathname: '/diary',
               params: {
-                date: `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, '0')}-${String(selected.getDate()).padStart(2, '0')}`,
+                date: diaryDateKey(selected),
+                mode: selectedHasDiary ? 'view' : 'create',
               },
             })
           }
           style={({ pressed }) => [
             styles.generateButton,
+            (loadingDiaries || !!diaryNotice) && styles.pressed,
             pressed && styles.pressed,
           ]}
         >
           <Text style={styles.generateLabel}>
-            일기 생성하기 <Text style={styles.emoji}>✨</Text>
+            {loadingDiaries
+              ? '불러오는 중...'
+              : selectedHasDiary
+                ? '일기 보기'
+                : '일기 생성하기'}{' '}
+            {!selectedHasDiary && !loadingDiaries ? (
+              <Text style={styles.emoji}>✨</Text>
+            ) : null}
           </Text>
         </Pressable>
       </View>
@@ -260,6 +347,27 @@ const styles = StyleSheet.create({
   outsideDay: { color: '#D5D7E0' },
   selectedDay: { backgroundColor: '#D26A5C' },
   selectedDayText: { color: '#FFFFFF' },
+  diaryDot: {
+    position: 'absolute',
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D26A5C',
+  },
+  selectedDiaryDot: { backgroundColor: '#FFFFFF' },
+  diaryLegend: {
+    marginTop: 12,
+    fontFamily: 'Jua',
+    fontSize: 12,
+    color: '#D26A5C',
+  },
+  retryButton: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  retryLabel: { fontFamily: 'Jua', fontSize: 14, color: '#D26A5C' },
   actions: {
     alignItems: 'center',
     paddingHorizontal: 26,
