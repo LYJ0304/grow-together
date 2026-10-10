@@ -4,9 +4,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
-  active: '홈' | '캘린더' | '투두' | '마이';
+  active: '홈' | '캘린더' | '투두' | '질문' | '마이';
   onReselect: () => void;
-  onUnavailable: (label: string) => void;
+  onUnavailable?: (label: string) => void;
 };
 
 export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
@@ -15,7 +15,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     label: string;
     icon: number;
     size: number;
-    href: '/main' | '/calendar' | '/todo' | '/mypage' | null;
+    href: '/main' | '/calendar' | '/todo' | '/persona' | '/mypage';
   }[] = [
     {
       label: '캘린더',
@@ -45,7 +45,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
       label: '질문',
       icon: require('../../assets/images/main/search.svg'),
       size: 24,
-      href: null,
+      href: '/persona',
     },
     {
       label: '마이',
@@ -74,7 +74,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
             onPress={() => {
               if (item.label === active) onReselect();
               else if (item.href) router.replace(item.href);
-              else onUnavailable(item.label);
+              else onUnavailable?.(item.label);
             }}
             style={({ pressed }) => [styles.button, pressed && styles.pressed]}
           >
