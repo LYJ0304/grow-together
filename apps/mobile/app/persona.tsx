@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -71,7 +72,10 @@ export default function PersonaScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${persona.name} 페르소나 선택`}
                   aria-pressed={selected}
-                  onPress={() => setSelectedPersona(persona.id)}
+                  onPress={() => {
+                    setSelectedPersona(persona.id);
+                    if (persona.id === 'counselor') router.push('/chat');
+                  }}
                   style={({ pressed }) => [
                     styles.chooseButton,
                     selected && styles.chosenButton,
