@@ -1,6 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -169,181 +176,207 @@ export default function TodoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
-      <ScrollView
-        ref={scroll}
-        stickyHeaderIndices={[1]}
-        contentContainerStyle={styles.content}
-      >
-        <View
-          style={[
-            styles.dateHeader,
-            { paddingTop: Math.max(18, 25 - insets.top) },
-          ]}
+      <View style={styles.scheduleContent}>
+        <ScrollView
+          ref={scroll}
+          stickyHeaderIndices={[1]}
+          contentContainerStyle={styles.content}
         >
-          <View style={styles.dateSummary}>
-            <Text accessibilityRole="header" style={styles.dateNumber}>
-              {selectedDate.getDate()}
-            </Text>
-            <View>
-              <Text style={styles.dateMeta}>
-                {weekDays[selectedDate.getDay()]}요일
-              </Text>
-              <Text style={styles.dateMeta}>
-                {selectedDate.getMonth() + 1}월 {selectedDate.getFullYear()}
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setNotice('');
-              setAddingPlan(true);
-            }}
-            style={({ pressed }) => [
-              styles.addButton,
-              pressed && styles.pressed,
+          <View
+            style={[
+              styles.dateHeader,
+              { paddingTop: Math.max(18, 25 - insets.top) },
             ]}
           >
-            <Text style={styles.addLabel}>＋ 계획 추가</Text>
-          </Pressable>
-        </View>
+            <View style={styles.dateSummary}>
+              <Text accessibilityRole="header" style={styles.dateNumber}>
+                {selectedDate.getDate()}
+              </Text>
+              <View>
+                <Text style={styles.dateMeta}>
+                  {weekDays[selectedDate.getDay()]}요일
+                </Text>
+                <Text style={styles.dateMeta}>
+                  {selectedDate.getMonth() + 1}월 {selectedDate.getFullYear()}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setNotice('');
+                setAddingPlan(true);
+              }}
+              style={({ pressed }) => [
+                styles.addButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.addLabel}>＋ 계획 추가</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.scheduleToolbar}>
-          <View style={styles.weekStrip}>
-            {week.map((date) => {
-              const selected = date.getTime() === selectedDate.getTime();
-              return (
+          <View style={styles.scheduleToolbar}>
+            <View style={styles.weekStrip}>
+              {week.map((date) => {
+                const selected = date.getTime() === selectedDate.getTime();
+                return (
+                  <Pressable
+                    key={date.toISOString()}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${date.getMonth() + 1}월 ${date.getDate()}일 ${weekDays[date.getDay()]}요일`}
+                    aria-pressed={selected}
+                    onPress={() => {
+                      setSelectedDate(date);
+                      setNotice('');
+                    }}
+                    style={({ pressed }) => [
+                      styles.weekDay,
+                      selected && styles.selectedDay,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.weekday,
+                        selected && styles.selectedDayText,
+                      ]}
+                    >
+                      {weekDays[date.getDay()]}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.dayNumber,
+                        selected && styles.selectedDayText,
+                      ]}
+                    >
+                      {date.getDate()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.viewTabs}>
+              <View style={styles.tabLabels}>
+                {(['시간', '할 일'] as const).map((label) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="tab"
+                    aria-selected={view === label}
+                    onPress={() => setView(label)}
+                    style={styles.tabButton}
+                  >
+                    <Text
+                      style={[
+                        styles.tabLabel,
+                        view === label && styles.activeTabLabel,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.filters}>
+                <Text style={styles.filterIcon}>✧♙</Text>
+                <Text style={styles.filterIcon}>♕</Text>
+                <Text style={styles.sortIcon}>☷</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.timeline}>
+            {visibleTasks.map((task) => (
+              <View key={task.id} style={styles.taskRow}>
+                {view === '시간' ? (
+                  <Text style={styles.time}>{task.time}</Text>
+                ) : (
+                  <View style={styles.timeSpacer} />
+                )}
                 <Pressable
-                  key={date.toISOString()}
                   accessibilityRole="button"
-                  accessibilityLabel={`${date.getMonth() + 1}월 ${date.getDate()}일 ${weekDays[date.getDay()]}요일`}
-                  aria-pressed={selected}
-                  onPress={() => {
-                    setSelectedDate(date);
-                    setNotice('');
-                  }}
+                  accessibilityLabel={`${task.time} ${task.title}`}
+                  onPress={() =>
+                    setNotice(`${task.title} 상세 화면은 준비 중입니다.`)
+                  }
                   style={({ pressed }) => [
-                    styles.weekDay,
-                    selected && styles.selectedDay,
+                    styles.taskCard,
+                    styles[task.period],
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text
-                    style={[styles.weekday, selected && styles.selectedDayText]}
+                  <View style={styles.taskIcon}>
+                    <Text
+                      style={[
+                        styles.taskIconText,
+                        styles[`${task.period}Text`],
+                      ]}
+                    >
+                      {task.icon}
+                    </Text>
+                  </View>
+                  <View style={styles.taskCopy}>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.taskTitle, styles[`${task.period}Text`]]}
+                    >
+                      {task.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.taskDescription,
+                        styles[`${task.period}Text`],
+                      ]}
+                    >
+                      {task.description}
+                    </Text>
+                    <Text
+                      style={[styles.taskTag, styles[`${task.period}Text`]]}
+                    >
+                      {task.tag}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${task.title} 메뉴`}
+                    onPress={() =>
+                      setNotice(`${task.title} 메뉴는 준비 중입니다.`)
+                    }
+                    hitSlop={8}
                   >
-                    {weekDays[date.getDay()]}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      selected && styles.selectedDayText,
-                    ]}
-                  >
-                    {date.getDate()}
-                  </Text>
+                    <Text style={styles.more}>⋮</Text>
+                  </Pressable>
                 </Pressable>
-              );
-            })}
+              </View>
+            ))}
           </View>
-          <View style={styles.viewTabs}>
-            <View style={styles.tabLabels}>
-              {(['시간', '할 일'] as const).map((label) => (
-                <Pressable
-                  key={label}
-                  accessibilityRole="tab"
-                  aria-selected={view === label}
-                  onPress={() => setView(label)}
-                  style={styles.tabButton}
-                >
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      view === label && styles.activeTabLabel,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.filters}>
-              <Text style={styles.filterIcon}>✧♙</Text>
-              <Text style={styles.filterIcon}>♕</Text>
-              <Text style={styles.sortIcon}>☷</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.timeline}>
-          {visibleTasks.map((task) => (
-            <View key={task.id} style={styles.taskRow}>
-              {view === '시간' ? (
-                <Text style={styles.time}>{task.time}</Text>
-              ) : (
-                <View style={styles.timeSpacer} />
-              )}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${task.time} ${task.title}`}
-                onPress={() =>
-                  setNotice(`${task.title} 상세 화면은 준비 중입니다.`)
-                }
-                style={({ pressed }) => [
-                  styles.taskCard,
-                  styles[task.period],
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.taskIcon}>
-                  <Text
-                    style={[styles.taskIconText, styles[`${task.period}Text`]]}
-                  >
-                    {task.icon}
-                  </Text>
-                </View>
-                <View style={styles.taskCopy}>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.taskTitle, styles[`${task.period}Text`]]}
-                  >
-                    {task.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.taskDescription,
-                      styles[`${task.period}Text`],
-                    ]}
-                  >
-                    {task.description}
-                  </Text>
-                  <Text style={[styles.taskTag, styles[`${task.period}Text`]]}>
-                    {task.tag}
-                  </Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${task.title} 메뉴`}
-                  onPress={() =>
-                    setNotice(`${task.title} 메뉴는 준비 중입니다.`)
-                  }
-                  hitSlop={8}
-                >
-                  <Text style={styles.more}>⋮</Text>
-                </Pressable>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-        {notice ? (
-          <Text
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-            style={styles.notice}
-          >
-            {notice}
-          </Text>
-        ) : null}
-      </ScrollView>
+          {notice ? (
+            <Text
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              style={styles.notice}
+            >
+              {notice}
+            </Text>
+          ) : null}
+        </ScrollView>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="AI로 일정 생성하기"
+          onPress={() =>
+            Alert.alert(
+              'AI로 일정 생성하기',
+              'AI 일정 생성 기능은 준비 중입니다.',
+            )
+          }
+          style={({ pressed }) => [
+            styles.aiScheduleButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.aiScheduleLabel}>AI로 일정 생성하기</Text>
+        </Pressable>
+      </View>
 
       <BottomNavigation
         active="투두"
@@ -378,7 +411,22 @@ export default function TodoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingBottom: 18 },
+  scheduleContent: { flex: 1 },
+  content: { paddingBottom: 88 },
+  aiScheduleButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 16,
+    minHeight: 48,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: '#D26A5C',
+    boxShadow: '0px 4px 12px rgba(84, 87, 92, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiScheduleLabel: { fontFamily: 'Jua', fontSize: 16, color: '#FFFFFF' },
   dateHeader: {
     minHeight: 96,
     paddingHorizontal: 24,
