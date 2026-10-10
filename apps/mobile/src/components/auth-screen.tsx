@@ -18,6 +18,8 @@ type AuthScreenProps = { mode: 'login' | 'signup' };
 
 export function AuthScreen({ mode }: AuthScreenProps) {
   const isSignup = mode === 'signup';
+  const canSkipAuthentication =
+    process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS === 'true';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -148,6 +150,19 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             </Text>
           ) : null}
 
+          {!isSignup && canSkipAuthentication ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="인증 없이 UI 미리보기 메인 화면으로 이동합니다"
+              onPress={() => router.replace('/main')}
+              style={({ pressed }) => [
+                styles.previewButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.previewLabel}>인증 없이 미리보기 진입</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={submit}
@@ -304,6 +319,17 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 2px rgba(160, 163, 177, 0.3)',
   },
   primaryLabel: { fontFamily: 'Jua', fontSize: 19, color: '#FFFFFF' },
+  previewButton: {
+    minHeight: 54,
+    marginTop: 9,
+    borderWidth: 1,
+    borderColor: '#D26A5C',
+    borderRadius: 15,
+    backgroundColor: '#FFF5F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewLabel: { fontFamily: 'Jua', fontSize: 16, color: '#D26A5C' },
   notice: {
     marginTop: 1,
     marginBottom: 5,
