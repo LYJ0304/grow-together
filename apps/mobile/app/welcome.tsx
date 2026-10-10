@@ -47,9 +47,9 @@ export default function WelcomeScreen() {
           <View style={styles.buttons}>
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="UI 미리보기 메인 화면으로 이동합니다"
+              accessibilityHint="로그인 화면으로 이동합니다"
               disabled={motion.busy}
-              onPress={() => router.navigate('/main')}
+              onPress={() => router.push('/login')}
               style={({ pressed }) => [
                 styles.button,
                 styles.primaryButton,
@@ -62,9 +62,9 @@ export default function WelcomeScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="UI 미리보기 메인 화면으로 이동합니다"
+              accessibilityHint="회원가입 화면으로 이동합니다"
               disabled={motion.busy}
-              onPress={() => router.navigate('/main')}
+              onPress={() => router.push('/signup')}
               style={({ pressed }) => [
                 styles.button,
                 styles.secondaryButton,
