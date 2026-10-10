@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   Platform,
@@ -163,8 +164,14 @@ export default function CalendarScreen() {
         ) : null}
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="선택한 날짜의 일기 생성하기"
           onPress={() =>
-            setNotice('선택한 날짜의 일기 생성 화면은 준비 중입니다.')
+            router.push({
+              pathname: '/diary',
+              params: {
+                date: `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, '0')}-${String(selected.getDate()).padStart(2, '0')}`,
+              },
+            })
           }
           style={({ pressed }) => [
             styles.generateButton,
