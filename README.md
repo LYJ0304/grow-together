@@ -7,17 +7,37 @@ A mobile app with an independent API and AI worker.
 Requirements: Docker Compose and Node.js. Java 21 is needed to run the API outside Docker; Python 3.12 and `uv` are needed for the AI worker.
 
 ```bash
-cp .env.example .env
+cp infra/.env.example infra/.env
+cp apps/api/.env.example apps/api/.env
+cp apps/mobile/.env.example apps/mobile/.env
+cp apps/ai-worker/.env.example apps/ai-worker/.env
 openssl rand -base64 32
 ```
 
-Set `JWT_SECRET` in `.env` to the generated value, then start PostgreSQL and the API:
+Set `JWT_SECRET` in `apps/api/.env` to the generated value, then start PostgreSQL and the API:
 
 ```bash
-docker compose --env-file .env -f infra/compose.yaml up --build
+docker compose --env-file infra/.env -f infra/compose.yaml up --build
 ```
 
-Keep `.env` local; never commit its secret. The API is available at `http://localhost:8080`.
+Keep each `.env` local; never commit secrets. The API is available at `http://localhost:8080`.
+
+Environment variables are split by responsibility:
+
+- `infra/.env`: PostgreSQL settings for Docker Compose.
+- `apps/api/.env`: API profile, JWT, CORS, and database settings for running outside Docker. Compose supplies its database connection from `infra/.env`.
+- `apps/mobile/.env`: Expo public settings; Expo loads this file when started from `apps/mobile`.
+- `apps/ai-worker/.env`: Worker service name and log level.
+
+To run the API outside Docker, expose PostgreSQL locally and match the API database credentials to `infra/.env`. Spring Boot does not load `.env` automatically; export the API settings before starting it:
+
+```bash
+cd apps/api
+set -a
+source .env
+set +a
+./gradlew bootRun
+```
 
 Run the mobile app in another terminal:
 
@@ -38,7 +58,7 @@ Replace the example IP with the computer's LAN address.
 The worker currently runs an example job. Run it with:
 
 ```bash
-docker compose --env-file .env -f infra/compose.yaml --profile worker run --rm ai-worker
+docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run --rm ai-worker
 ```
 
 ## Checks
