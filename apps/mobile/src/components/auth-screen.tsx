@@ -18,8 +18,9 @@ type AuthScreenProps = { mode: 'login' | 'signup' };
 
 export function AuthScreen({ mode }: AuthScreenProps) {
   const isSignup = mode === 'signup';
+  const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
   const canSkipAuthentication =
-    process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS === 'true';
+    authBypassSetting === undefined || authBypassSetting === 'true';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
