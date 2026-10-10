@@ -98,6 +98,37 @@ paths:
         '204': { description: Session revoked or already absent }
         '400': { $ref: '#/components/responses/InvalidRequest' }
   /api/v1/todos:
+    post:
+      operationId: createTodo
+      summary: Create a todo
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TodoRequest' }
+      responses:
+        '201':
+          description: Todo created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string, example: Todo created Successful }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415':
+          description: Unsupported request content type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     get:
       operationId: getTodos
       summary: List todos for a date in scheduled time order
