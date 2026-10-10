@@ -14,6 +14,7 @@ import {
 } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { AddPlanModal } from '../src/components/add-plan-modal';
 
 const tasks = [
   {
@@ -151,7 +152,26 @@ export default function TodoScreen() {
   });
   const [view, setView] = useState<'시간' | '할 일'>('시간');
   const [notice, setNotice] = useState('');
+  const [addingPlan, setAddingPlan] = useState(false);
+  // shortcut: plans live in screen state for this UI; add persistence when plan storage is requested.
+  const [addedPlans, setAddedPlans] = useState<
+    {
+      id: number;
+      date: number;
+      title: string;
+      time: string;
+      description: string;
+      icon: string;
+      tag: string;
+      period: 'future';
+    }[]
+  >([]);
+  const nextPlanId = useRef(0);
   const week = getWeek(selectedDate);
+  const visibleTasks = [
+    ...tasks.map((task) => ({ ...task, id: task.time })),
+    ...addedPlans.filter((plan) => plan.date === selectedDate.getTime()),
+  ].sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
@@ -183,7 +203,10 @@ export default function TodoScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setNotice('계획 추가 기능은 준비 중입니다.')}
+              onPress={() => {
+                setNotice('');
+                setAddingPlan(true);
+              }}
               style={({ pressed }) => [
                 styles.addButton,
                 pressed && styles.pressed,
@@ -263,8 +286,8 @@ export default function TodoScreen() {
           </View>
 
           <View style={styles.timeline}>
-            {tasks.map((task) => (
-              <View key={task.time} style={styles.taskRow}>
+            {visibleTasks.map((task) => (
+              <View key={task.id} style={styles.taskRow}>
                 {view === '시간' ? (
                   <Text style={styles.time}>{task.time}</Text>
                 ) : (
@@ -360,6 +383,28 @@ export default function TodoScreen() {
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
         onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
+      {addingPlan ? (
+        <AddPlanModal
+          date={selectedDate}
+          onClose={() => setAddingPlan(false)}
+          onAdd={(plan) => {
+            const id = nextPlanId.current++;
+            setAddedPlans((current) => [
+              ...current,
+              {
+                ...plan,
+                id,
+                date: selectedDate.getTime(),
+                icon: '▤',
+                tag: '# 나의 계획',
+                period: 'future',
+              },
+            ]);
+            setAddingPlan(false);
+            setNotice('계획을 추가했어요.');
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

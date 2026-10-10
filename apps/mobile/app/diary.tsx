@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -16,6 +18,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  diaryDateKey,
+  parseDiaryDate,
+  readDiary,
+  saveDiary,
+} from '../src/lib/diary-storage';
 
 const diaryRecords = [
   {
@@ -92,6 +100,7 @@ const diaryRecords = [
   },
 ];
 const growthTags = ['#성취/시도', '#언어/표현', '#감정'];
+const sampleEmotions = ['성취감', '호기심', '만족스러움', '차분함'];
 // shortcut: sample interpretations for UI preview; replace with the AI response when connected.
 const sampleGrowthPoints = [
   '자립심 발달: 숟가락을 스스로 잡으려는 시도가 늘었어요.',
@@ -100,25 +109,23 @@ const sampleGrowthPoints = [
   '정서 안정: 부모와 함께하는 책 읽기에 차분하게 집중했어요.',
 ];
 
-function formatDate(value?: string) {
-  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return new Date();
-  const date = new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-  );
-  return date.getFullYear() === Number(match[1]) &&
-    date.getMonth() === Number(match[2]) - 1 &&
-    date.getDate() === Number(match[3])
-    ? date
-    : new Date();
-}
-
 export default function DiaryScreen() {
-  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
-  const [date] = useState(() => formatDate(dateParam));
-  const [step, setStep] = useState(1);
+  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
+  useEffect(() => setHydrated(true), []);
+  const { date: dateParam, mode } = useLocalSearchParams<{
+    date?: string;
+    mode?: string;
+  }>();
+  const viewing = mode === 'view';
+  const [date] = useState(() => parseDiaryDate(dateParam) ?? new Date());
+  const dateKey = diaryDateKey(date);
+  const [step, setStep] = useState(viewing ? 5 : 1);
+  const savedQuery = useQuery({
+    queryKey: ['savedDiary', dateKey],
+    queryFn: () => readDiary(dateKey),
+    enabled: viewing,
+    retry: false,
+  });
   const [selectedRecordTimes, setSelectedRecordTimes] = useState<string[]>([]);
   const selectedRecords = diaryRecords.filter((record) =>
     selectedRecordTimes.includes(record.time),
@@ -128,9 +135,52 @@ export default function DiaryScreen() {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const photoUri = photoUris[0] ?? null;
   const [photoNotice, setPhotoNotice] = useState('');
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [draft, setDraft] = useState('');
   const [regenerationsRemaining, setRegenerationsRemaining] = useState(3);
-  const [confirmExit, setConfirmExit] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
+  const savingRef = useRef(false);
+  const displayedDraft = viewing ? (savedQuery.data?.content ?? '') : draft;
+  const displayedPhotos = viewing
+    ? (savedQuery.data?.photoUris ?? [])
+    : photoUris;
+  const emotions = viewing ? (savedQuery.data?.emotions ?? []) : sampleEmotions;
+  const growthPoints = viewing
+    ? (savedQuery.data?.growthPoints ?? [])
+    : sampleGrowthPoints;
+
+  const returnToCalendar = (saved = false) =>
+    router.dismissTo({
+      pathname: '/calendar',
+      params: { date: dateKey, saved: saved ? 'true' : '' },
+    });
+
+  const persistDiary = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveNotice('');
+    try {
+      await saveDiary({
+        date: dateKey,
+        content: draft,
+        emotions: sampleEmotions,
+        growthPoints: sampleGrowthPoints,
+        photoUris,
+      });
+      returnToCalendar(true);
+    } catch (error) {
+      setSaveNotice(
+        error instanceof Error
+          ? error.message
+          : '일기를 저장하지 못했어요. 다시 시도해주세요.',
+      );
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (step !== 3) return;
@@ -175,12 +225,81 @@ export default function DiaryScreen() {
         selectionLimit: 3,
         quality: 0.8,
       });
-      if (!result.canceled)
-        setPhotoUris(result.assets.slice(0, 3).map((asset) => asset.uri));
+      if (!result.canceled) {
+        setPreparingPhotos(true);
+        try {
+          const photos: string[] = [];
+          for (const asset of result.assets.slice(0, 3)) {
+            const context = ImageManipulator.manipulate(asset.uri);
+            try {
+              const scale = Math.min(
+                1,
+                960 / Math.max(asset.width, asset.height),
+              );
+              context.resize({
+                width: Math.max(1, Math.round(asset.width * scale)),
+                height: Math.max(1, Math.round(asset.height * scale)),
+              });
+              const image = await context.renderAsync();
+              try {
+                const encoded = await image.saveAsync({
+                  format: SaveFormat.JPEG,
+                  compress: 0.6,
+                  base64: true,
+                });
+                if (!encoded.base64) throw new Error('Missing image data');
+                photos.push(`data:image/jpeg;base64,${encoded.base64}`);
+              } finally {
+                image.release();
+              }
+            } finally {
+              context.release();
+            }
+          }
+          setPhotoUris(photos);
+        } finally {
+          setPreparingPhotos(false);
+          if (Platform.OS === 'web')
+            result.assets.forEach((asset) => URL.revokeObjectURL(asset.uri));
+        }
+      }
     } catch {
       setPhotoNotice('사진을 선택하지 못했어요. 다시 시도해주세요.');
     }
   };
+
+  if (!hydrated || (viewing && !savedQuery.data)) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.readStatus}>
+          <Text accessibilityLiveRegion="polite" style={styles.readStatusText}>
+            {!hydrated || savedQuery.isPending
+              ? '저장된 일기를 불러오는 중이에요.'
+              : savedQuery.error instanceof Error
+                ? savedQuery.error.message
+                : '이 날짜에 저장된 일기가 없어요.'}
+          </Text>
+          {savedQuery.isError ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => savedQuery.refetch()}
+              style={styles.readStatusButton}
+            >
+              <Text style={styles.readStatusButtonLabel}>다시 불러오기</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => returnToCalendar()}
+            style={styles.readStatusButton}
+          >
+            <Text style={styles.readStatusButtonLabel}>캘린더로 돌아가기</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -197,18 +316,22 @@ export default function DiaryScreen() {
             AI 육아 일기 생성
           </Text>
           <Text style={styles.recordStep}>
-            {step === 1
-              ? 'STEP 01 : 남기고 싶은 기억을 골라봐요!'
-              : step >= 4
-                ? 'STEP 04 : 추가로 남기고 싶은 기록이 있나요?'
-                : 'STEP 02 : 추가로 남기고 싶은 기록이 있나요?'}
+            {viewing
+              ? '저장된 일기'
+              : step === 1
+                ? 'STEP 01 : 남기고 싶은 기억을 골라봐요!'
+                : step >= 4
+                  ? 'STEP 04 : 추가로 남기고 싶은 기록이 있나요?'
+                  : 'STEP 02 : 추가로 남기고 싶은 기록이 있나요?'}
           </Text>
           <Text style={styles.recordHint}>
-            {step === 1
-              ? '아이와 오늘 한 활동을 선택해주세요.'
-              : step >= 4
-                ? '아이의 하루가 하나의 이야기로 완성되었습니다.'
-                : '오늘 아이에게 어떤 변화가 있었나요? 작은 시도나 웃음도 괜찮아요.'}
+            {viewing
+              ? `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+              : step === 1
+                ? '아이와 오늘 한 활동을 선택해주세요.'
+                : step >= 4
+                  ? '아이의 하루가 하나의 이야기로 완성되었습니다.'
+                  : '오늘 아이에게 어떤 변화가 있었나요? 작은 시도나 웃음도 괜찮아요.'}
           </Text>
         </View>
 
@@ -328,7 +451,9 @@ export default function DiaryScreen() {
                   짧은 문장이라도 괜찮아요. AI가 의미를 분석해드려요.
                 </Text>
                 <View style={styles.growthDivider} />
-                <Text style={styles.photoLabel}>사진 첨부 (선택)</Text>
+                <Text style={styles.photoLabel}>
+                  {preparingPhotos ? '사진 준비 중...' : '사진 첨부 (선택)'}
+                </Text>
                 <View style={styles.photoRow}>
                   <Pressable
                     accessibilityRole="button"
@@ -336,6 +461,7 @@ export default function DiaryScreen() {
                       photoUri ? '첨부 사진 변경' : '사진 첨부'
                     }
                     onPress={selectPhoto}
+                    disabled={preparingPhotos}
                     style={({ pressed }) => [
                       styles.photoButton,
                       pressed && styles.pressed,
@@ -381,8 +507,10 @@ export default function DiaryScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={createPreview}
+                disabled={preparingPhotos}
                 style={({ pressed }) => [
                   styles.recordNext,
+                  preparingPhotos && styles.pressed,
                   pressed && styles.pressed,
                 ]}
               >
@@ -408,24 +536,23 @@ export default function DiaryScreen() {
                   contentContainerStyle={styles.photoGalleryContent}
                   accessibilityLabel="일기 사진 목록"
                 >
-                  {(photoUris.length ? photoUris : [null, null, null]).map(
-                    (uri, index) => (
-                      <View key={index} style={styles.galleryTile}>
-                        {uri ? (
-                          <Image
-                            source={{ uri }}
-                            style={styles.galleryPhoto}
-                            contentFit="cover"
-                            accessibilityLabel={`일기 사진 ${index + 1}`}
-                          />
-                        ) : (
-                          <Text style={styles.galleryPlaceholder}>
-                            사진 없음
-                          </Text>
-                        )}
-                      </View>
-                    ),
-                  )}
+                  {(displayedPhotos.length
+                    ? displayedPhotos
+                    : [null, null, null]
+                  ).map((uri, index) => (
+                    <View key={index} style={styles.galleryTile}>
+                      {uri ? (
+                        <Image
+                          source={{ uri }}
+                          style={styles.galleryPhoto}
+                          contentFit="cover"
+                          accessibilityLabel={`일기 사진 ${index + 1}`}
+                        />
+                      ) : (
+                        <Text style={styles.galleryPlaceholder}>사진 없음</Text>
+                      )}
+                    </View>
+                  ))}
                 </ScrollView>
               ) : null}
               <View style={[styles.resultCard, styles.resultDiaryCard]}>
@@ -443,7 +570,7 @@ export default function DiaryScreen() {
                     accessibilityLabel="일기 첨부 사진"
                   />
                 ) : null}
-                <Text style={styles.resultBody}>{draft}</Text>
+                <Text style={styles.resultBody}>{displayedDraft}</Text>
               </View>
               <View style={styles.resultCard}>
                 <View style={styles.resultHeadingRow}>
@@ -452,9 +579,7 @@ export default function DiaryScreen() {
                     오늘의 감정
                   </Text>
                 </View>
-                <Text style={styles.resultBody}>
-                  성취감, 호기심, 만족스러움, 차분함
-                </Text>
+                <Text style={styles.resultBody}>{emotions.join(', ')}</Text>
               </View>
               <View style={[styles.resultCard, styles.resultGrowthCard]}>
                 <View style={styles.resultHeadingRow}>
@@ -464,7 +589,7 @@ export default function DiaryScreen() {
                   </Text>
                 </View>
                 <View style={styles.resultGrowthPoints}>
-                  {sampleGrowthPoints.map((point) => (
+                  {growthPoints.map((point) => (
                     <Text key={point} style={styles.resultGrowthPoint}>
                       · {point}
                     </Text>
@@ -473,33 +598,58 @@ export default function DiaryScreen() {
               </View>
             </ScrollView>
             <View style={styles.resultFooter}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
-                disabled={regenerationsRemaining === 0}
-                onPress={() => {
-                  setRegenerationsRemaining((remaining) => remaining - 1);
-                  createPreview();
-                }}
-                style={({ pressed }) => [
-                  styles.regenerateButton,
-                  (pressed || regenerationsRemaining === 0) && styles.pressed,
-                ]}
-              >
-                <Text style={styles.regenerateLabel}>
-                  다시 생성하기{'\n'}(1일 {regenerationsRemaining}/3번)
+              {saveNotice ? (
+                <Text accessibilityRole="alert" style={styles.saveNotice}>
+                  {saveNotice}
                 </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => (step === 4 ? setStep(5) : setConfirmExit(true))}
-                style={({ pressed }) => [
-                  styles.resultSave,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.resultSaveLabel}>저장하기</Text>
-              </Pressable>
+              ) : null}
+              <View style={styles.resultActions}>
+                {!viewing ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
+                    disabled={regenerationsRemaining === 0 || saving}
+                    onPress={() => {
+                      setRegenerationsRemaining((remaining) => remaining - 1);
+                      createPreview();
+                    }}
+                    style={({ pressed }) => [
+                      styles.regenerateButton,
+                      (pressed || regenerationsRemaining === 0) &&
+                        styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.regenerateLabel}>
+                      다시 생성하기{'\n'}(1일 {regenerationsRemaining}/3번)
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={saving}
+                  onPress={() =>
+                    viewing
+                      ? returnToCalendar()
+                      : step === 4
+                        ? setStep(5)
+                        : persistDiary()
+                  }
+                  style={({ pressed }) => [
+                    styles.resultSave,
+                    (pressed || saving) && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.resultSaveLabel}>
+                    {viewing
+                      ? '캘린더로 돌아가기'
+                      : step === 4
+                        ? '다음으로'
+                        : saving
+                          ? '저장 중...'
+                          : '저장하기'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </>
         )}
@@ -555,47 +705,6 @@ export default function DiaryScreen() {
               </View>
             </View>
           </ScrollView>
-        </View>
-      </Modal>
-      <Modal
-        visible={confirmExit}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmExit(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View accessibilityViewIsModal style={styles.confirmCard}>
-            <View style={styles.confirmMark}>
-              <Text style={styles.confirmIcon}>!</Text>
-            </View>
-            <Text accessibilityRole="header" style={styles.confirmTitle}>
-              저장되지 않은 일기예요
-            </Text>
-            <Text style={styles.confirmMessage}>
-              캘린더로 돌아가면 작성한 미리보기가 저장되지 않아요. 그래도
-              나갈까요?
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setConfirmExit(false)}
-              style={({ pressed }) => [
-                styles.confirmContinue,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.confirmContinueText}>계속 작성하기</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.back()}
-              style={({ pressed }) => [
-                styles.confirmExit,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.confirmExitText}>저장하지 않고 나가기</Text>
-            </Pressable>
-          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -920,9 +1029,40 @@ const styles = StyleSheet.create({
     maxWidth: 430,
     alignSelf: 'center',
     paddingHorizontal: 24,
-    flexDirection: 'row',
-    gap: 22,
+    gap: 8,
   },
+  resultActions: { flexDirection: 'row', gap: 22 },
+  saveNotice: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#C9534A',
+    backgroundColor: '#FFFFFF',
+    padding: 8,
+    borderRadius: 8,
+  },
+  readStatus: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+    gap: 18,
+  },
+  readStatusText: {
+    fontFamily: 'Jua',
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#4F4F4F',
+    textAlign: 'center',
+  },
+  readStatusButton: {
+    minHeight: 48,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FDEDE6',
+    borderRadius: 12,
+  },
+  readStatusButtonLabel: { fontFamily: 'Jua', fontSize: 16, color: '#D26A5C' },
   regenerateButton: {
     flex: 1,
     minHeight: 49,
@@ -976,58 +1116,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  confirmCard: {
-    width: '100%',
-    maxWidth: 350,
-    paddingHorizontal: 25,
-    paddingVertical: 27,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    boxShadow: '0px 8px 30px rgba(40, 35, 35, 0.16)',
-  },
-  confirmMark: {
-    width: 46,
-    height: 46,
-    marginBottom: 15,
-    borderRadius: 23,
-    backgroundColor: '#FFF0EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmIcon: { fontFamily: 'Jua', fontSize: 25, color: '#D26A5C' },
-  confirmTitle: {
-    fontFamily: 'Jua',
-    fontSize: 19,
-    lineHeight: 26,
-    textAlign: 'center',
-    color: '#4F4F4F',
-  },
-  confirmMessage: {
-    marginTop: 10,
-    marginBottom: 22,
-    fontFamily: 'Jua',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    color: '#888187',
-  },
-  confirmContinue: {
-    width: '100%',
-    minHeight: 49,
-    borderRadius: 14,
-    backgroundColor: '#D26A5C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmContinueText: { fontFamily: 'Jua', fontSize: 15, color: '#FFFFFF' },
-  confirmExit: {
-    minHeight: 44,
-    marginTop: 5,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmExitText: { fontFamily: 'Jua', fontSize: 13, color: '#9A9291' },
   pressed: { opacity: 0.78 },
 });
