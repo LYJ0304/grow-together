@@ -9,6 +9,9 @@ import com.growtogether.auth.AuthException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -18,7 +21,8 @@ class GlobalExceptionHandler {
                 .body(Map.of("code", exception.getCode(), "message", exception.getMessage()));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<Map<String, String>> handleInvalidRequest(Exception exception) {
         return ResponseEntity.badRequest().body(Map.of("code", "INVALID_REQUEST", "message", "Invalid request fields or JSON"));
     }
@@ -27,6 +31,14 @@ class GlobalExceptionHandler {
     ResponseEntity<Map<String, String>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception) {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
                 .body(Map.of("code", "INVALID_REQUEST", "message", "Unsupported content type"));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException exception) {
+        String code = HttpStatus.valueOf(exception.getStatusCode().value()).name();
+        return ResponseEntity.status(exception.getStatusCode())
+                .body(Map.of("code", code, "message",
+                        exception.getReason() == null ? code : exception.getReason()));
     }
 
     @ExceptionHandler(Exception.class)

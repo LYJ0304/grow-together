@@ -33,6 +33,8 @@ const TransitionContext = createContext<{
   transition: Transition | null;
   progress: Animated.Value;
   outgoingOpacity: Animated.Value;
+  introFinished: boolean;
+  finishIntro: () => void;
   navigate: (destination: LaunchRoute, title: Text | null) => void;
   setDestination: (screen: LaunchRoute, position: Position) => void;
 } | null>(null);
@@ -46,6 +48,12 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
   const progress = useRef(new Animated.Value(0)).current;
   const outgoingOpacity = useRef(new Animated.Value(1)).current;
   const [transition, setTransition] = useState<Transition | null>(null);
+  const [introFinished, setIntroFinished] = useState(false);
+  const finishIntro = useCallback(() => setIntroFinished(true), []);
+
+  useEffect(() => {
+    if (pathname !== '/') finishIntro();
+  }, [pathname, finishIntro]);
 
   const clear = useCallback(() => {
     progress.stopAnimation();
@@ -164,6 +172,8 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
         transition,
         progress,
         outgoingOpacity,
+        introFinished,
+        finishIntro,
         navigate,
         setDestination,
       }}
@@ -219,25 +229,33 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
 export function useLaunchTransition(
   screen: LaunchRoute,
   automaticDestination?: LaunchRoute,
+  automaticDelay: number | null = screen === '/' ? 1000 : 700,
 ) {
   const context = useContext(TransitionContext);
   if (!context) throw new Error('LaunchTransitionProvider is required');
   const titleRef = useRef<Text>(null);
   const advanced = useRef(false);
   const pathname = usePathname();
-  const { transition, setDestination, navigate: startTransition } = context;
+  const {
+    transition,
+    setDestination,
+    finishIntro,
+    navigate: startTransition,
+  } = context;
 
   const navigate = useCallback(
     (destination: LaunchRoute) => {
       advanced.current = true;
+      if (screen === '/') finishIntro();
       startTransition(destination, titleRef.current);
     },
-    [startTransition],
+    [screen, finishIntro, startTransition],
   );
 
   useEffect(() => {
     if (
       !automaticDestination ||
+      automaticDelay === null ||
       pathname !== screen ||
       transition ||
       advanced.current
@@ -245,10 +263,17 @@ export function useLaunchTransition(
       return;
     const timer = setTimeout(
       () => navigate(automaticDestination),
-      screen === '/' ? 1000 : 700,
+      automaticDelay,
     );
     return () => clearTimeout(timer);
-  }, [automaticDestination, pathname, screen, transition, navigate]);
+  }, [
+    automaticDestination,
+    automaticDelay,
+    pathname,
+    screen,
+    transition,
+    navigate,
+  ]);
 
   const measureTitle = useCallback(() => {
     if (
@@ -286,6 +311,12 @@ export function useLaunchTransition(
     },
     navigate,
   };
+}
+
+export function useLaunchIntro() {
+  const context = useContext(TransitionContext);
+  if (!context) throw new Error('LaunchTransitionProvider is required');
+  return { finished: context.introFinished, finish: context.finishIntro };
 }
 
 const styles = StyleSheet.create({

@@ -18,12 +18,8 @@ services:
 
   api:
     build: ../apps/api
+    env_file: ../apps/api/.env
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
-      JWT_SECRET: ${JWT_SECRET:-}
-      JWT_ACCESS_TOKEN_SECONDS: ${JWT_ACCESS_TOKEN_SECONDS:-900}
-      JWT_REFRESH_SESSION_SECONDS: ${JWT_REFRESH_SESSION_SECONDS:-1209600}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://localhost:19006}
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
       POSTGRES_USER: ${POSTGRES_USER:-growtogether}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
@@ -40,6 +36,7 @@ services:
   ai-worker:
     build: ../apps/ai-worker
     profiles: ["worker"]
+    env_file: ../apps/ai-worker/.env
 
 volumes:
   postgres-data:
