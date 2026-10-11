@@ -52,7 +52,8 @@
     "typescript": "~5.9.2",
     "eslint": "^9.39.1",
     "eslint-config-expo": "~55.0.0",
-    "prettier": "^3.7.4"
+    "prettier": "^3.7.4",
+    "playwright-core": "1.64.0"
   },
   "private": true
 }
