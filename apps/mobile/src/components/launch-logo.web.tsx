@@ -1,11 +1,12 @@
-import { Image } from 'expo-image';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
-import { StyleSheet } from 'react-native';
 
 import type { LaunchLogoProps } from './launch-logo';
 import './launch-logo.css';
 
-// Reveal guides traced from the PNG, not replacement artwork. The PNG is unchanged.
+const logo: {
+  uri: string;
+} = require('../../assets/images/grow-together-logo.png');
+// shortcut: These reveal guides approximate the PNG; replace only with the original stroke SVG.
 // Only the heart and stem connect; keep the upper curve as a separate stroke.
 const guides = [
   'M224 164 H622 C752 164 829 249 829 368 C829 491 767 583 641 583 H550',
@@ -24,18 +25,45 @@ export default function LaunchLogo({
 
   useEffect(() => {
     if (played) return;
+    let cancelled = false;
+    // A cached image can load before hydration attaches its event handler.
+    const image = new window.Image();
+    image.src = logo.uri;
+    image.decode().then(
+      () => {
+        if (!cancelled) setLoaded(true);
+      },
+      () => {
+        if (!cancelled) onComplete();
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [played, onComplete]);
+
+  useEffect(() => {
+    if (played) return;
     if (typeof window.matchMedia !== 'function') {
       onComplete();
       return;
     }
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const animations: Animation[] = [];
     let frame = 0;
     let finished = false;
-    const finish = () => {
+    const finish = (drawn = false) => {
       if (finished) return;
       finished = true;
+      paths.current.forEach((path) => {
+        if (!path) return;
+        path.style.strokeDashoffset = '0';
+        path.style.strokeDasharray = 'none';
+        path.style.opacity = '1';
+      });
+      animations.forEach((animation) => animation.cancel());
       cancelAnimationFrame(frame);
-      onComplete();
+      onComplete(drawn);
     };
     const finishIfReduced = () => {
       if (media.matches) finish();
@@ -55,40 +83,67 @@ export default function LaunchLogo({
           finish();
         } else {
           const total = lengths.reduce((sum, length) => sum + length, 0);
-          const segments = paths.current.map((path, index) => {
+          let distance = 0;
+          paths.current.forEach((path, index) => {
+            if (!path) return;
             const length = lengths[index];
-            if (path) {
-              path.style.strokeDasharray = `${length} ${length}`;
-              path.style.strokeDashoffset = String(length);
-              // A round cap can paint a dot even when the dash has zero length.
-              path.style.opacity = '0';
+            const start = (distance / total) * 0.9975;
+            const end =
+              index === guides.length - 1
+                ? 1
+                : ((distance + length) / total) * 0.9975;
+            const duration = (end - start) * 2300;
+            const reveal = Math.min(1, duration / 2);
+            const keyframes: Keyframe[] = [
+              { strokeDashoffset: String(length), opacity: 0, offset: 0 },
+              {
+                strokeDashoffset: String(
+                  length - Math.min(length, (total * reveal) / (2300 * 0.9975)),
+                ),
+                opacity: 1,
+                offset: reveal / duration,
+              },
+            ];
+            if (index === guides.length - 1) {
+              // Normalize distance for a continuous 10% slowdown in the final 5%.
+              keyframes.push({
+                strokeDashoffset: String(total * (1 - 0.95 / 0.9975)),
+                opacity: 1,
+                offset: (0.95 - start) / (end - start),
+                easing: 'cubic-bezier(0.333333, 0.350877, 0.666667, 0.684211)',
+              });
             }
-            return { path, length };
-          });
-          let start: number | undefined;
-          const draw = (timestamp: number) => {
-            if (finished) return;
-            if (start === undefined) start = timestamp;
-            const time = Math.min((timestamp - start) / 2300, 1);
-            const tail = Math.max(0, (time - 0.95) / 0.05);
-            // Linear until the final 5%; speed then falls by just 10%, continuously.
-            const progress =
-              time === 1 ? 1 : (time - 0.0025 * tail * tail) / 0.9975;
-            let remaining = progress * total;
-            segments.forEach(({ path, length }) => {
-              const drawn = Math.min(Math.max(remaining, 0), length);
-              if (path) {
-                path.style.strokeDashoffset = String(length - drawn);
-                path.style.opacity = drawn > 0 ? '1' : '0';
-                if (drawn === length) path.style.strokeDasharray = 'none';
-              }
-              remaining -= length;
+            keyframes.push({ strokeDashoffset: '0', opacity: 1, offset: 1 });
+            path.style.strokeDasharray = `${length} ${length}`;
+            path.style.strokeDashoffset = String(length);
+            path.style.opacity = '0';
+            const stroke = path.animate(keyframes, {
+              duration,
+              delay: start * 2300,
+              easing: 'linear',
+              fill: 'both',
             });
-            frame = requestAnimationFrame(time < 1 ? draw : finish);
-          };
-          setRunning(true);
-          onStart();
-          frame = requestAnimationFrame(draw);
+            stroke.pause();
+            stroke.currentTime = 0;
+            animations.push(stroke);
+            distance += length;
+          });
+          // Start on the first visible frame; hidden tabs must not consume the drawing.
+          frame = requestAnimationFrame((timestamp) => {
+            if (finished) return;
+            animations.forEach((animation) => {
+              animation.play();
+              animation.startTime = timestamp;
+            });
+            setRunning(true);
+            onStart();
+          });
+          Promise.all(animations.map((animation) => animation.finished)).then(
+            () => {
+              if (!finished) frame = requestAnimationFrame(() => finish(true));
+            },
+            () => finish(),
+          );
         }
       } catch {
         finish();
@@ -97,6 +152,7 @@ export default function LaunchLogo({
     return () => {
       finished = true;
       cancelAnimationFrame(frame);
+      animations.forEach((animation) => animation.cancel());
       media.removeEventListener('change', finishIfReduced);
     };
   }, [played, loaded, onComplete, onStart]);
@@ -105,6 +161,7 @@ export default function LaunchLogo({
     <div
       className="launch-logo"
       data-drawing={played ? 'done' : running ? 'running' : 'pending'}
+      style={{ '--launch-mask': `url(#${maskId})` } as CSSProperties}
       aria-hidden="true"
     >
       <svg width="0" height="0" className="launch-logo-defs">
@@ -117,12 +174,14 @@ export default function LaunchLogo({
             y="0"
             width="1"
             height="1"
+            style={{ maskType: 'alpha' }}
           >
+            {played && <rect width="1" height="1" fill="white" />}
             <g
               transform="scale(0.0009765625)"
               fill="none"
               stroke="white"
-              strokeWidth="96"
+              strokeWidth="56"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -133,6 +192,7 @@ export default function LaunchLogo({
                     paths.current[index] = path;
                   }}
                   d={d}
+                  opacity="0"
                   className="launch-logo-guide"
                 />
               ))}
@@ -140,19 +200,7 @@ export default function LaunchLogo({
           </mask>
         </defs>
       </svg>
-      <div
-        className="launch-logo-paint"
-        style={{ '--launch-mask': `url(#${maskId})` } as CSSProperties}
-      >
-        <Image
-          source={require('../../assets/images/grow-together-logo.png')}
-          style={StyleSheet.absoluteFill}
-          contentFit="contain"
-          accessible={false}
-          onLoad={() => setLoaded(true)}
-          onError={onComplete}
-        />
-      </div>
+      <img src={logo.uri} alt="" className="launch-logo-paint" />
     </div>
   );
 }

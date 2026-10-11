@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 
 export type LaunchLogoProps = {
   played: boolean;
-  onComplete: () => void;
+  onComplete: (drawn?: boolean) => void;
   onStart: () => void;
 };
 
