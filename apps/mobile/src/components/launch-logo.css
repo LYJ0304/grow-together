@@ -1,0 +1,50 @@
+.launch-logo,
+.launch-logo-paint {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.launch-logo-defs {
+  position: absolute;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .launch-logo:not([data-drawing='done']) .launch-logo-paint {
+    mask-image: var(--launch-mask);
+    -webkit-mask-image: var(--launch-mask);
+  }
+
+  .launch-logo[data-drawing='pending'] .launch-logo-guide {
+    opacity: 0;
+  }
+
+  .launch-logo[data-drawing='running'] .launch-logo-guide {
+    animation-name: launch-logo-draw;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: both;
+  }
+
+  [data-testid='launch-intro-pending'] [data-testid='launch-title'] {
+    opacity: 0;
+  }
+
+  [data-testid='launch-intro-playing'] [data-testid='launch-title'] {
+    animation: launch-title-appear 450ms ease-in-out 300ms both;
+  }
+}
+
+@keyframes launch-logo-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes launch-title-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
