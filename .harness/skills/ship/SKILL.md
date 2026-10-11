@@ -23,15 +23,21 @@ do not require a new confirmation for actions already requested.
 ## Publication and cleanup
 
 Read root AGENTS.md and [conventions](../../conventions.md).
-Resolve the issue, repository, task branch, base, and actual task checkout from
-the latest handoff, user directions, and Git state. If no handoff survives a new
+Resolve the issue, repository, task branch, base, PR target, intended merge method,
+and actual task checkout from the latest handoff, user directions, and Git state. If no handoff survives a new
 session, use the issue's branch/worktree/PR association; ask only when the task
 cannot be identified unambiguously. Never select a stale detached worktree by
-directory name alone or publish main/staging as the task branch.
+directory name alone or publish develop/main/staging as the task branch.
 If the actual task is in the primary checkout on its task branch at the user's
 request, publish there and retain the primary worktree. Otherwise use the linked
 task worktree even when ship was invoked from the primary checkout.
 Clarify ambiguous task selection before committing or publishing.
+For new general tasks, default the PR target to `develop` and the intended merge
+method to squash. Honor explicit target instructions and preserve established
+base/target for resumed work. If an existing PR, handoff, and user directions
+conflict, resolve the intended target before publishing; do not silently retarget
+an old main PR just because the default changed. Apply conventions for exceptions.
+Do not fall back to main when develop is missing.
 
 1. Read the issue and inspect all task changes, including already-staged and
    untracked files. Preserve unrelated changes and do not accidentally commit
@@ -52,8 +58,10 @@ Clarify ambiguous task selection before committing or publishing.
    another contributor's commits; preserve the worktree on unresolved failure.
 5. Search PRs by repository and head branch, including their states. Update its
    existing open PR or create one with explicit `--base`, `--head`, and
-   `--body-file`. A merged PR is not an open task: confirm the follow-up scope
-   before creating another PR. Add `Closes #<number>` only for completed scope.
+   `--body-file`, setting `--base` to the resolved PR target (normally `develop`).
+   Record the intended merge method in the PR body; do not merge or enable
+   auto-merge as part of ship. A merged PR is not an open task: confirm the
+   follow-up scope before creating another PR. Add `Closes #<number>` only for completed scope.
    Verify the published PR's head SHA equals the pushed task commit. After an
    uncertain GitHub response, query existing PRs before retrying creation.
 6. Remove a linked task worktree only after successful push AND PR publication.
@@ -65,7 +73,7 @@ Clarify ambiguous task selection before committing or publishing.
      ignored directories rather than printing every dependency file. An ignored
      `.env` or dependency directory counts as local data: preserve it and explain
      why cleanup was skipped. Do not erase it to make cleanup pass.
-   - Verify the target is a linked task worktree, is not primary/main/staging,
+   - Verify the target is a linked task worktree, is not primary/develop/main/staging,
      and is not locked. Keep all branches.
    - Recheck the HEAD and status immediately before removal. Run
      `git worktree remove <task-path>` with the retained primary worktree as
@@ -75,4 +83,4 @@ Clarify ambiguous task selection before committing or publishing.
 Return PR URL, commit(s), verification results, and whether cleanup succeeded or
 was safely skipped. Push/PR failure preserves both branch and worktree. PR review
 changes can resume via `start <number>` after cleanup. Do not merge, deploy, update
-staging, close issues manually, or delete branches without a separate request.
+maintained branches, close issues manually, or delete branches without a separate request.
