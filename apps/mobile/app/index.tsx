@@ -17,13 +17,27 @@ import {
 } from '../src/components/launch-transition';
 
 export default function HomeScreen() {
-  const intro = useLaunchIntro();
+  const { finished: introFinished, finish: finishIntro } = useLaunchIntro();
   const [logoStarted, setLogoStarted] = useState(false);
+  const [logoDrawn, setLogoDrawn] = useState(false);
   const startLogo = useCallback(() => setLogoStarted(true), []);
+  const finishLogo = useCallback(
+    (drawn = false) => {
+      setLogoDrawn(drawn);
+      finishIntro();
+    },
+    [finishIntro],
+  );
   const motion = useLaunchTransition(
     '/',
     '/app-name',
-    Platform.OS === 'web' ? (intro.finished ? 120 : null) : 1000,
+    Platform.OS === 'web'
+      ? introFinished
+        ? logoDrawn
+          ? 400
+          : 120
+        : null
+      : 1000,
   );
   return (
     <SafeAreaView style={styles.container}>
@@ -32,7 +46,7 @@ export default function HomeScreen() {
         <Animated.View
           style={[styles.nextScreen, motion.fadeStyle]}
           testID={
-            intro.finished
+            introFinished
               ? 'launch-intro-done'
               : logoStarted
                 ? 'launch-intro-playing'
@@ -42,8 +56,8 @@ export default function HomeScreen() {
           <View style={styles.logoSection}>
             <View style={styles.logo}>
               <LaunchLogo
-                played={intro.finished}
-                onComplete={intro.finish}
+                played={introFinished}
+                onComplete={finishLogo}
                 onStart={startLogo}
               />
             </View>

@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Run against an exported web build and Chrome with remote debugging enabled.
 const [siteUrl = 'http://localhost:8096', chromeUrl = 'http://localhost:9226'] =
@@ -65,10 +69,18 @@ try {
   const { identifier } = await call('Page.addScriptToEvaluateOnNewDocument', {
     source: `
     window.logoFrames = [];
+    window.logoStyleChanges = 0;
+    let observing = false;
     function sample(timestamp) {
       const logo = document.querySelector('.launch-logo');
       const title = document.querySelector('[data-testid="launch-title"]');
       if (logo && title) {
+        if (!observing) {
+          observing = true;
+          new MutationObserver(records => {
+            window.logoStyleChanges += records.filter(r => r.target.tagName.toLowerCase() === 'path' && r.attributeName === 'style').length;
+          }).observe(logo, {subtree: true, attributes: true});
+        }
         const rect = logo.getBoundingClientRect();
         window.logoFrames.push({ time: timestamp, state: logo.dataset.drawing,
           opacity: Number(getComputedStyle(title).opacity),
@@ -77,6 +89,8 @@ try {
           caps: [...logo.querySelectorAll('path')].map(p => getComputedStyle(p).strokeLinecap),
           joins: [...logo.querySelectorAll('path')].map(p => getComputedStyle(p).strokeLinejoin),
           visible: [...logo.querySelectorAll('path')].map(p => Number(getComputedStyle(p).opacity)),
+          starts: [...logo.querySelectorAll('path')].flatMap(p => p.getAnimations()).map(a => a.startTime),
+          fullMask: Boolean(logo.querySelector('mask > rect')),
           mask: getComputedStyle(logo.querySelector('.launch-logo-paint')).maskImage,
           rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height}
         });
@@ -88,7 +102,86 @@ try {
   });
   await call('Page.navigate', { url: siteUrl });
   await waitFor(
+    'document.querySelector(".launch-logo")?.dataset.drawing === "running"',
+  );
+  const clip = await evaluate(`(() => {
+    const r = document.querySelector('.launch-logo').getBoundingClientRect();
+    return {x:r.x, y:r.y, width:r.width, height:r.height, scale:1};
+  })()`);
+  const pngHref = await evaluate(
+    'document.querySelector(".launch-logo img").getAttribute("src")',
+  );
+  const artifacts = mkdtempSync(
+    join(tmpdir(), 'grow-together-logo-rendering-'),
+  );
+  const pictures = [];
+  for (const progress of [0.15, 0.5, 0.85]) {
+    await waitFor(`(() => {
+      const paths = [...document.querySelectorAll('.launch-logo path')];
+      const lengths = paths.map(p => p.getTotalLength());
+      const total = lengths.reduce((a,b) => a+b, 0);
+      return total > 0 && lengths.reduce((sum,length,i) => sum + length - parseFloat(getComputedStyle(paths[i]).strokeDashoffset), 0) / total >= ${progress};
+    })()`);
+    const shot = await call('Page.captureScreenshot', { clip });
+    pictures.push(shot.data);
+    writeFileSync(
+      join(artifacts, `${progress}.png`),
+      Buffer.from(shot.data, 'base64'),
+    );
+  }
+  await waitFor(
+    'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
+  );
+  const completed = await call('Page.captureScreenshot', { clip });
+  pictures.push(completed.data);
+  writeFileSync(
+    join(artifacts, 'completed.png'),
+    Buffer.from(completed.data, 'base64'),
+  );
+  await waitFor(
     'location.pathname === "/welcome" && !document.querySelector("[data-testid=launch-transition]")',
+  );
+  // Compare natural completion with an HTML rendering of the unchanged source PNG.
+  await evaluate(`(async () => {
+    const reference = new Image(); reference.id = 'logo-reference'; reference.src = ${JSON.stringify(pngHref)};
+    await reference.decode();
+    Object.assign(reference.style, {position:'fixed', left:'${clip.x}px', top:'${clip.y}px', width:'145px', height:'145px', background:'#FAF9F9', zIndex:'2147483647'});
+    document.body.appendChild(reference);
+  })()`);
+  const original = await call('Page.captureScreenshot', { clip });
+  writeFileSync(
+    join(artifacts, 'original.png'),
+    Buffer.from(original.data, 'base64'),
+  );
+  await evaluate('document.querySelector("#logo-reference").remove()');
+  const rendering = await evaluate(`(async () => {
+    const pixels = async png => {
+      const image = new Image(); image.src = 'data:image/png;base64,' + png; await image.decode();
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+      const context = canvas.getContext('2d'); context.drawImage(image,0,0);
+      return context.getImageData(0,0,image.width,image.height).data;
+    };
+    const shots = await Promise.all(${JSON.stringify(pictures)}.map(pixels));
+    const original = await pixels(${JSON.stringify(original.data)});
+    const ink = shots.map(data => {
+      let count=0; for(let i=0;i<data.length;i+=4) if(Math.max(Math.abs(data[i]-250),Math.abs(data[i+1]-249),Math.abs(data[i+2]-249))>24) count++;
+      return count;
+    });
+    const maxDifference = shots.at(-1).reduce((max,value,i) => Math.max(max,Math.abs(value-original[i])),0);
+    return {ink,maxDifference};
+  })()`);
+  for (let i = 1; i < rendering.ink.length; i++) {
+    assert(
+      rendering.ink[i] > rendering.ink[i - 1] + 30,
+      'Actual rendered ink must grow through intermediate frames',
+    );
+  }
+  assert(
+    rendering.maxDifference <= 16,
+    `Natural completion must match original PNG: ${rendering.maxDifference}`,
+  );
+  console.log(
+    `PASS actual partial/complete rendered frames and source PNG comparison: ${artifacts}`,
   );
   const frames = await evaluate('window.logoFrames');
   const drawing = frames.filter((f) => f.state === 'running');
@@ -166,7 +259,29 @@ try {
     'Title must fade',
   );
   assert.equal(done.opacity, 1);
-  assert.equal(done.mask, 'none', 'Final PNG must be unmasked');
+  assert.equal(
+    done.mask,
+    drawing[0].mask,
+    'Keep the same PNG image and SVG mask resource at completion',
+  );
+  assert(done.fullMask, 'Static completion must fully reveal the original PNG');
+  assert(
+    drawing[0].starts.length > 0,
+    'Browser animations must drive the guides',
+  );
+  assert(
+    drawing[0].starts.every((start) => start === drawing[0].starts[0]),
+    'All browser animations must share one start time',
+  );
+  assert(
+    (await evaluate('window.logoStyleChanges')) <= 12,
+    'No per-frame path style writes',
+  );
+  const titleHidden = frames.find((f) => f.state === 'done' && f.opacity === 0);
+  assert(
+    titleHidden && titleHidden.time - done.time >= 350,
+    'Hold the completed logo before automatic transition',
+  );
   assert.equal(done.rect.width, 145);
   assert.equal(done.rect.height, 145);
   assert(
@@ -185,47 +300,12 @@ try {
     await evaluate('document.querySelector(".launch-logo").dataset.drawing'),
     'done',
   );
-  assert.equal(
-    await evaluate(
-      'getComputedStyle(document.querySelector(".launch-logo-paint")).maskImage',
-    ),
-    'none',
-  );
-  console.log('PASS no replay on back navigation');
-
-  await evaluate(`const logo = document.querySelector('.launch-logo');
-    logo.dataset.drawing = 'running';
-    logo.querySelectorAll('path').forEach(path => {
-      path.style.strokeDasharray = 'none';
-      path.style.strokeDashoffset = '0';
-      path.style.opacity = '1';
-    });`);
-  const clip = { ...done.rect, scale: 1 };
-  const masked = await call('Page.captureScreenshot', { clip });
-  await evaluate(
-    `document.querySelector('.launch-logo').dataset.drawing = 'done'`,
-  );
-  const original = await call('Page.captureScreenshot', { clip });
-  const maxPixelDifference = await evaluate(`(async () => {
-    const pixels = async (png) => {
-      const image = new Image(); image.src = 'data:image/png;base64,' + png;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width; canvas.height = image.height;
-      const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
-      return context.getImageData(0, 0, image.width, image.height).data;
-    };
-    const a = await pixels(${JSON.stringify(masked.data)});
-    const b = await pixels(${JSON.stringify(original.data)});
-    return a.reduce((max, value, i) => Math.max(max, Math.abs(value - b[i])), 0);
-  })()`);
   assert(
-    maxPixelDifference <= 16,
-    `Completed mask must cover the PNG (antialias tolerance): ${maxPixelDifference}`,
+    await evaluate(
+      'Boolean(document.querySelector(".launch-logo mask > rect"))',
+    ),
   );
-  console.log(
-    'PASS completed mask covers original PNG without missing strokes',
-  );
+  console.log('PASS static PNG completion and no replay on back navigation');
 
   await call('Page.navigate', { url: siteUrl });
   await waitFor(`(() => {
@@ -233,7 +313,7 @@ try {
     return frame?.state === 'running' &&
       frame.lengths[0] - frame.offsets[0] > frame.lengths[0] * 0.85;
   })()`);
-  // Deliberately stall across a Path boundary to exercise timestamp-based catch-up.
+  // Clock synchronization only: induced stalls do not prove visual smoothness.
   await evaluate(`new Promise(resolve => {
     const end = performance.now() + 300;
     while (performance.now() < end) {}
@@ -259,7 +339,7 @@ try {
     'Lost frames must not reset speed or add a Path delay',
   );
   console.log(
-    'PASS timestamp catch-up across a Path boundary after a 300ms stall',
+    'PASS shared browser timeline after a 300ms stall (clock check only)',
   );
 
   await media('reduce');
@@ -309,11 +389,10 @@ try {
       await waitFor(
         'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
       );
-      assert.equal(
+      assert(
         await evaluate(
-          'getComputedStyle(document.querySelector(".launch-logo-paint")).maskImage',
+          'Boolean(document.querySelector(".launch-logo mask > rect"))',
         ),
-        'none',
       );
       await waitFor('location.pathname === "/welcome"');
       console.log(
@@ -325,6 +404,53 @@ try {
       });
     }
   }
+
+  for (const source of [
+    'SVGElement.prototype.animate = undefined;',
+    'HTMLImageElement.prototype.decode = () => Promise.reject(new Error("decode failed"));',
+  ]) {
+    const failure = await call('Page.addScriptToEvaluateOnNewDocument', {
+      source,
+    });
+    try {
+      await call('Page.navigate', { url: siteUrl });
+      await waitFor(
+        'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
+      );
+      assert(
+        await evaluate(
+          'Boolean(document.querySelector(".launch-logo mask > rect"))',
+        ),
+      );
+      assert.equal(
+        await evaluate(
+          'document.querySelector(".launch-logo").getAnimations({subtree:true}).length',
+        ),
+        0,
+      );
+      await waitFor('location.pathname === "/welcome"');
+      console.log(
+        'PASS unavailable browser animation / image decode falls back without blocking navigation',
+      );
+    } finally {
+      await call('Page.removeScriptToEvaluateOnNewDocument', {
+        identifier: failure.identifier,
+      });
+    }
+  }
+
+  await call('Page.navigate', { url: siteUrl });
+  await waitFor(
+    'document.querySelector(".launch-logo")?.dataset.drawing === "running"',
+  );
+  await evaluate(
+    `document.querySelector('[aria-label="앱 이름 화면으로 이동"]').click()`,
+  );
+  await waitFor('location.pathname === "/app-name"');
+  await waitFor('location.pathname === "/welcome"');
+  console.log(
+    'PASS manual skip cancels in-flight drawing and preserves navigation',
+  );
 } finally {
   socket.close();
 }
