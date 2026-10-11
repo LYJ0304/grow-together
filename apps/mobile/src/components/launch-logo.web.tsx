@@ -1,206 +1,176 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
-
+import { useEffect, useRef, useState } from 'react';
+import drawing from '../../assets/images/launch-drawing-masks/drawing.json';
+import { createLogoRenderer } from './launch-logo-renderer';
 import type { LaunchLogoProps } from './launch-logo';
 import './launch-logo.css';
 
-const logo: {
+const original: {
   uri: string;
 } = require('../../assets/images/grow-together-logo.png');
-// shortcut: These reveal guides approximate the PNG; replace only with the original stroke SVG.
-// Only the heart and stem connect; keep the upper curve as a separate stroke.
-const guides = [
-  'M224 164 H622 C752 164 829 249 829 368 C829 491 767 583 641 583 H550',
-  'M479 604 C379 520 291 442 291 368 C291 275 390 246 442 320 L477 371 C524 262 613 258 652 331 C710 432 597 506 479 604 C401 681 253 784 253 940',
+const sheets: { uri: string }[][] = [
+  [
+    require('../../assets/images/launch-drawing-masks/stroke-1-1x.png'),
+    require('../../assets/images/launch-drawing-masks/stroke-1-2x.png'),
+  ],
+  [
+    require('../../assets/images/launch-drawing-masks/stroke-2-1x.png'),
+    require('../../assets/images/launch-drawing-masks/stroke-2-2x.png'),
+  ],
 ];
-
 export default function LaunchLogo({
   played,
   onComplete,
   onStart,
 }: LaunchLogoProps) {
-  const maskId = `launch-mask-${useId().replace(/:/g, '')}`;
-  const paths = useRef<(SVGPathElement | null)[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [running, setRunning] = useState(false);
-
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const originalImage = useRef<HTMLImageElement>(null);
+  const images = useRef<(HTMLImageElement | null)[]>([]);
+  const [mode, setMode] = useState<'pending' | 'running' | 'done' | 'static'>(
+    played ? 'static' : 'pending',
+  );
+  const showOriginal = mode === 'static' || (played && mode !== 'done');
   useEffect(() => {
-    if (played) return;
-    let cancelled = false;
-    // A cached image can load before hydration attaches its event handler.
-    const image = new window.Image();
-    image.src = logo.uri;
-    image.decode().then(
-      () => {
-        if (!cancelled) setLoaded(true);
-      },
-      () => {
-        if (!cancelled) onComplete();
-      },
-    );
-    return () => {
-      cancelled = true;
+    const element = canvas.current!;
+    const lost = (event: Event) => {
+      event.preventDefault();
+      setMode('static');
     };
-  }, [played, onComplete]);
-
+    element.addEventListener('webglcontextlost', lost);
+    return () => element.removeEventListener('webglcontextlost', lost);
+  }, []);
   useEffect(() => {
     if (played) return;
-    if (typeof window.matchMedia !== 'function') {
-      onComplete();
-      return;
-    }
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const animations: Animation[] = [];
-    let frame = 0;
-    let finished = false;
+    let stopped = false,
+      frame = 0,
+      start: number | undefined,
+      last = 0;
+    let renderer: ReturnType<typeof createLogoRenderer> | undefined;
     const finish = (drawn = false) => {
-      if (finished) return;
-      finished = true;
-      paths.current.forEach((path) => {
-        if (!path) return;
-        path.style.strokeDashoffset = '0';
-        path.style.strokeDasharray = 'none';
-        path.style.opacity = '1';
-      });
-      animations.forEach((animation) => animation.cancel());
+      if (stopped) return;
+      stopped = true;
       cancelAnimationFrame(frame);
+      setMode(drawn ? 'done' : 'static');
       onComplete(drawn);
     };
-    const finishIfReduced = () => {
-      if (media.matches) finish();
-    };
-    media.addEventListener('change', finishIfReduced);
-    if (media.matches) {
-      finish();
-    } else if (loaded) {
+    const resize = () => {
       try {
-        const lengths = paths.current.map(
-          (path) => path?.getTotalLength() ?? 0,
-        );
-        if (
-          lengths.length !== guides.length ||
-          lengths.some((length) => !Number.isFinite(length) || length <= 0)
-        ) {
-          finish();
-        } else {
-          const total = lengths.reduce((sum, length) => sum + length, 0);
-          let distance = 0;
-          paths.current.forEach((path, index) => {
-            if (!path) return;
-            const length = lengths[index];
-            const start = (distance / total) * 0.9975;
-            const end =
-              index === guides.length - 1
-                ? 1
-                : ((distance + length) / total) * 0.9975;
-            const duration = (end - start) * 2300;
-            const reveal = Math.min(1, duration / 2);
-            const keyframes: Keyframe[] = [
-              { strokeDashoffset: String(length), opacity: 0, offset: 0 },
-              {
-                strokeDashoffset: String(
-                  length - Math.min(length, (total * reveal) / (2300 * 0.9975)),
-                ),
-                opacity: 1,
-                offset: reveal / duration,
-              },
-            ];
-            if (index === guides.length - 1) {
-              // Normalize distance for a continuous 10% slowdown in the final 5%.
-              keyframes.push({
-                strokeDashoffset: String(total * (1 - 0.95 / 0.9975)),
-                opacity: 1,
-                offset: (0.95 - start) / (end - start),
-                easing: 'cubic-bezier(0.333333, 0.350877, 0.666667, 0.684211)',
-              });
-            }
-            keyframes.push({ strokeDashoffset: '0', opacity: 1, offset: 1 });
-            path.style.strokeDasharray = `${length} ${length}`;
-            path.style.strokeDashoffset = String(length);
-            path.style.opacity = '0';
-            const stroke = path.animate(keyframes, {
-              duration,
-              delay: start * 2300,
-              easing: 'linear',
-              fill: 'both',
-            });
-            stroke.pause();
-            stroke.currentTime = 0;
-            animations.push(stroke);
-            distance += length;
-          });
-          // Start on the first visible frame; hidden tabs must not consume the drawing.
-          frame = requestAnimationFrame((timestamp) => {
-            if (finished) return;
-            animations.forEach((animation) => {
-              animation.play();
-              animation.startTime = timestamp;
-            });
-            setRunning(true);
-            onStart();
-          });
-          Promise.all(animations.map((animation) => animation.finished)).then(
-            () => {
-              if (!finished) frame = requestAnimationFrame(() => finish(true));
-            },
-            () => finish(),
-          );
-        }
+        renderer?.resize();
+        renderer?.draw(last);
       } catch {
         finish();
       }
+    };
+    if (typeof window.matchMedia !== 'function') {
+      finish();
+      return;
+    }
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reduce = () => {
+      if (media.matches) finish();
+    };
+    if (media.addEventListener) media.addEventListener('change', reduce);
+    else media.addListener(reduce);
+    window.addEventListener('resize', resize);
+    if (media.matches) finish();
+    else {
+      const elements = [originalImage.current, ...images.current];
+      if (
+        elements.some((image) => !image || typeof image.decode !== 'function')
+      )
+        finish();
+      else
+        Promise.all([
+          ...elements.map((image) => image!.decode()),
+          document.fonts?.ready ?? Promise.resolve(),
+        ]).then(
+          () => {
+            if (stopped) return;
+            try {
+              renderer = createLogoRenderer(
+                canvas.current!,
+                images.current as HTMLImageElement[],
+              );
+              const tick = (timestamp: number) => {
+                if (stopped) return;
+                if (start === undefined) {
+                  start = timestamp;
+                  canvas.current!.dataset.startTime = String(timestamp);
+                  setMode('running');
+                  onStart();
+                }
+                last = Math.min(timestamp - start, drawing.durationMs);
+                try {
+                  renderer!.draw(last);
+                } catch {
+                  finish();
+                  return;
+                }
+                if (last < drawing.durationMs)
+                  frame = requestAnimationFrame(tick);
+                else frame = requestAnimationFrame(() => finish(true));
+              };
+              // Resources and the empty frame are ready before the drawing clock starts.
+              frame = requestAnimationFrame(() => {
+                if (!stopped) frame = requestAnimationFrame(tick);
+              });
+            } catch {
+              finish();
+            }
+          },
+          () => finish(),
+        );
     }
     return () => {
-      finished = true;
+      stopped = true;
       cancelAnimationFrame(frame);
-      animations.forEach((animation) => animation.cancel());
-      media.removeEventListener('change', finishIfReduced);
+      renderer?.dispose();
+      window.removeEventListener('resize', resize);
+      if (media.removeEventListener)
+        media.removeEventListener('change', reduce);
+      else media.removeListener(reduce);
     };
-  }, [played, loaded, onComplete, onStart]);
-
+  }, [played, onComplete, onStart]);
   return (
     <div
       className="launch-logo"
-      data-drawing={played ? 'done' : running ? 'running' : 'pending'}
-      style={{ '--launch-mask': `url(#${maskId})` } as CSSProperties}
+      data-drawing={played || mode === 'done' ? 'done' : mode}
+      data-rendering={showOriginal ? 'original' : 'webgl'}
       aria-hidden="true"
     >
-      <svg width="0" height="0" className="launch-logo-defs">
-        <defs>
-          <mask
-            id={maskId}
-            maskUnits="objectBoundingBox"
-            maskContentUnits="objectBoundingBox"
-            x="0"
-            y="0"
-            width="1"
-            height="1"
-            style={{ maskType: 'alpha' }}
-          >
-            {played && <rect width="1" height="1" fill="white" />}
-            <g
-              transform="scale(0.0009765625)"
-              fill="none"
-              stroke="white"
-              strokeWidth="56"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {guides.map((d, index) => (
-                <path
-                  key={d}
-                  ref={(path) => {
-                    paths.current[index] = path;
-                  }}
-                  d={d}
-                  opacity="0"
-                  className="launch-logo-guide"
-                />
-              ))}
-            </g>
-          </mask>
-        </defs>
-      </svg>
-      <img src={logo.uri} alt="" className="launch-logo-paint" />
+      <img
+        ref={originalImage}
+        src={original.uri}
+        alt=""
+        className="launch-logo-original"
+      />
+      <canvas
+        ref={canvas}
+        className="launch-logo-canvas"
+        width="145"
+        height="145"
+      />
+      {!showOriginal &&
+        mode !== 'done' &&
+        sheets.map((sources, index) => (
+          <picture key={index} className="launch-logo-preload">
+            <source
+              media="(prefers-reduced-motion: reduce)"
+              srcSet={original.uri}
+            />
+            <source
+              srcSet={sources
+                .map((source, scale) => `${source.uri} ${scale + 1}x`)
+                .join(', ')}
+            />
+            <img
+              ref={(image) => {
+                images.current[index] = image;
+              }}
+              src={sources[0].uri}
+              alt=""
+            />
+          </picture>
+        ))}
     </div>
   );
 }

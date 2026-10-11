@@ -1,456 +1,590 @@
 import assert from 'node:assert/strict';
-import { Buffer } from 'node:buffer';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { chromium, webkit } from 'playwright-core';
 
-// Run against an exported web build and Chrome with remote debugging enabled.
-const [siteUrl = 'http://localhost:8096', chromeUrl = 'http://localhost:9226'] =
-  process.argv.slice(2);
-const pages = await (await fetch(`${chromeUrl}/json/list`)).json();
-const socket = new WebSocket(
-  pages.find((page) => page.type === 'page').webSocketDebuggerUrl,
+// Serve an Expo web export; optional browser/baseline paths are documented in scripts/README.md.
+const [siteUrl = 'http://localhost:8156'] = process.argv.slice(2);
+const drawing = JSON.parse(
+  readFileSync(
+    new URL(
+      '../assets/images/launch-drawing-masks/drawing.json',
+      import.meta.url,
+    ),
+  ),
 );
-await new Promise((resolve) =>
-  socket.addEventListener('open', resolve, { once: true }),
+const source = readFileSync(
+  new URL('../assets/images/grow-together-logo.png', import.meta.url),
 );
-let nextId = 0;
-const pending = new Map();
-socket.addEventListener('message', ({ data }) => {
-  const message = JSON.parse(data);
-  const request = pending.get(message.id);
-  if (!request) return;
-  pending.delete(message.id);
-  if (message.error) request.reject(new Error(JSON.stringify(message.error)));
-  else request.resolve(message.result);
-});
-
-function call(method, params = {}) {
-  const id = ++nextId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    socket.send(JSON.stringify({ id, method, params }));
-  });
+assert.equal(
+  createHash('sha256').update(source).digest('hex'),
+  drawing.sourceSha256,
+);
+assert.equal(drawing.size, 145);
+assert.equal(drawing.durationMs, 2300);
+assert.equal(drawing.strokes.length, 2);
+let end = 0;
+for (const [index, stroke] of drawing.strokes.entries()) {
+  assert(stroke.length > 1000);
+  assert(
+    Math.abs(stroke.startMs - end - (index ? drawing.penLiftMs : 0)) < 0.001,
+  );
+  assert.equal(stroke.frames[0].arc, 0);
+  assert.equal(stroke.frames.at(-1).arc, stroke.length);
+  for (let i = 1; i < stroke.frames.length; i++) {
+    const a = stroke.frames[i - 1],
+      b = stroke.frames[i];
+    assert(b.timeMs > a.timeMs && b.arc > a.arc);
+    assert(b.timeMs - a.timeMs <= 1000 / drawing.fps + 0.001);
+    assert(
+      Math.abs(
+        (b.arc - a.arc) / (b.timeMs - a.timeMs) -
+          stroke.length / stroke.durationMs,
+      ) < 0.002,
+    );
+    assert(
+      Math.hypot(b.head[0] - a.head[0], b.head[1] - a.head[1]) <=
+        ((b.arc - a.arc) * 145) / 1024 + 0.01,
+    );
+  }
+  end = stroke.startMs + stroke.durationMs;
 }
-
-async function evaluate(expression) {
-  const result = await call('Runtime.evaluate', {
-    expression,
-    returnByValue: true,
-    awaitPromise: true,
-  });
-  assert(!result.exceptionDetails, JSON.stringify(result.exceptionDetails));
-  return result.result.value;
+assert(Math.abs(end - drawing.durationMs) < 0.001);
+assert(
+  Math.abs(
+    drawing.strokes[0].length / drawing.strokes[0].durationMs -
+      drawing.strokes[1].length / drawing.strokes[1].durationMs,
+  ) < 0.00001,
+);
+const artifacts = mkdtempSync(join(tmpdir(), 'grow-logo-verification-'));
+const reports = [];
+const configurations = [
+  [
+    'chrome-desktop',
+    chromium,
+    { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 },
+  ],
+  [
+    'chrome-mobile-2x',
+    chromium,
+    {
+      viewport: { width: 393, height: 852 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    },
+  ],
+  [
+    'chrome-mobile-3x',
+    chromium,
+    {
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+    },
+  ],
+];
+if (process.env.WEBKIT_EXECUTABLE) {
+  for (const scale of [2, 3])
+    configurations.push([
+      `webkit-mobile-${scale}x`,
+      webkit,
+      {
+        viewport: { width: 393, height: 852 },
+        deviceScaleFactor: scale,
+        isMobile: true,
+        hasTouch: true,
+      },
+    ]);
+} else
+  console.log(
+    'WebKit not configured; set WEBKIT_EXECUTABLE. Actual iPhone Safari needs a separate device check.',
+  );
+function stats(intervals) {
+  assert(intervals.length > 10, 'Drawing must run, not silently fall back');
+  const sorted = [...intervals].sort((a, b) => a - b);
+  return {
+    mean: sorted.reduce((a, b) => a + b, 0) / sorted.length,
+    p95: sorted[Math.floor(sorted.length * 0.95)],
+    max: sorted.at(-1),
+    over33ms: sorted.filter((t) => t > 33.34).length,
+    over50ms: sorted.filter((t) => t > 50).length,
+  };
 }
-
-async function waitFor(expression) {
-  await evaluate(`new Promise((resolve, reject) => {
-    const deadline = Date.now() + 10000;
-    const timer = setInterval(() => {
-      if (${expression}) { clearInterval(timer); resolve(true); }
-      else if (Date.now() > deadline) { clearInterval(timer); reject(new Error('Screen did not settle')); }
-    }, 25);
-  })`);
-}
-
-try {
-  await call('Page.enable');
-  await call('Emulation.setDeviceMetricsOverride', {
-    width: 393,
-    height: 852,
-    deviceScaleFactor: 1,
-    mobile: true,
+async function pacing(browser, options, url) {
+  const page = await browser.newPage({
+    ...options,
+    reducedMotion: 'no-preference',
   });
-  const media = (value) =>
-    call('Emulation.setEmulatedMedia', {
-      features: [{ name: 'prefers-reduced-motion', value }],
-    });
-  await media('no-preference');
-  const { identifier } = await call('Page.addScriptToEvaluateOnNewDocument', {
-    source: `
-    window.logoFrames = [];
-    window.logoStyleChanges = 0;
-    let observing = false;
-    function sample(timestamp) {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    window.logoPerf = {
+      times: [],
+      start: null,
+      done: null,
+      commits: [],
+      styleWrites: 0,
+    };
+    window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+      supportsFiber: true,
+      inject() {
+        return 1;
+      },
+      onCommitFiberRoot() {
+        window.logoPerf.commits.push(performance.now());
+      },
+      onCommitFiberUnmount() {},
+    };
+    window.logoResources = { created: 0, deleted: 0 };
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    const contexts = new WeakSet();
+    HTMLCanvasElement.prototype.getContext = function (...args) {
+      const gl = getContext.apply(this, args);
+      if (args[0] === 'webgl' && gl && !contexts.has(gl)) {
+        contexts.add(gl);
+        const create = gl.createTexture.bind(gl),
+          remove = gl.deleteTexture.bind(gl);
+        gl.createTexture = () => {
+          window.logoResources.created++;
+          return create();
+        };
+        gl.deleteTexture = (texture) => {
+          window.logoResources.deleted++;
+          remove(texture);
+        };
+      }
+      return gl;
+    };
+    let observed = false;
+    function sample(t) {
       const logo = document.querySelector('.launch-logo');
-      const title = document.querySelector('[data-testid="launch-title"]');
-      if (logo && title) {
-        if (!observing) {
-          observing = true;
-          new MutationObserver(records => {
-            window.logoStyleChanges += records.filter(r => r.target.tagName.toLowerCase() === 'path' && r.attributeName === 'style').length;
-          }).observe(logo, {subtree: true, attributes: true});
+      if (logo) {
+        if (!observed) {
+          observed = true;
+          new MutationObserver((records) => {
+            window.logoPerf.styleWrites += records.filter(
+              (r) => r.attributeName === 'style',
+            ).length;
+          }).observe(logo, { attributes: true, subtree: true });
         }
-        const rect = logo.getBoundingClientRect();
-        window.logoFrames.push({ time: timestamp, state: logo.dataset.drawing,
-          opacity: Number(getComputedStyle(title).opacity),
-          offsets: [...logo.querySelectorAll('path')].map(p => Number.parseFloat(getComputedStyle(p).strokeDashoffset)),
-          lengths: [...logo.querySelectorAll('path')].map(p => p.getTotalLength()),
-          caps: [...logo.querySelectorAll('path')].map(p => getComputedStyle(p).strokeLinecap),
-          joins: [...logo.querySelectorAll('path')].map(p => getComputedStyle(p).strokeLinejoin),
-          visible: [...logo.querySelectorAll('path')].map(p => Number(getComputedStyle(p).opacity)),
-          starts: [...logo.querySelectorAll('path')].flatMap(p => p.getAnimations()).map(a => a.startTime),
-          fullMask: Boolean(logo.querySelector('mask > rect')),
-          mask: getComputedStyle(logo.querySelector('.launch-logo-paint')).maskImage,
-          rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height}
-        });
+        if (logo.dataset.drawing === 'running') {
+          if (window.logoPerf.start === null) {
+            window.logoPerf.start = Number(
+              logo.querySelector('canvas')?.dataset.startTime ??
+                logo.querySelector('path')?.getAnimations()[0]?.startTime ??
+                t,
+            );
+            window.logoPerf.times.push(window.logoPerf.start);
+          }
+          if (t <= window.logoPerf.times.at(-1))
+            return requestAnimationFrame(sample);
+          window.logoPerf.times.push(t);
+        }
+        if (logo.dataset.drawing === 'done') window.logoPerf.done ??= t;
       }
       requestAnimationFrame(sample);
     }
     requestAnimationFrame(sample);
-  `,
   });
-  await call('Page.navigate', { url: siteUrl });
-  await waitFor(
-    'document.querySelector(".launch-logo")?.dataset.drawing === "running"',
-  );
-  const clip = await evaluate(`(() => {
-    const r = document.querySelector('.launch-logo').getBoundingClientRect();
-    return {x:r.x, y:r.y, width:r.width, height:r.height, scale:1};
-  })()`);
-  const pngHref = await evaluate(
-    'document.querySelector(".launch-logo img").getAttribute("src")',
-  );
-  const artifacts = mkdtempSync(
-    join(tmpdir(), 'grow-together-logo-rendering-'),
-  );
-  const pictures = [];
-  for (const progress of [0.15, 0.5, 0.85]) {
-    await waitFor(`(() => {
-      const paths = [...document.querySelectorAll('.launch-logo path')];
-      const lengths = paths.map(p => p.getTotalLength());
-      const total = lengths.reduce((a,b) => a+b, 0);
-      return total > 0 && lengths.reduce((sum,length,i) => sum + length - parseFloat(getComputedStyle(paths[i]).strokeDashoffset), 0) / total >= ${progress};
-    })()`);
-    const shot = await call('Page.captureScreenshot', { clip });
-    pictures.push(shot.data);
-    writeFileSync(
-      join(artifacts, `${progress}.png`),
-      Buffer.from(shot.data, 'base64'),
-    );
-  }
-  await waitFor(
-    'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
-  );
-  const completed = await call('Page.captureScreenshot', { clip });
-  pictures.push(completed.data);
-  writeFileSync(
-    join(artifacts, 'completed.png'),
-    Buffer.from(completed.data, 'base64'),
-  );
-  await waitFor(
-    'location.pathname === "/welcome" && !document.querySelector("[data-testid=launch-transition]")',
-  );
-  // Compare natural completion with an HTML rendering of the unchanged source PNG.
-  await evaluate(`(async () => {
-    const reference = new Image(); reference.id = 'logo-reference'; reference.src = ${JSON.stringify(pngHref)};
-    await reference.decode();
-    Object.assign(reference.style, {position:'fixed', left:'${clip.x}px', top:'${clip.y}px', width:'145px', height:'145px', background:'#FAF9F9', zIndex:'2147483647'});
-    document.body.appendChild(reference);
-  })()`);
-  const original = await call('Page.captureScreenshot', { clip });
-  writeFileSync(
-    join(artifacts, 'original.png'),
-    Buffer.from(original.data, 'base64'),
-  );
-  await evaluate('document.querySelector("#logo-reference").remove()');
-  const rendering = await evaluate(`(async () => {
-    const pixels = async png => {
-      const image = new Image(); image.src = 'data:image/png;base64,' + png; await image.decode();
-      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
-      const context = canvas.getContext('2d'); context.drawImage(image,0,0);
-      return context.getImageData(0,0,image.width,image.height).data;
-    };
-    const shots = await Promise.all(${JSON.stringify(pictures)}.map(pixels));
-    const original = await pixels(${JSON.stringify(original.data)});
-    const ink = shots.map(data => {
-      let count=0; for(let i=0;i<data.length;i+=4) if(Math.max(Math.abs(data[i]-250),Math.abs(data[i+1]-249),Math.abs(data[i+2]-249))>24) count++;
-      return count;
-    });
-    const maxDifference = shots.at(-1).reduce((max,value,i) => Math.max(max,Math.abs(value-original[i])),0);
-    return {ink,maxDifference};
-  })()`);
-  for (let i = 1; i < rendering.ink.length; i++) {
-    assert(
-      rendering.ink[i] > rendering.ink[i - 1] + 30,
-      'Actual rendered ink must grow through intermediate frames',
-    );
-  }
-  assert(
-    rendering.maxDifference <= 16,
-    `Natural completion must match original PNG: ${rendering.maxDifference}`,
-  );
-  console.log(
-    `PASS actual partial/complete rendered frames and source PNG comparison: ${artifacts}`,
-  );
-  const frames = await evaluate('window.logoFrames');
-  const drawing = frames.filter((f) => f.state === 'running');
-  const done = frames.find((f) => f.state === 'done');
-  assert(drawing.length > 20, 'Drawing must have intermediate frames');
-  assert(done, 'The complete logo must paint before navigating');
-  const elapsed = done.time - drawing[0].time;
-  assert(elapsed >= 2000 && elapsed <= 2500, `Drawing duration: ${elapsed}ms`);
-  for (let i = 0; i < drawing[0].lengths.length; i++) {
-    assert(
-      drawing.some((f) => f.offsets[i] > 1 && f.offsets[i] < f.lengths[i] - 1),
-      `Guide ${i} must draw`,
-    );
-    assert(
-      drawing.every((f) => Math.abs(f.offsets[i]) <= f.lengths[i] + 1),
-      'Dash lengths must match geometry',
-    );
-    if (i > 0)
-      assert(
-        drawing
-          .filter((f) => f.offsets[i] < f.lengths[i] - 1)
-          .every((f) => f.offsets[i - 1] < 1),
-        'Guides must draw sequentially',
-      );
-    assert(
-      drawing.every((f) => f.caps[i] === 'round' && f.joins[i] === 'round'),
-    );
-    assert(
-      drawing
-        .filter((f) => f.offsets[i] === f.lengths[i])
-        .every((f) => f.visible[i] === 0),
-      'Unstarted round caps must not reveal dots',
-    );
-  }
-  const distance = (f) =>
-    f.lengths.reduce((sum, length, i) => sum + length - f.offsets[i], 0);
-  const total = drawing[0].lengths.reduce((sum, length) => sum + length, 0);
-  const linearSpeed = total / (2300 * 0.9975);
-  for (let i = 1; i < drawing.length; i++) {
-    assert(distance(drawing[i]) >= distance(drawing[i - 1]), 'No rewind');
-  }
-  // Sample over several frames to tolerate the observation callback's frame order.
-  for (let i = 4; i < drawing.length; i++) {
-    const before = drawing[i - 4];
-    const after = drawing[i];
-    if (distance(before) < total * 0.02 || distance(after) > total * 0.94)
-      continue;
-    const speed =
-      (distance(after) - distance(before)) / (after.time - before.time);
-    assert(
-      Math.abs(speed / linearSpeed - 1) < 0.15,
-      `Constant speed including Path boundaries: ${speed / linearSpeed}`,
-    );
-  }
-  const tailStart = drawing.find((f) => distance(f) >= total * 0.96);
-  const tailEnd = drawing.find((f) => distance(f) >= total * 0.995);
-  assert(tailStart && tailEnd, 'Final slowdown must have intermediate frames');
-  const tailSpeed =
-    (distance(tailEnd) - distance(tailStart)) / (tailEnd.time - tailStart.time);
-  assert(tailSpeed < linearSpeed && tailSpeed > linearSpeed * 0.85);
-  assert(
-    done.offsets.every((offset) => offset === 0),
-    'Exact final offsets',
-  );
-  assert(
-    drawing
-      .filter((f) => f.time - drawing[0].time < 260)
-      .every((f) => f.opacity === 0),
-    'Title must wait 300ms',
-  );
-  assert(
-    drawing.some(
-      (f) => f.time - drawing[0].time > 300 && f.opacity > 0 && f.opacity < 1,
-    ),
-    'Title must fade',
-  );
-  assert.equal(done.opacity, 1);
+  await page.goto(url);
+  await page.waitForURL('**/welcome');
+  const raw = await page.evaluate(() => window.logoPerf);
+  const resources = await page.evaluate(() => window.logoResources);
+  if (url === siteUrl)
+    assert.equal(resources.created, 2, 'Both GPU masks must be uploaded');
   assert.equal(
-    done.mask,
-    drawing[0].mask,
-    'Keep the same PNG image and SVG mask resource at completion',
+    resources.deleted,
+    resources.created,
+    'GPU input textures must be released on completion',
   );
-  assert(done.fullMask, 'Static completion must fully reveal the original PNG');
-  assert(
-    drawing[0].starts.length > 0,
-    'Browser animations must drive the guides',
-  );
-  assert(
-    drawing[0].starts.every((start) => start === drawing[0].starts[0]),
-    'All browser animations must share one start time',
-  );
-  assert(
-    (await evaluate('window.logoStyleChanges')) <= 12,
-    'No per-frame path style writes',
-  );
-  const titleHidden = frames.find((f) => f.state === 'done' && f.opacity === 0);
-  assert(
-    titleHidden && titleHidden.time - done.time >= 350,
-    'Hold the completed logo before automatic transition',
-  );
-  assert.equal(done.rect.width, 145);
-  assert.equal(done.rect.height, 145);
-  assert(
-    drawing.every((f) => JSON.stringify(f.rect) === JSON.stringify(done.rect)),
-    'Drawing must not shift layout',
-  );
-  console.log(
-    `PASS continuous real-length drawing, ${Math.round(elapsed)}ms duration, subtle final slowdown, round caps, original PNG and fixed layout`,
-  );
-
-  await evaluate('history.back()');
-  await waitFor('location.pathname === "/app-name"');
-  await evaluate('history.back()');
-  await waitFor('location.pathname === "/"');
-  assert.equal(
-    await evaluate('document.querySelector(".launch-logo").dataset.drawing'),
-    'done',
-  );
-  assert(
-    await evaluate(
-      'Boolean(document.querySelector(".launch-logo mask > rect"))',
-    ),
-  );
-  console.log('PASS static PNG completion and no replay on back navigation');
-
-  await call('Page.navigate', { url: siteUrl });
-  await waitFor(`(() => {
-    const frame = window.logoFrames.at(-1);
-    return frame?.state === 'running' &&
-      frame.lengths[0] - frame.offsets[0] > frame.lengths[0] * 0.85;
-  })()`);
-  // Clock synchronization only: induced stalls do not prove visual smoothness.
-  await evaluate(`new Promise(resolve => {
-    const end = performance.now() + 300;
-    while (performance.now() < end) {}
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  })`);
-  await waitFor('location.pathname === "/welcome"');
-  const stalled = (await evaluate('window.logoFrames')).filter(
-    (f) => f.state === 'running',
-  );
-  const gap = stalled.findIndex(
-    (f, i) => i > 0 && f.time - stalled[i - 1].time > 200,
-  );
-  assert(gap > 0 && gap + 2 < stalled.length, 'Stall must be observed');
-  const beforeGap = stalled[gap - 1];
-  const afterGap = stalled[gap + 2];
-  assert(beforeGap.offsets[0] > 0 && afterGap.offsets[0] === 0);
-  assert(afterGap.offsets[1] < afterGap.lengths[1], 'Next Path must catch up');
-  const catchupSpeed =
-    (distance(afterGap) - distance(beforeGap)) /
-    (afterGap.time - beforeGap.time);
-  assert(
-    Math.abs(catchupSpeed / linearSpeed - 1) < 0.15,
-    'Lost frames must not reset speed or add a Path delay',
-  );
-  console.log(
-    'PASS shared browser timeline after a 300ms stall (clock check only)',
-  );
-
-  await media('reduce');
-  await call('Page.navigate', { url: siteUrl });
-  await waitFor('location.pathname === "/welcome"');
-  const reduced = await evaluate('window.logoFrames');
-  assert(reduced.length);
-  assert(
-    reduced.every((f) => f.mask === 'none' && f.opacity === 1),
-    'Reduced motion must show static logo and title',
-  );
-  assert(
-    !reduced.some((f) => f.state === 'running'),
-    'Reduced motion must skip drawing',
-  );
-  console.log('PASS initial reduced-motion static state');
-
-  await media('no-preference');
-  await call('Page.navigate', { url: siteUrl });
-  await waitFor(
-    'document.querySelector(".launch-logo")?.dataset.drawing === "running"',
-  );
-  await media('reduce');
-  await waitFor(
-    'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
-  );
-  assert.equal(
-    await evaluate(
-      'getComputedStyle(document.querySelector(".launch-logo-paint")).maskImage',
-    ),
-    'none',
-  );
-  await media('no-preference');
-  assert.equal(
-    await evaluate('document.querySelector(".launch-logo").dataset.drawing'),
-    'done',
-  );
-  console.log('PASS live reduced-motion change completes without replay');
-  await call('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-
-  for (const measurement of ['0', 'Number.NaN']) {
-    const failure = await call('Page.addScriptToEvaluateOnNewDocument', {
-      source: `SVGGeometryElement.prototype.getTotalLength = () => ${measurement};`,
-    });
-    try {
-      await call('Page.navigate', { url: siteUrl });
-      await waitFor(
-        'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
-      );
-      assert(
-        await evaluate(
-          'Boolean(document.querySelector(".launch-logo mask > rect"))',
-        ),
-      );
-      await waitFor('location.pathname === "/welcome"');
-      console.log(
-        `PASS path measurement ${measurement} falls back to original PNG without blocking navigation`,
-      );
-    } finally {
-      await call('Page.removeScriptToEvaluateOnNewDocument', {
-        identifier: failure.identifier,
-      });
-    }
-  }
-
-  for (const source of [
-    'SVGElement.prototype.animate = undefined;',
-    'HTMLImageElement.prototype.decode = () => Promise.reject(new Error("decode failed"));',
-  ]) {
-    const failure = await call('Page.addScriptToEvaluateOnNewDocument', {
-      source,
-    });
-    try {
-      await call('Page.navigate', { url: siteUrl });
-      await waitFor(
-        'document.querySelector(".launch-logo")?.dataset.drawing === "done"',
-      );
-      assert(
-        await evaluate(
-          'Boolean(document.querySelector(".launch-logo mask > rect"))',
-        ),
-      );
-      assert.equal(
-        await evaluate(
-          'document.querySelector(".launch-logo").getAnimations({subtree:true}).length',
-        ),
-        0,
-      );
-      await waitFor('location.pathname === "/welcome"');
-      console.log(
-        'PASS unavailable browser animation / image decode falls back without blocking navigation',
-      );
-    } finally {
-      await call('Page.removeScriptToEvaluateOnNewDocument', {
-        identifier: failure.identifier,
-      });
-    }
-  }
-
-  await call('Page.navigate', { url: siteUrl });
-  await waitFor(
-    'document.querySelector(".launch-logo")?.dataset.drawing === "running"',
-  );
-  await evaluate(
-    `document.querySelector('[aria-label="앱 이름 화면으로 이동"]').click()`,
-  );
-  await waitFor('location.pathname === "/app-name"');
-  await waitFor('location.pathname === "/welcome"');
-  console.log(
-    'PASS manual skip cancels in-flight drawing and preserves navigation',
-  );
-} finally {
-  socket.close();
+  const intervals = raw.times
+    .slice(1)
+    .map((t, i) => ({ dt: t - raw.times[i], time: raw.times[i] - raw.start }));
+  assert.deepEqual(errors, []);
+  const commits = raw.commits.filter(
+    (t) => t > raw.start + 100 && t < raw.done - 50,
+  ).length;
+  assert.equal(commits, 0, 'No React updates during drawing');
+  assert(raw.styleWrites <= 12, 'No per-frame DOM style writes');
+  const report = {
+    ...stats(intervals.map((x) => x.dt)),
+    first500: stats(intervals.filter((x) => x.time < 500).map((x) => x.dt)),
+    styleWrites: raw.styleWrites,
+    commitsDuringDrawing: commits,
+  };
+  await page.close();
+  return report;
 }
+// Freeze after GPU preparation. Actual shaders/composition receive deterministic rAF times.
+function controlledClock() {
+  const nativeRAF = requestAnimationFrame.bind(window),
+    nativeCancel = cancelAnimationFrame.bind(window);
+  const callbacks = new Map();
+  let id = 0;
+  window.logoClock = {
+    frozen: false,
+    base: 0,
+    step(time) {
+      const current = [...callbacks.values()];
+      callbacks.clear();
+      current.forEach((callback) => callback(this.base + time));
+    },
+    release() {
+      this.frozen = false;
+      callbacks.forEach((callback) => nativeRAF(callback));
+      callbacks.clear();
+    },
+  };
+  window.requestAnimationFrame = (callback) => {
+    if (!window.logoClock.frozen) return nativeRAF(callback);
+    callbacks.set(--id, callback);
+    return id;
+  };
+  window.cancelAnimationFrame = (value) =>
+    value < 0 ? callbacks.delete(value) : nativeCancel(value);
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (...args) {
+    const context = getContext.apply(this, args);
+    if (
+      args[0] === 'webgl' &&
+      context &&
+      this.className === 'launch-logo-canvas'
+    ) {
+      const draw = context.drawArrays.bind(context);
+      context.drawArrays = (...params) => {
+        draw(...params);
+        if (!window.logoClock.frozen) {
+          window.logoClock.frozen = true;
+          window.logoClock.base = performance.now();
+        }
+      };
+    }
+    return context;
+  };
+}
+async function compareFrames(page, frames, clip) {
+  return page.evaluate(
+    async ({ frames, clip, drawing }) => {
+      const decoded = [];
+      for (const frame of frames) {
+        const image = new Image();
+        image.src = `data:image/png;base64,${frame.png}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        decoded.push(context.getImageData(0, 0, canvas.width, canvas.height));
+      }
+      let blankMax = 0;
+      for (let i = 0; i < decoded[0].data.length; i++) {
+        if (i % 4 !== 3)
+          blankMax = Math.max(
+            blankMax,
+            Math.abs(decoded[0].data[i] - [250, 249, 249][i % 4]),
+          );
+      }
+      if (blankMax > 2)
+        throw new Error(`Initial frame exposed logo pixels: ${blankMax}`);
+      const differences = [];
+      for (let i = 1; i < decoded.length; i++) {
+        const before = decoded[i - 1],
+          after = decoded[i];
+        const from = frames[i - 1].time,
+          to = frames[i].time;
+        const heads = drawing.strokes.flatMap((stroke) =>
+          stroke.frames.filter(
+            (f) =>
+              stroke.startMs + f.timeMs >= from - 1000 / drawing.fps &&
+              stroke.startMs + f.timeMs <= to + 1000 / drawing.fps,
+          ),
+        );
+        let changed = 0,
+          rewound = 0,
+          far = 0,
+          max = 0;
+        for (let p = 0; p < after.width * after.height; p++) {
+          const offset = p * 4;
+          const delta = Math.max(
+            ...[0, 1, 2].map((c) =>
+              Math.abs(after.data[offset + c] - before.data[offset + c]),
+            ),
+          );
+          max = Math.max(max, delta);
+          if (
+            [0, 1, 2].some(
+              (c) => after.data[offset + c] > before.data[offset + c] + 3,
+            )
+          )
+            rewound++;
+          if (delta > 12) {
+            changed++;
+            const x = (((p % after.width) + 0.5) * clip.width) / after.width,
+              y =
+                ((Math.floor(p / after.width) + 0.5) * clip.height) /
+                after.height;
+            if (
+              !heads.some(
+                (h) =>
+                  Math.hypot(x - h.head[0], y - h.head[1]) <= h.radius + 2.5,
+              )
+            )
+              far++;
+          }
+        }
+        differences.push({ from, to, changed, rewound, far, max });
+      }
+      return differences;
+    },
+    { frames, clip, drawing },
+  );
+}
+async function visual(browser, options, name) {
+  const page = await browser.newPage({
+    ...options,
+    reducedMotion: 'no-preference',
+  });
+  await page.addInitScript(controlledClock);
+  await page.goto(siteUrl);
+  await page.waitForFunction(() => window.logoClock.frozen);
+  await page.evaluate(() => {
+    window.logoClock.step(0);
+    window.logoClock.step(0);
+  });
+  await page.waitForSelector('.launch-logo[data-drawing="running"]');
+  const logo = page.locator('.launch-logo'),
+    clip = await logo.boundingBox();
+  assert.equal(clip.width, 145);
+  assert.equal(clip.height, 145);
+  assert.equal(await logo.locator('svg').count(), 0);
+  const pngSource = await page
+    .locator('.launch-logo-original')
+    .getAttribute('src');
+  const frames = [];
+  const times = [
+    0,
+    8,
+    16.667,
+    50,
+    150,
+    300,
+    500,
+    750,
+    930,
+    drawing.strokes[0].durationMs,
+    980,
+    drawing.strokes[1].startMs,
+    1010,
+    1050,
+    1300,
+    1800,
+    2070,
+    2200,
+    2283.333,
+    2300,
+    2316.667,
+  ];
+  for (const time of times) {
+    await page.evaluate((time) => window.logoClock.step(time), time);
+    const png = await page.screenshot({ clip });
+    writeFileSync(join(artifacts, `${name}-${time.toFixed(3)}.png`), png);
+    frames.push({ time, png: png.toString('base64') });
+  }
+  assert.equal(await logo.getAttribute('data-drawing'), 'done');
+  const differences = await compareFrames(page, frames, clip);
+  for (const d of differences) {
+    assert.equal(d.rewound, 0, `Drawing erased pixels: ${JSON.stringify(d)}`);
+    assert.equal(
+      d.far,
+      0,
+      `Pixels appeared away from the actual pen route: ${JSON.stringify(d)}`,
+    );
+    if (
+      (d.from >= drawing.strokes[0].durationMs &&
+        d.to <= drawing.strokes[1].startMs) ||
+      d.from >= 2300
+    )
+      assert(
+        d.max <= 1,
+        `Pen lift/completion changed the image: ${JSON.stringify(d)}`,
+      );
+    else
+      assert(
+        d.changed > 0,
+        `Unexpected stationary drawing: ${JSON.stringify(d)}`,
+      );
+  }
+  await page.evaluate(() => window.logoClock.release());
+  await page.waitForURL('**/welcome');
+  await page.evaluate(
+    async ({ src, clip }) => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      Object.assign(image.style, {
+        position: 'fixed',
+        left: `${clip.x}px`,
+        top: `${clip.y}px`,
+        width: '145px',
+        height: '145px',
+        background: '#FAF9F9',
+        zIndex: '2147483647',
+      });
+      document.body.appendChild(image);
+    },
+    { src: pngSource, clip },
+  );
+  const reference = await page.screenshot({ clip });
+  writeFileSync(join(artifacts, `${name}-reference.png`), reference);
+  const fidelity = await page.evaluate(
+    async ([a, b]) => {
+      const pixels = [];
+      for (const src of [a, b]) {
+        const image = new Image();
+        image.src = `data:image/png;base64,${src}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        pixels.push(
+          context.getImageData(0, 0, canvas.width, canvas.height).data,
+        );
+      }
+      let max = 0,
+        sum = 0;
+      for (let i = 0; i < pixels[0].length; i++) {
+        const delta = Math.abs(pixels[0][i] - pixels[1][i]);
+        max = Math.max(max, delta);
+        sum += delta;
+      }
+      return { max, mean: sum / pixels[0].length };
+    },
+    [frames.at(-1).png, reference.toString('base64')],
+  );
+  assert(
+    fidelity.max <= 16 && fidelity.mean < 0.1,
+    `Final frame differs from native PNG: ${JSON.stringify(fidelity)}`,
+  );
+  await page.close();
+  return { differences, fidelity };
+}
+async function behavior(browser) {
+  const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(siteUrl);
+  await page.waitForURL('**/welcome');
+  await page.goBack();
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === '/');
+  await page.waitForSelector('.launch-logo[data-drawing="done"]');
+  assert.equal(
+    await page.locator('.launch-logo').getAttribute('data-rendering'),
+    'original',
+  );
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(siteUrl);
+  await page.waitForSelector('.launch-logo[data-drawing="running"]');
+  await page.mouse.click(50, 50);
+  await page.waitForURL('**/welcome');
+  await page.goBack();
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === '/');
+  await page.waitForSelector('.launch-logo[data-drawing="done"]');
+  assert.equal(
+    await page.locator('.launch-logo').getAttribute('data-rendering'),
+    'original',
+  );
+  await page.goto(siteUrl);
+  await page.waitForSelector('.launch-logo[data-drawing="running"]');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForURL('**/welcome');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(siteUrl);
+  await page.waitForSelector('.launch-logo[data-drawing="running"]');
+  const lost = await page.evaluate(() => {
+    const context = document
+      .querySelector('.launch-logo-canvas')
+      .getContext('webgl');
+    const extension = context.getExtension('WEBGL_lose_context');
+    extension?.loseContext();
+    return Boolean(extension);
+  });
+  if (lost)
+    await page.waitForSelector('.launch-logo[data-rendering="original"]');
+  await page.waitForURL('**/welcome');
+  await page.close();
+  for (const failure of ['webgl', 'decode']) {
+    const fallback = await browser.newPage();
+    await fallback.addInitScript((failure) => {
+      if (failure === 'decode')
+        HTMLImageElement.prototype.decode = () =>
+          Promise.reject(new Error('decode failed'));
+      else {
+        const getContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (...args) {
+          return args[0] === 'webgl' ? null : getContext.apply(this, args);
+        };
+      }
+    }, failure);
+    await fallback.goto(siteUrl);
+    await fallback.waitForSelector('.launch-logo[data-rendering="original"]');
+    await fallback.waitForURL('**/welcome');
+    await fallback.close();
+  }
+}
+const selected = configurations.filter(
+  ([name]) =>
+    !process.env.LOGO_BROWSER || name.startsWith(process.env.LOGO_BROWSER),
+);
+assert(selected.length > 0, 'Requested browser configuration is unavailable');
+console.log(`Artifacts: ${artifacts}`);
+for (const [name, type, options] of selected) {
+  const browser = await type.launch(
+    type === chromium
+      ? {
+          executablePath:
+            process.env.CHROME_EXECUTABLE || '/usr/bin/google-chrome',
+          args: ['--no-sandbox'],
+        }
+      : { executablePath: process.env.WEBKIT_EXECUTABLE },
+  );
+  try {
+    const report = {
+      name,
+      pacing: await pacing(browser, options, siteUrl),
+      visual: await visual(browser, options, name),
+    };
+    if (process.env.LOGO_BASELINE_URL)
+      report.baseline = await pacing(
+        browser,
+        options,
+        process.env.LOGO_BASELINE_URL,
+      );
+    if (name === 'chrome-desktop' || name === 'webkit-mobile-2x')
+      await behavior(browser);
+    reports.push(report);
+    writeFileSync(
+      join(artifacts, 'report.json'),
+      JSON.stringify(reports, null, 2),
+    );
+    console.log(
+      JSON.stringify({
+        name,
+        pacing: report.pacing,
+        fidelity: report.visual.fidelity,
+      }),
+    );
+  } finally {
+    await browser.close();
+  }
+}
+console.log(
+  `Geometry, rendered-head continuity, pen lift, completion, PNG fidelity, accessibility, skip, history, and fallback passed. Artifacts: ${artifacts}`,
+);

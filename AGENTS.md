@@ -39,11 +39,15 @@ Invoke only the requested stages; explicitly combined requests can proceed
 through those stages without asking again. Standalone `plan` does not write
 files or publish. `start` implements and verifies; `ship` commits/pushes/publishes.
 
-- `start` uses the latest remote `main` unless another base was requested,
-  resumes an existing issue branch/worktree, and preserves unrelated local work.
+- `start` uses the latest remote `develop` for new tasks unless another base
+  was requested. Resume existing issue branches/worktrees with their established
+  base and PR target, preserving unrelated local work.
   Honor an explicitly requested task checkout and return its actual branch/path
   and primary/linked status in the handoff. Do not mistake an old detached
   worktree for the active task after the user moves work to another checkout.
+- General task PRs target `develop` and use squash merge. Promotions
+  `develop → staging → main` use merge commits, never squash or rebase merge.
+  See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
 - After a successful push and PR creation/update, `ship` removes only the linked
@@ -52,7 +56,7 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
   Preserve a dirty/locked worktree or one with local settings; never force-remove it.
 - A task branch in the primary checkout can be shipped there when explicitly
   requested. Retain the primary worktree and report cleanup as not applicable;
-  never publish main/staging as the task branch.
-- Keep task branches for PR follow-up. Never remove the primary, `main`, or
-  `staging` worktree. Merge, deployment, staging updates, and branch deletion
+  never publish develop/main/staging as the task branch.
+- Keep task branches for PR follow-up. Never remove the primary, `develop`,
+  `main`, or `staging` worktree. Merge, deployment, maintained-branch updates, and branch deletion
   require a separate request.
