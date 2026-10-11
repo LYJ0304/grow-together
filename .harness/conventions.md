@@ -3,6 +3,26 @@
 AGENTS.md remains the source of development rules. Read only the skill needed
 for the current request. Requirements in the user's request take precedence.
 
+## Stage handoffs
+
+`plan → raise → start <issue-number> → ship`
+
+The plan is shown in the conversation, including subsequent user corrections.
+`raise` consumes that selected plan and returns an issue number/URL. The GitHub
+issue persists the requirements; `start` reads it without a local plan file and
+returns repository, issue, base, task branch, actual checkout path (primary or
+linked), change scope, executed checks/results, and remaining limitations.
+`ship` verifies the latest handoff against Git/GitHub and returns commits, PR URL,
+verification and cleanup results.
+
+Only perform requested stages. Explicitly combined requests authorize that
+sequence without another confirmation; standalone stages stop at their own
+boundary. Existing issues can go directly to start. If a new session lacks a
+selected plan, ask for its text or a planning request rather than inventing it.
+Do not generate/search a plan directory to bridge missing conversation context.
+Save a plan only on an explicit file-output request and preserve existing user
+plan files. GitHub body-file transport uses a temporary file outside the repo.
+
 ## Names and GitHub formatting
 
 - Resolve the GitHub repository from the current Git remote, then pass
@@ -19,7 +39,11 @@ for the current request. Requirements in the user's request take precedence.
   Worktree: a sibling of the primary worktree named `<repo>-issue-<number>`.
   Find the primary worktree with `git worktree list --porcelain`.
 - Default base: remote `main`. Fetch before creating a task branch. Never reset
-  or switch the user's current branch to prepare a task worktree.
+  or switch the user's current branch merely to prepare a separate task worktree.
+  If the user explicitly requests a task branch in the current checkout instead,
+  honor it after inspecting local work. Refresh the start handoff when work moves.
+  Publishing and deletion are separate decisions: ship can publish that task
+  branch from the primary checkout, but never delete the primary worktree.
 - Write GitHub bodies to temporary files and use `--body-file`. Stage named task
   files rather than `git add .`. Never stage `.env`, secrets, or editor settings.
 

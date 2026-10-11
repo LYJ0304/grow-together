@@ -6,10 +6,10 @@ import type { LaunchLogoProps } from './launch-logo';
 import './launch-logo.css';
 
 // Reveal guides traced from the PNG, not replacement artwork. The PNG is unchanged.
+// Only the heart and stem connect; keep the upper curve as a separate stroke.
 const guides = [
   'M224 164 H622 C752 164 829 249 829 368 C829 491 767 583 641 583 H550',
-  'M479 604 C379 520 291 442 291 368 C291 275 390 246 442 320 L477 371 C524 262 613 258 652 331 C710 432 597 506 479 604',
-  'M479 604 C401 681 253 784 253 940',
+  'M479 604 C379 520 291 442 291 368 C291 275 390 246 442 320 L477 371 C524 262 613 258 652 331 C710 432 597 506 479 604 C401 681 253 784 253 940',
 ];
 
 export default function LaunchLogo({
@@ -21,7 +21,6 @@ export default function LaunchLogo({
   const paths = useRef<(SVGPathElement | null)[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [running, setRunning] = useState(false);
-  const completionFrame = useRef<number>(0);
 
   useEffect(() => {
     if (played) return;
@@ -30,44 +29,77 @@ export default function LaunchLogo({
       return;
     }
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const finishIfReduced = () => {
-      if (media.matches) onComplete();
-    };
-    finishIfReduced();
-    media.addEventListener('change', finishIfReduced);
-    return () => media.removeEventListener('change', finishIfReduced);
-  }, [played, onComplete]);
-
-  useEffect(() => {
-    if (played || !loaded) return;
-    try {
-      const lengths = paths.current.map((path) => path?.getTotalLength() ?? 0);
-      if (
-        lengths.length !== guides.length ||
-        lengths.some((length) => length <= 0)
-      ) {
-        onComplete();
-        return;
-      }
-      const total = lengths.reduce((sum, length) => sum + length, 0);
-      let delay = 0;
-      paths.current.forEach((path, index) => {
-        if (!path) return;
-        const duration = (lengths[index] / total) * 2000;
-        path.style.strokeDasharray = `${lengths[index]} ${lengths[index]}`;
-        path.style.strokeDashoffset = String(lengths[index]);
-        path.style.animationDuration = `${duration}ms`;
-        path.style.animationDelay = `${delay}ms`;
-        delay += duration;
-      });
-      setRunning(true);
-      onStart();
-    } catch {
+    let frame = 0;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      cancelAnimationFrame(frame);
       onComplete();
+    };
+    const finishIfReduced = () => {
+      if (media.matches) finish();
+    };
+    media.addEventListener('change', finishIfReduced);
+    if (media.matches) {
+      finish();
+    } else if (loaded) {
+      try {
+        const lengths = paths.current.map(
+          (path) => path?.getTotalLength() ?? 0,
+        );
+        if (
+          lengths.length !== guides.length ||
+          lengths.some((length) => !Number.isFinite(length) || length <= 0)
+        ) {
+          finish();
+        } else {
+          const total = lengths.reduce((sum, length) => sum + length, 0);
+          const segments = paths.current.map((path, index) => {
+            const length = lengths[index];
+            if (path) {
+              path.style.strokeDasharray = `${length} ${length}`;
+              path.style.strokeDashoffset = String(length);
+              // A round cap can paint a dot even when the dash has zero length.
+              path.style.opacity = '0';
+            }
+            return { path, length };
+          });
+          let start: number | undefined;
+          const draw = (timestamp: number) => {
+            if (finished) return;
+            if (start === undefined) start = timestamp;
+            const time = Math.min((timestamp - start) / 2300, 1);
+            const tail = Math.max(0, (time - 0.95) / 0.05);
+            // Linear until the final 5%; speed then falls by just 10%, continuously.
+            const progress =
+              time === 1 ? 1 : (time - 0.0025 * tail * tail) / 0.9975;
+            let remaining = progress * total;
+            segments.forEach(({ path, length }) => {
+              const drawn = Math.min(Math.max(remaining, 0), length);
+              if (path) {
+                path.style.strokeDashoffset = String(length - drawn);
+                path.style.opacity = drawn > 0 ? '1' : '0';
+                if (drawn === length) path.style.strokeDasharray = 'none';
+              }
+              remaining -= length;
+            });
+            frame = requestAnimationFrame(time < 1 ? draw : finish);
+          };
+          setRunning(true);
+          onStart();
+          frame = requestAnimationFrame(draw);
+        }
+      } catch {
+        finish();
+      }
     }
+    return () => {
+      finished = true;
+      cancelAnimationFrame(frame);
+      media.removeEventListener('change', finishIfReduced);
+    };
   }, [played, loaded, onComplete, onStart]);
-
-  useEffect(() => () => cancelAnimationFrame(completionFrame.current), []);
 
   return (
     <div
@@ -91,7 +123,7 @@ export default function LaunchLogo({
               fill="none"
               stroke="white"
               strokeWidth="96"
-              strokeLinecap="butt"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               {guides.map((d, index) => (
@@ -102,13 +134,6 @@ export default function LaunchLogo({
                   }}
                   d={d}
                   className="launch-logo-guide"
-                  onAnimationEnd={() => {
-                    if (index !== guides.length - 1) return;
-                    completionFrame.current = requestAnimationFrame(() => {
-                      completionFrame.current =
-                        requestAnimationFrame(onComplete);
-                    });
-                  }}
                 />
               ))}
             </g>
