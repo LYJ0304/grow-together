@@ -1,38 +1,43 @@
-.launch-logo,
-.launch-logo-paint {
+.launch-logo {
   width: 100%;
   height: 100%;
-  display: block;
   position: relative;
 }
-
-.launch-logo-defs {
+.launch-logo-original {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.launch-logo-canvas {
   position: absolute;
 }
-
-.launch-logo-paint {
-  object-fit: contain;
-  mask-image: var(--launch-mask);
-  -webkit-mask-image: var(--launch-mask);
+.launch-logo-preload {
+  display: none;
 }
-
+.launch-logo[data-rendering='original'] .launch-logo-original {
+  display: block;
+}
+.launch-logo[data-rendering='original'] .launch-logo-canvas {
+  display: none;
+}
 @media (prefers-reduced-motion: no-preference) {
   [data-testid='launch-intro-pending'] [data-testid='launch-title'] {
     opacity: 0;
   }
-
   [data-testid='launch-intro-playing'] [data-testid='launch-title'] {
     animation: launch-title-appear 450ms ease-in-out 300ms both;
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .launch-logo-paint {
-    mask-image: none;
-    -webkit-mask-image: none;
+  .launch-logo-original {
+    display: block;
+  }
+  .launch-logo-canvas {
+    display: none;
   }
 }
-
 @keyframes launch-title-appear {
   from {
     opacity: 0;
@@ -40,4 +45,8 @@
   to {
     opacity: 1;
   }
+}
+
+.launch-logo[data-drawing='pending'] .launch-logo-canvas {
+  background: #faf9f9;
 }
