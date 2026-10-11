@@ -32,11 +32,17 @@ Apply later user corrections as well as the issue body. Surface scope difference
 in the final handoff so ship describes the actual change, not a superseded plan.
 
 1. Inspect `git status --short`, `git worktree list --porcelain`, local branches,
-   and existing remote task branches. Fetch the remote base (`main` by default).
+   and existing remote task branches. Fetch the remote base (`develop` by default
+   for new general tasks).
    Preserve the current checkout and all unrelated tracked/untracked work.
+   Honor an explicitly requested base/PR target. If the remote base is missing,
+   report it rather than silently falling back to main.
 2. Identify `<type>/issue-<number>-<slug>` branches by the complete issue number
    boundary (issue 13 must not match issue 1321). If multiple branches match,
    ask which one to resume. Use the existing issue branch/worktree when present.
+   Preserve a resumed task's established base and PR target, using its existing
+   PR and latest handoff. Resolve conflicting evidence before changing targets;
+   the new default alone is not permission to rebase or retarget existing work.
 3. By default, create a sibling worktree for a new task from the fetched base:
    `git worktree add -b <branch> <task-path> <remote>/<base>`.
    This initially tracks the base; immediately run
@@ -48,8 +54,8 @@ in the final handoff so ship describes the actual change, not a superseded plan.
    explain path collisions or locked/missing worktrees before repair.
    If the user explicitly requests work in the current checkout/task branch,
    honor that location after inspecting its Git state. Do not create an extra
-   worktree anyway or edit main/staging as the task branch. If a location change
-   was requested, preserve local work and distinguish the active task checkout
+   worktree anyway or edit develop/main/staging as the task branch. If a location
+   change was requested, preserve local work and distinguish the active task checkout
    from an old detached worktree; do not delete that stale worktree implicitly.
 4. Run all edits/checks with the actual task checkout as the working directory. Read
    its AGENTS.md and issue-specific code before editing. Set up only dependencies
@@ -61,12 +67,18 @@ in the final handoff so ship describes the actual change, not a superseded plan.
 
 Use the issue and the branch/worktree naming convention as the handoff to ship;
 no separate status database is needed. Return repository, issue number/URL, base,
-branch, actual checkout path and whether it is primary or a linked worktree,
-changes, executed checks/results, and remaining limitations. Preserve existing local task changes
-when resuming and include their context in the handoff.
+PR target, intended merge method, branch, actual checkout path and whether it is
+primary or a linked worktree, changes, executed checks/results, and remaining
+limitations. Preserve existing local task changes when resuming and include
+their context in the handoff.
 
 If the user moves the work to another checkout mid-task, refresh this handoff
 with the new location instead of letting ship infer it from the original path.
+
+For new general tasks, the PR target is `develop` and the intended merge method
+is squash. Follow conventions for explicit target exceptions and maintained-
+branch synchronization. Include both in the handoff so ship can set its base
+explicitly rather than relying on GitHub's default branch.
 
 Standalone `start` authorizes worktree creation and implementation, not automatic publishing.
 Leave the result reviewable for `ship`; do not commit/push/create a PR unless

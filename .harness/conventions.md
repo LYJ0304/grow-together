@@ -10,8 +10,8 @@ for the current request. Requirements in the user's request take precedence.
 The plan is shown in the conversation, including subsequent user corrections.
 `raise` consumes that selected plan and returns an issue number/URL. The GitHub
 issue persists the requirements; `start` reads it without a local plan file and
-returns repository, issue, base, task branch, actual checkout path (primary or
-linked), change scope, executed checks/results, and remaining limitations.
+returns repository, issue, base, PR target, intended merge method, task branch,
+actual checkout path (primary or linked), change scope, executed checks/results, and remaining limitations.
 `ship` verifies the latest handoff against Git/GitHub and returns commits, PR URL,
 verification and cleanup results.
 
@@ -38,14 +38,47 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
 - Branch: `<type>/issue-<number>-<slug>`; use a short lowercase hyphenated slug.
   Worktree: a sibling of the primary worktree named `<repo>-issue-<number>`.
   Find the primary worktree with `git worktree list --porcelain`.
-- Default base: remote `main`. Fetch before creating a task branch. Never reset
-  or switch the user's current branch merely to prepare a separate task worktree.
+- Default base and PR target for new general tasks: remote `develop`. Fetch
+  before creating a task branch. Never reset or switch the user's current branch merely to prepare a separate task worktree.
   If the user explicitly requests a task branch in the current checkout instead,
   honor it after inspecting local work. Refresh the start handoff when work moves.
   Publishing and deletion are separate decisions: ship can publish that task
   branch from the primary checkout, but never delete the primary worktree.
 - Write GitHub bodies to temporary files and use `--body-file`. Stage named task
   files rather than `git add .`. Never stage `.env`, secrets, or editor settings.
+
+## Branches and merge policy
+
+`develop` integrates development, `staging` validates releases, and `main` is
+the production baseline. Deployment requires its own configuration and request.
+
+| PR flow | Merge method |
+| --- | --- |
+| Feature, fix, chore, docs, and other task branches → `develop` | Squash merge |
+| `develop` → `staging` | Merge commit |
+| `staging` → `main` | Merge commit |
+
+- Start new general tasks from the latest remote `develop` and create their PRs
+  against `develop`. An explicitly requested base/PR target takes precedence.
+  Resume existing tasks with their established base and PR target; do not rebase
+  or retarget them solely because the default changed. If Git state, an existing
+  PR, and the handoff conflict, resolve the intended target before publishing.
+- `develop`, `staging`, and `main` are maintained branches, never task branches.
+  Do not edit or publish them through start/ship or remove their worktrees.
+  Keep the primary worktree and task branches under the existing cleanup rules.
+- Ship creates/updates a PR; it does not merge it. Merge, promotion, deployment,
+  and branch deletion require separate user requests. When a merge is requested,
+  inspect the PR's actual head/base and apply the table using
+  `gh pr merge <number> --repo <owner/repo>` with `--squash` for task integration
+  or `--merge` for promotions.
+  Verify the result; do not silently fall back to a different method if blocked.
+- Task PRs with an explicitly requested exceptional target (for example a hotfix
+  to `main`) still use squash unless the user specifies otherwise. Synchronizing
+  maintained branches, including hotfix back-merges to `staging` and `develop`,
+  uses merge commits to preserve ancestry. Never squash/rebase maintained-branch
+  synchronization, and do not perform back-merges without a separate request.
+- Record the PR target and intended merge method in the start handoff and PR
+  body. A policy in a PR body documents intent; it does not enforce GitHub rules.
 
 ## Verification
 
