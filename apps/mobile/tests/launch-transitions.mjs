@@ -297,6 +297,20 @@ try {
         .find(node => node.getBoundingClientRect().width > 0 && node.textContent.trim() === ${JSON.stringify(label)}).click();
     `);
     await waitFor(
+      `location.pathname === ${JSON.stringify(label === '로그인' ? '/login' : '/signup')}`,
+    );
+    if (label === '가입하기') {
+      await evaluate(`
+        [...document.querySelectorAll('[role="button"]')]
+          .find(node => node.textContent.trim() === '로그인').click();
+      `);
+      await waitFor('location.pathname === "/login"');
+    }
+    await evaluate(`
+      [...document.querySelectorAll('[role="button"]')]
+        .find(node => node.textContent.trim() === '인증 없이 미리보기 진입').click();
+    `);
+    await waitFor(
       'location.pathname === "/main" && document.body.innerText.includes("사랑둥이와 함께한지")',
     );
     await waitFor(`
@@ -322,7 +336,7 @@ try {
       'Navigation must keep a small gap from the screen edge',
     );
     console.log(
-      `PASS ${label} opens Main with loaded design assets and safe bottom navigation`,
+      `PASS ${label} opens authentication, then UI preview with loaded assets and safe navigation`,
     );
     await evaluate(`document.querySelector('[aria-label="캘린더"]').click()`);
     await waitFor(
@@ -349,27 +363,49 @@ try {
     assert(calendar.navHeight <= 56);
     assert(calendar.tabBottom <= calendar.height - 8);
     assert(calendar.text.includes('일기 생성하기'));
-    await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`);
+    await evaluate(
+      `document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`,
+    );
     assert.equal(
-      await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`),
+      await evaluate(
+        `document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`,
+      ),
       'true',
     );
     assert.equal(
-      await evaluate(`document.querySelector('[aria-label="${calendar.todayLabel}"]').getAttribute('aria-pressed')`),
+      await evaluate(
+        `document.querySelector('[aria-label="${calendar.todayLabel}"]').getAttribute('aria-pressed')`,
+      ),
       'false',
     );
     await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
-    const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-    await waitFor(`document.body.innerText.includes("${nextMonth.getMonth() + 1}월") && document.body.innerText.includes("${nextMonth.getFullYear()}")`);
+    const nextMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth() + 1,
+      1,
+    );
+    await waitFor(
+      `document.body.innerText.includes("${nextMonth.getMonth() + 1}월") && document.body.innerText.includes("${nextMonth.getFullYear()}")`,
+    );
     await evaluate(`document.querySelector('[aria-label="다음 달"]').click()`);
-    const monthAfterNext = new Date(new Date().getFullYear(), new Date().getMonth() + 2, 1);
-    await waitFor(`document.body.innerText.includes("${monthAfterNext.getMonth() + 1}월") && document.body.innerText.includes("${monthAfterNext.getFullYear()}")`);
+    const monthAfterNext = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth() + 2,
+      1,
+    );
+    await waitFor(
+      `document.body.innerText.includes("${monthAfterNext.getMonth() + 1}월") && document.body.innerText.includes("${monthAfterNext.getFullYear()}")`,
+    );
     await evaluate(
       `document.querySelector('[aria-label="이전 달"]').click(); document.querySelector('[aria-label="이전 달"]').click()`,
     );
-    await waitFor(`document.body.innerText.includes("${new Date().getMonth() + 1}월") && document.body.innerText.includes("${new Date().getFullYear()}")`);
+    await waitFor(
+      `document.body.innerText.includes("${new Date().getMonth() + 1}월") && document.body.innerText.includes("${new Date().getFullYear()}")`,
+    );
     assert.equal(
-      await evaluate(`document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`),
+      await evaluate(
+        `document.querySelector('[aria-label="${calendar.anotherDate}"]').getAttribute('aria-pressed')`,
+      ),
       'true',
     );
     await evaluate(`document.querySelector('[aria-label="홈"]').click()`);
@@ -383,7 +419,7 @@ try {
     console.log(
       'PASS calendar navigation, selected date, month/year rollover, and return to Main',
     );
-    await evaluate('history.back()');
+    await call('Page.navigate', { url: `${siteUrl}/welcome` });
     await waitFor('location.pathname === "/welcome"');
   }
 } finally {
