@@ -15,6 +15,7 @@
     "test:calendar": "node tests/calendar.mjs",
     "test:calendar:ui": "node tests/calendar-ui.mjs",
     "test:plan": "node tests/add-plan.mjs",
+    "test:children:ui": "node tests/children-ui.mjs",
     "format:check": "prettier --check app src tests eslint.config.js tsconfig.json package.json",
     "test:spouse": "node tests/spouse-ui.mjs"
   },
