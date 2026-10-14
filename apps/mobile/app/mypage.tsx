@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -64,9 +65,10 @@ export default function MyPageScreen() {
                 <Pressable
                   key={item.title}
                   accessibilityRole="button"
-                  onPress={() =>
-                    setNotice(`${item.title} 화면은 준비 중입니다.`)
-                  }
+                  onPress={() => {
+                    if (item.title === '아이 프로필') router.push('/children');
+                    else setNotice(`${item.title} 화면은 준비 중입니다.`);
+                  }}
                   style={({ pressed }) => [
                     styles.menuItem,
                     index < group.items.length - 1 && styles.menuDivider,
