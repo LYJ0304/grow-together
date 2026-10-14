@@ -15,7 +15,8 @@
     "test:calendar": "node tests/calendar.mjs",
     "test:calendar:ui": "node tests/calendar-ui.mjs",
     "test:plan": "node tests/add-plan.mjs",
-    "format:check": "prettier --check app src tests eslint.config.js tsconfig.json package.json"
+    "format:check": "prettier --check app src tests eslint.config.js tsconfig.json package.json",
+    "test:spouse": "node tests/spouse-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
