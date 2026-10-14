@@ -30,6 +30,9 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
 - Read any existing issue/PR templates first. Use `<type>(<scope>): <description>`
   titles, for example `feat(todo): AI 일정 생성 연결`. Use `feat`, `fix`, `docs`,
   or `chore` according to the final change. Body text may follow the user's language.
+- Commit messages must use `<type>(<scope>): <English description>`, for example
+  `feat(spouse): add search-based spouse finder UI`. Write any commit body in
+  English too. Issue/PR text may still follow the user's language.
 - Issues: purpose, current state, scope, implementation steps, completion criteria,
   unresolved decisions, and relevant links. Use existing labels: `enhancement` for
   features, `bug` for fixes, `documentation` for docs. Do not create labels silently.
@@ -109,8 +112,11 @@ secret values or silently copy them between worktrees.
 - A failed required check is not successful shipping. Fix task-related failures;
   preserve the worktree if an external prerequisite prevents completion.
 - Push/PR failure: preserve the branch and worktree. No cleanup until both succeed.
-- Local changes, ignored settings, or a worktree lock: preserve the worktree and
-  report the reason. Cleanup never uses `--force`, `reset --hard`, or `git clean`.
+- Local changes, secrets, personal settings, unknown ignored data, or a worktree
+  lock: preserve the worktree and report the reason. The ship skill's explicit
+  regenerable-directory allowlist is the only ignored-data cleanup exception;
+  those directories alone do not block worktree removal. Cleanup never uses
+  `--force`, `reset --hard`, or `git clean`.
 
 ## Skill discovery
 

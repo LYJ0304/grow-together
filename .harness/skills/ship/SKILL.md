@@ -47,7 +47,9 @@ Do not fall back to main when develop is missing.
    do not present this as successful shipping. Record executed evidence and
    remaining limitations in the PR body.
 3. Stage explicit task paths, run `git diff --cached --check`, inspect the staged
-   task diff, and commit with the repository's title convention. If unrelated
+   task diff, and write the commit subject and any body in English. Use
+   `<type>(<scope>): <English description>`, for example
+   `docs(harness): clarify ship cleanup rules`, following conventions. If unrelated
    files are already staged, use `git commit --only -m <message> -- <task-paths>`
    to preserve their staging while excluding them from this commit. Never unstage
    another task to make the index appear clean. If no new task changes exist,
@@ -68,19 +70,37 @@ Do not fall back to main when develop is missing.
    If the task used the primary checkout, report cleanup as not applicable and
    keep it. Do not remove a stale detached worktree as a substitute.
    - Fetch and verify `git rev-parse <branch>` equals
-     `git rev-parse <remote>/<branch>`; inspect the worktree's current HEAD too.
-   - Inspect `git status --porcelain --untracked-files=all --ignored` but summarize
-     ignored directories rather than printing every dependency file. An ignored
-     `.env` or dependency directory counts as local data: preserve it and explain
-     why cleanup was skipped. Do not erase it to make cleanup pass.
+     `git rev-parse <remote>/<branch>`, the worktree's HEAD, and the published PR's
+     head SHA. If they differ, preserve the worktree.
    - Verify the target is a linked task worktree, is not primary/develop/main/staging,
      and is not locked. Keep all branches.
+   - Inspect tracked, untracked, and ignored data before deleting anything. Use
+     `git status --porcelain --untracked-files=all --ignored`, summarizing dependency
+     directories rather than printing every file. Stop cleanup if there are
+     tracked changes, non-ignored untracked files, secrets such as `.env`, personal settings,
+     or ignored data outside the allowlist below. Check inside allowed directories
+     for local credentials/settings or other non-regenerable data too; preserve
+     the whole worktree if present or uncertain. Never print secret contents.
+   - The only allowed regenerable directories are `node_modules/`, `.expo/`,
+     `apps/mobile/node_modules/`, and `apps/mobile/.expo/`, relative to this task
+     worktree. They alone do not block cleanup. Do not infer permission to delete
+     other ignored paths. Each candidate must be an ignored, untracked directory
+     with no tracked files, and its resolved path must stay inside this worktree.
+     Reject symlinked candidates or ancestors, mounts at any depth, and shared directories;
+     never follow links into external data.
+   - After publication and all preservation checks pass, stop task-owned processes
+     using these directories and remove only the verified allowlisted directories
+     with explicit paths, without following symlinks. Recheck status before each
+     deletion; if any protection condition has appeared, stop and preserve the
+     worktree. Do not delete local data to make cleanup pass.
    - Recheck the HEAD and status immediately before removal. Run
      `git worktree remove <task-path>` with the retained primary worktree as
      the command working directory, then verify it is absent from the list.
      Never use `--force`, `git clean`, or `reset --hard`.
 
 Return PR URL, commit(s), verification results, and whether cleanup succeeded or
-was safely skipped. Push/PR failure preserves both branch and worktree. PR review
+was safely skipped. For normal cleanup, report worktree removal without a separate
+dependency/cache preservation notice. Explain a skip only for an actual protection
+condition or failure. Push/PR failure preserves both branch and worktree. PR review
 changes can resume via `start <number>` after cleanup. Do not merge, deploy, update
 maintained branches, close issues manually, or delete branches without a separate request.

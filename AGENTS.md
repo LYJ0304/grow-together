@@ -50,10 +50,14 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
   See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
+- Write commit messages in English using `<type>(<scope>): <description>`;
+  follow harness conventions for types and scope.
 - After a successful push and PR creation/update, `ship` removes only the linked
   task worktree, from a retained worktree, with `git worktree remove`.
   Verify the remote commit and inspect tracked, untracked, and ignored files first.
-  Preserve a dirty/locked worktree or one with local settings; never force-remove it.
+  Remove only the regenerable directories allowed by the ship skill before cleanup.
+  Preserve a dirty/locked worktree or one with secrets, local settings, or other
+  local data; never force-remove it. Regenerable directories alone do not block cleanup.
 - A task branch in the primary checkout can be shipped there when explicitly
   requested. Retain the primary worktree and report cleanup as not applicable;
   never publish develop/main/staging as the task branch.
