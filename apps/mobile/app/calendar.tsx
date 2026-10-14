@@ -11,11 +11,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { calendarDays } from '../src/lib/calendar';
 import {
   diaryDateKey,
   parseDiaryDate,
@@ -29,7 +27,6 @@ export default function CalendarScreen() {
     date?: string;
     saved?: string;
   }>();
-  const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [initialDate] = useState(() => {
     const fromRoute = parseDiaryDate(dateParam);
@@ -69,12 +66,7 @@ export default function CalendarScreen() {
       void refetch();
     }, [refetch]),
   );
-  const firstWeekday = month.getDay();
-  const days = Array.from(
-    { length: 42 },
-    (_, index) =>
-      new Date(month.getFullYear(), month.getMonth(), index - firstWeekday + 1),
-  );
+  const days = calendarDays(month);
 
   const changeMonth = (offset: number) => {
     setMonth(
@@ -99,10 +91,8 @@ export default function CalendarScreen() {
       <StatusBar style="dark" />
       <ScrollView
         ref={scroll}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: Math.max(14, 88 - insets.top) },
-        ]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         <View style={styles.monthHeader}>
           <Pressable
@@ -123,9 +113,8 @@ export default function CalendarScreen() {
           </Pressable>
           <View style={styles.monthTitle}>
             <Text accessibilityRole="header" style={styles.month}>
-              {month.getMonth() + 1}월
+              {month.getFullYear()}년 {month.getMonth() + 1}월
             </Text>
-            <Text style={styles.year}>{month.getFullYear()}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -159,9 +148,9 @@ export default function CalendarScreen() {
               </Text>
             ))}
           </View>
-          <View style={styles.weeks}>
-            {Array.from({ length: 6 }, (_, week) => (
-              <View key={week} style={styles.week}>
+          <View testID="calendar-grid" style={styles.weeks}>
+            {Array.from({ length: days.length / 7 }, (_, week) => (
+              <View testID="calendar-week" key={week} style={styles.week}>
                 {days.slice(week * 7, week * 7 + 7).map((date) => {
                   const isSelected = date.getTime() === selected.getTime();
                   const outsideMonth = date.getMonth() !== month.getMonth();
@@ -171,6 +160,7 @@ export default function CalendarScreen() {
                       key={date.getTime()}
                       accessibilityRole="button"
                       accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${hasDiary ? ', 일기 있음' : ''}`}
+                      accessibilityState={{ selected: isSelected }}
                       aria-pressed={isSelected}
                       onPress={() => {
                         setSelected(date);
@@ -189,6 +179,8 @@ export default function CalendarScreen() {
                       <Text
                         style={[
                           styles.dayText,
+                          (date.getDay() === 0 || date.getDay() === 6) &&
+                            styles.weekend,
                           outsideMonth && styles.outsideDay,
                           isSelected && styles.selectedDayText,
                         ]}
@@ -212,64 +204,62 @@ export default function CalendarScreen() {
           </View>
         </View>
         {savedDates.size > 0 ? (
-          <Text style={styles.diaryLegend}>● 일기가 저장된 날</Text>
-        ) : null}
-      </ScrollView>
-
-      <View style={styles.actions}>
-        {diaryNotice || notice ? (
-          <Text
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-            style={styles.notice}
-          >
-            {diaryNotice || notice}
+          <Text style={styles.diaryLegend}>
+            <Text style={styles.legendDot}>●</Text> 일기가 저장된 날
           </Text>
         ) : null}
-        {diaryNotice ? (
+        <View style={styles.actions}>
+          {diaryNotice || notice ? (
+            <Text
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              style={styles.notice}
+            >
+              {diaryNotice || notice}
+            </Text>
+          ) : null}
+          {diaryNotice ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => refetch()}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
-            onPress={() => refetch()}
-            style={styles.retryButton}
+            accessibilityLabel={
+              selectedHasDiary
+                ? '선택한 날짜의 일기 보기'
+                : '선택한 날짜의 일기 생성하기'
+            }
+            disabled={loadingDiaries || !!diaryNotice}
+            onPress={() =>
+              router.push({
+                pathname: '/diary',
+                params: {
+                  date: diaryDateKey(selected),
+                  mode: selectedHasDiary ? 'view' : 'create',
+                },
+              })
+            }
+            style={({ pressed }) => [
+              styles.generateButton,
+              (loadingDiaries || !!diaryNotice) && styles.pressed,
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
+            <Text style={styles.generateLabel}>
+              {loadingDiaries
+                ? '불러오는 중...'
+                : selectedHasDiary
+                  ? '일기 보기'
+                  : '일기 생성하기'}
+            </Text>
           </Pressable>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            selectedHasDiary
-              ? '선택한 날짜의 일기 보기'
-              : '선택한 날짜의 일기 생성하기'
-          }
-          disabled={loadingDiaries || !!diaryNotice}
-          onPress={() =>
-            router.push({
-              pathname: '/diary',
-              params: {
-                date: diaryDateKey(selected),
-                mode: selectedHasDiary ? 'view' : 'create',
-              },
-            })
-          }
-          style={({ pressed }) => [
-            styles.generateButton,
-            (loadingDiaries || !!diaryNotice) && styles.pressed,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.generateLabel}>
-            {loadingDiaries
-              ? '불러오는 중...'
-              : selectedHasDiary
-                ? '일기 보기'
-                : '일기 생성하기'}{' '}
-            {!selectedHasDiary && !loadingDiaries ? (
-              <Text style={styles.emoji}>✨</Text>
-            ) : null}
-          </Text>
-        </Pressable>
-      </View>
+        </View>
+      </ScrollView>
       <BottomNavigation
         active="캘린더"
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
@@ -281,86 +271,81 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
+  scroll: { flex: 1 },
   content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 26,
+    paddingTop: 12,
+    // Seven 44px touch targets still fit a 320px viewport.
+    paddingHorizontal: 6,
     paddingBottom: 24,
     alignItems: 'center',
   },
   monthHeader: {
     flexDirection: 'row',
     width: '100%',
-    maxWidth: 334,
-    alignItems: 'flex-start',
+    maxWidth: 360,
+    alignItems: 'center',
   },
   monthButton: {
     width: 44,
     height: 44,
-    marginTop: -4,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrow: { width: 6.36856, height: 14.3687 },
+  arrow: { width: 7, height: 14 },
   nextArrow: { transform: [{ scaleX: -1 }] },
   monthTitle: { flex: 1, alignItems: 'center' },
   month: {
     fontFamily: 'Jua',
-    fontSize: 31.434,
-    lineHeight: 38,
-    color: '#4F4F4F',
-  },
-  year: {
-    marginTop: -3,
-    fontFamily: 'Jua',
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 22,
+    lineHeight: 28,
     color: '#4F4F4F',
   },
   calendar: { width: '100%', maxWidth: 360 },
-  weekdays: { flexDirection: 'row', marginTop: 18, gap: 15 },
+  weekdays: { flexDirection: 'row', marginTop: 16 },
   weekday: {
     flex: 1,
     fontFamily: 'Jua',
     fontSize: 13,
     lineHeight: 16,
     textAlign: 'center',
-    color: '#4F4F4F',
+    color: '#73737D',
   },
   weekend: { color: '#D26A5C' },
-  weeks: { marginTop: 8, gap: 7 },
-  week: { flexDirection: 'row', gap: 15 },
+  weeks: { marginTop: 8, gap: 2 },
+  week: { flexDirection: 'row' },
   day: {
     flex: 1,
-    height: 39.292,
-    borderRadius: 7.858,
-    backgroundColor: '#FFFFFF',
+    minHeight: 48,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
     fontFamily: 'Jua',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 20,
     color: '#4F4F4F',
   },
-  outsideDay: { color: '#D5D7E0' },
+  outsideDay: { color: '#B8B8C1' },
   selectedDay: { backgroundColor: '#D26A5C' },
   selectedDayText: { color: '#FFFFFF' },
   diaryDot: {
     position: 'absolute',
-    bottom: 3,
+    bottom: 5,
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#D26A5C',
   },
   selectedDiaryDot: { backgroundColor: '#FFFFFF' },
+  legendDot: { color: '#D26A5C' },
   diaryLegend: {
-    marginTop: 12,
+    marginTop: 10,
     fontFamily: 'Jua',
     fontSize: 12,
-    color: '#D26A5C',
+    lineHeight: 16,
+    color: '#73737D',
   },
   retryButton: {
     minHeight: 44,
@@ -369,16 +354,17 @@ const styles = StyleSheet.create({
   },
   retryLabel: { fontFamily: 'Jua', fontSize: 14, color: '#D26A5C' },
   actions: {
+    width: '100%',
+    maxWidth: 360,
     alignItems: 'center',
-    paddingHorizontal: 26,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    marginTop: 20,
   },
   generateButton: {
     width: '100%',
-    maxWidth: 239,
-    minHeight: 51,
-    borderRadius: 14,
+    maxWidth: 320,
+    minHeight: 48,
+    borderRadius: 10,
     backgroundColor: '#D26A5C',
     alignItems: 'center',
     justifyContent: 'center',
@@ -387,20 +373,16 @@ const styles = StyleSheet.create({
   },
   generateLabel: {
     fontFamily: 'Jua',
-    fontSize: 24,
-    lineHeight: 31,
-    color: '#F3F5F6',
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#FFFFFF',
     textAlign: 'center',
-  },
-  emoji: {
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    color: '#FFC94F',
   },
   notice: {
     marginBottom: 12,
     fontFamily: 'Jua',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: '#D26A5C',
     textAlign: 'center',
   },

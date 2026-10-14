@@ -14,48 +14,31 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
   const items: {
     label: string;
     icon: number;
-    size: number;
     href: '/main' | '/calendar' | '/todo' | '/persona' | '/mypage';
   }[] = [
     {
       label: '캘린더',
-      icon:
-        active === '캘린더'
-          ? require('../../assets/images/calendar/calendar-selected.svg')
-          : require('../../assets/images/main/calendar.svg'),
-      size: active === '캘린더' ? 48 : 24,
+      icon: require('../../assets/images/main/calendar.svg'),
       href: '/calendar',
     },
     {
       label: '투두',
       icon: require('../../assets/images/main/todo.svg'),
-      size: 44,
       href: '/todo',
     },
     {
       label: '홈',
-      icon:
-        active === '홈'
-          ? require('../../assets/images/main/home.svg')
-          : require('../../assets/images/calendar/home.svg'),
-      size: 24,
+      icon: require('../../assets/images/calendar/home.svg'),
       href: '/main',
     },
     {
       label: '질문',
       icon: require('../../assets/images/main/search.svg'),
-      size: 24,
       href: '/persona',
     },
     {
       label: '마이',
-      icon:
-        active === '마이'
-          ? require('../../assets/images/calendar/user-selected.svg')
-          : active === '캘린더'
-            ? require('../../assets/images/calendar/user.svg')
-            : require('../../assets/images/main/user.svg'),
-      size: active === '마이' ? 48 : 24,
+      icon: require('../../assets/images/main/user.svg'),
       href: '/mypage',
     },
   ];
@@ -70,6 +53,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
             key={item.label}
             accessibilityRole="tab"
             accessibilityLabel={item.label}
+            accessibilityState={{ selected: item.label === active }}
             aria-selected={item.label === active}
             onPress={() => {
               if (item.label === active) onReselect();
@@ -81,20 +65,13 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
             <View
               style={[
                 styles.icon,
-                item.label === '홈' && active === '홈' && styles.selectedHome,
-                item.label === '투두' &&
-                  active === '투두' &&
-                  styles.selectedTodo,
+                item.label === active && styles.selectedIcon,
               ]}
             >
               <Image
                 source={item.icon}
-                style={{ width: item.size, height: item.size }}
-                tintColor={
-                  item.label === '투두' && active === '투두'
-                    ? '#FFFFFF'
-                    : undefined
-                }
+                style={styles.image}
+                tintColor={item.label === active ? '#D26A5C' : '#858895'}
                 contentFit="contain"
                 accessible={false}
               />
@@ -109,28 +86,29 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FAF9F9',
-    boxShadow: '2px -5px 17px rgba(84, 87, 92, 0.1)',
+    flexShrink: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EAE6E4',
   },
   row: {
     flexDirection: 'row',
-    height: 56,
-    paddingTop: 8,
+    minHeight: 48,
     paddingHorizontal: 12,
     alignItems: 'center',
   },
-  button: { flex: 1, alignItems: 'center' },
+  button: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   icon: {
-    width: 48,
-    height: 48,
+    width: 38,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  selectedHome: { backgroundColor: '#D26A5C', borderRadius: 18 },
-  selectedTodo: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#D26A5C',
-    borderRadius: 12,
-  },
+  image: { width: 24, height: 24 },
+  selectedIcon: { backgroundColor: '#FDEDE8', borderRadius: 10 },
   pressed: { opacity: 0.8 },
 });
