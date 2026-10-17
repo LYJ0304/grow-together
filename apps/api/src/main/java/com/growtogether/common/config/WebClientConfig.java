@@ -17,13 +17,13 @@ import io.netty.channel.ChannelOption;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-@Configuration 
+@Configuration
 public class WebClientConfig {
-    
+
     @Value("${fastapi.url:http://localhost:8000}")
     private String fastApiUrl;
 
-    @Bean 
+    @Bean
     public WebClient fastApiWebClient() {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
