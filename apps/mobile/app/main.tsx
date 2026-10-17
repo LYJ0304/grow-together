@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
@@ -106,7 +107,7 @@ export default function MainScreen() {
             <View style={styles.cardSpacer} />
             <Pressable
               accessibilityRole="button"
-              onPress={() => setNotice('일정 상세 화면은 준비 중입니다.')}
+              onPress={() => router.replace('/todo')}
               style={({ pressed }) => [
                 styles.cardButton,
                 pressed && styles.pressed,
@@ -139,7 +140,7 @@ export default function MainScreen() {
             <View style={styles.cardSpacer} />
             <Pressable
               accessibilityRole="button"
-              onPress={() => setNotice('AI 일기 만들기는 준비 중입니다.')}
+              onPress={() => router.replace('/calendar')}
               style={({ pressed }) => [
                 styles.cardButton,
                 pressed && styles.pressed,
