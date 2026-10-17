@@ -99,3 +99,12 @@ export async function saveDiary(diary: SavedDiary): Promise<void> {
     );
   }
 }
+
+export async function deleteDiary(date: string): Promise<void> {
+  if (!parseDiaryDate(date)) throw new Error('날짜를 확인해주세요.');
+  try {
+    await AsyncStorage.removeItem(prefix + date);
+  } catch {
+    throw new Error('일기를 삭제하지 못했어요. 다시 시도해주세요.');
+  }
+}

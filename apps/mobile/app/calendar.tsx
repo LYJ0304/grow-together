@@ -23,9 +23,14 @@ import {
 export default function CalendarScreen() {
   const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
   useEffect(() => setHydrated(true), []);
-  const { date: dateParam, saved } = useLocalSearchParams<{
+  const {
+    date: dateParam,
+    saved,
+    deleted,
+  } = useLocalSearchParams<{
     date?: string;
     saved?: string;
+    deleted?: string;
   }>();
   const scroll = useRef<ScrollView>(null);
   const [initialDate] = useState(() => {
@@ -58,8 +63,14 @@ export default function CalendarScreen() {
     if (!fromRoute) return;
     setSelected(fromRoute);
     setMonth(new Date(fromRoute.getFullYear(), fromRoute.getMonth(), 1));
-    setNotice(saved === 'true' ? '일기를 저장했어요.' : '');
-  }, [dateParam, saved]);
+    setNotice(
+      deleted === 'true'
+        ? '일기를 삭제했어요.'
+        : saved === 'true'
+          ? '일기를 저장했어요.'
+          : '',
+    );
+  }, [dateParam, saved, deleted]);
 
   useFocusEffect(
     useCallback(() => {
