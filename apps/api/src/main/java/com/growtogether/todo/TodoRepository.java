@@ -11,9 +11,11 @@ import java.util.Optional;
 
 @Repository 
 public interface TodoRepository extends JpaRepository<Todo, Long> {
-    List<Todo> findByScheduledDateOrderByScheduledTimeAsc(LocalDate date);
+    List<Todo> findByUserIdAndScheduledDateOrderByScheduledTimeAsc(Long userId, LocalDate date);
+
+    Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select t from Todo t where t.id = :id")
-    Optional<Todo> findForDiaryById(Long id);
+    @Query("select t from Todo t where t.id = :id and t.userId = :userId")
+    Optional<Todo> findForDiaryByIdAndUserId(Long id, Long userId);
 }

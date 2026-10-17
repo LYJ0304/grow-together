@@ -18,33 +18,33 @@ import java.time.LocalDate;
 public class TodoService {
     private final TodoRepository todoRepository;
 
-    public void create(TodoRequest request) {
-        todoRepository.save(request.toEntity());
+    public void create(Long userId, TodoRequest request) {
+        todoRepository.save(request.toEntity(userId));
     }
 
-    public List<TodoResponse> getTodos(LocalDate date) {
-        return todoRepository.findByScheduledDateOrderByScheduledTimeAsc(date)
+    public List<TodoResponse> getTodos(Long userId, LocalDate date) {
+        return todoRepository.findByUserIdAndScheduledDateOrderByScheduledTimeAsc(userId, date)
                 .stream().map(TodoResponse::from).toList();
     }
 
-    public TodoResponse getTodo(Long id) {
-        return TodoResponse.from(findTodo(id));
+    public TodoResponse getTodo(Long userId, Long id) {
+        return TodoResponse.from(findTodo(userId, id));
     }
 
     @Transactional
-    public TodoResponse updateTodo(Long id, TodoRequest request) {
-        Todo todo = findTodo(id);
+    public TodoResponse updateTodo(Long userId, Long id, TodoRequest request) {
+        Todo todo = findTodo(userId, id);
         todo.update(request.planName(), request.content(), request.scheduledDate(), request.scheduledTime());
         return TodoResponse.from(todo);
     }
 
     @Transactional
-    public void deleteTodo(Long id) {
-        todoRepository.delete(findTodo(id));
+    public void deleteTodo(Long userId, Long id) {
+        todoRepository.delete(findTodo(userId, id));
     }
 
-    private Todo findTodo(Long id) {
-        return todoRepository.findById(id)
+    private Todo findTodo(Long userId, Long id) {
+        return todoRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo not found"));
     }
 }

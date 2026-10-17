@@ -207,6 +207,49 @@ class DiaryApiTest {
     }
 
     @Test
+    void anotherUserCannotLinkUnattachedTodoOnCreateOrUpdate() throws Exception {
+        Todo todo = todos.save(new Todo(otherUserId, "Private", "Memo",
+                LocalDate.of(2026, 10, 17), LocalTime.of(9, 0)));
+        String request = body("Take todo", "[" + todo.getId() + "]", IMAGE);
+        perform(post(PATH).contentType(MediaType.APPLICATION_JSON).content(request), ownerId)
+                .andExpect(status().isNotFound());
+        assertThat(diaries.count()).isZero();
+        assertThat(imageCount()).isZero();
+
+        Todo ownTodo = saveTodo();
+        long diaryId = createDiary(body("Before", "[" + ownTodo.getId() + "]", IMAGE));
+        perform(put(PATH + "/{id}", diaryId).contentType(MediaType.APPLICATION_JSON)
+                .content(body("Take todo", "[" + ownTodo.getId() + "," + todo.getId() + "]", null)), ownerId)
+                .andExpect(status().isNotFound());
+        assertThat(linkedDiary(todo.getId())).isNull();
+        assertThat(linkedDiary(ownTodo.getId())).isEqualTo(diaryId);
+        perform(get(PATH + "/{id}", diaryId), ownerId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Before"))
+                .andExpect(jsonPath("$.todos.length()").value(1))
+                .andExpect(jsonPath("$.diaryFiles[0].imageUrl").value(IMAGE));
+    }
+
+    @Test
+    void detachingOrDeletingDiaryDoesNotChangeTodoOwnership() throws Exception {
+        Todo detached = saveTodo();
+        long diaryId = createDiary(body("Before", "[" + detached.getId() + "]", null));
+        perform(put(PATH + "/{id}", diaryId).contentType(MediaType.APPLICATION_JSON)
+                .content(body("After", "[]", null)), ownerId).andExpect(status().isOk());
+        Todo linked = saveTodo();
+        perform(put(PATH + "/{id}", diaryId).contentType(MediaType.APPLICATION_JSON)
+                .content(body("After", "[" + linked.getId() + "]", null)), ownerId).andExpect(status().isOk());
+        perform(delete(PATH + "/{id}", diaryId), ownerId).andExpect(status().isNoContent());
+
+        for (Todo todo : new Todo[] {detached, linked}) {
+            assertThat(todos.findById(todo.getId()).orElseThrow().getUserId()).isEqualTo(ownerId);
+            perform(post(PATH).contentType(MediaType.APPLICATION_JSON)
+                    .content(body("Take detached todo", "[" + todo.getId() + "]", null)), otherUserId)
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
     void missingDiaryReturns404ForReadUpdateAndDelete() throws Exception {
         long missingId = Long.MAX_VALUE;
         perform(get(PATH + "/{id}", missingId), ownerId)
@@ -327,7 +370,7 @@ class DiaryApiTest {
     }
 
     private Todo saveTodo() {
-        return todos.save(new Todo("Walk", "Memo", LocalDate.of(2026, 10, 17), LocalTime.of(9, 0)));
+        return todos.save(new Todo(ownerId, "Walk", "Memo", LocalDate.of(2026, 10, 17), LocalTime.of(9, 0)));
     }
 
     private Long linkedDiary(Long todoId) {
