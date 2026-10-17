@@ -25,7 +25,7 @@ cd apps/api
 Docker 이미지는 저장소 루트에서 빌드한다.
 
 ```bash
-docker build -t growtogether-api:staging apps/api
+docker build -f apps/api/Dockerfile -t growtogether-api:staging .
 ```
 
 Dockerfile은 `bootJar`를 빌드하며 테스트는 실행하지 않는다. 이미지 빌드 성공과 테스트 통과를 별도로 확인한다. 테스트 결과에서 PostgreSQL 통합 테스트가 생략되지 않았는지도 확인한다.
@@ -61,20 +61,15 @@ staging에는 폐기 가능한 테스트 데이터를 사용한다. 만료 후 �
 | Branch | `staging` |
 | Language / Runtime | `Docker` |
 | Region | staging DB와 동일 |
-| Root Directory | `apps/api` |
-| Dockerfile Path | `./Dockerfile` |
+| Root Directory | 비워두기 — 저장소 루트 사용 |
+| Dockerfile Path | `apps/api/Dockerfile` |
 | Docker Build Context Directory | `.` |
 | Docker Command | 비워두기 — Dockerfile의 ENTRYPOINT 사용 |
 | Plan | `Free` |
 | Health Check Path | `/actuator/health` |
 | Auto Deploy | 초기 검증 중에는 비활성화하고 수동 배포 |
 
-Root Directory를 비워두었다면 경로는 아래 조합을 사용한다. 두 방식을 섞으면 안 된다.
-
-| Root Directory | Dockerfile Path | Docker Build Context Directory |
-| --- | --- | --- |
-| 비어 있음 | `apps/api/Dockerfile` | `apps/api` |
-| `apps/api` | `./Dockerfile` | `.` |
+API 이미지에는 루트 `contracts/openapi.yaml`이 포함되므로 **빌드 컨텍스트는 저장소 루트 `.`**이어야 한다. 기존 Render 설정의 Root Directory가 `apps/api`였다면 비우고 Dockerfile Path와 Build Context도 위 표대로 변경한다. 이전의 `apps/api` 빌드 컨텍스트로는 명세 파일을 복사할 수 없다.
 
 Docker 실행 방식이므로 별도 Build/Start Command는 필요하지 않다. Render가 제공하는 `https://<서비스 이름>.onrender.com` 주소로 접근하며, HTTPS는 Render가 처리한다.
 
@@ -124,7 +119,11 @@ curl --fail --show-error https://<실제-API-호스트>/actuator/health
 
 Flyway가 API 시작 시 스키마를 생성·이전하므로 별도 테이블 생성 명령은 필요하지 않다. V4는 일기에 연결된 기존 Todo에 일기 소유자를 반영한다. 소유자를 알 수 없는 미연결 Todo는 삭제하지 않고 보존하며, API에서는 접근할 수 없게 한다.
 
-기능 검증은 API 클라이언트로 진행한다. 현재 모바일 가입·로그인 화면은 인증 API와 연결되어 있지 않다.
+Swagger UI는 `https://<실제-API-호스트>/swagger-ui.html`에서 접근한다. UI와 `/openapi.yaml`은 로그인 없이 공개되며, 실제 Todo·일기 API의 JWT 인증은 유지한다. Swagger UI는 `contracts/openapi.yaml`을 읽고 `/v3/api-docs` 자동 생성 명세는 제공하지 않는다.
+
+Swagger UI에서 회원가입·로그인 API의 **Try it out**으로 요청을 실행한다. 로그인 응답의 `accessToken` 값만 복사해 **Authorize → bearerAuth**에 입력한다(`Bearer ` 접두사는 입력하지 않는다). 이후 보호 API를 실행하면 UI가 Authorization 헤더를 붙인다. refresh token을 Authorize에 넣지 않는다. 갱신한 access token은 Authorize에 다시 입력한다. 기본 설정에서는 새로고침 후 토큰을 다시 입력해야 한다.
+
+기능 검증은 Swagger UI 또는 API 클라이언트로 진행한다. 현재 모바일 가입·로그인 화면은 인증 API와 연결되어 있지 않다.
 
 - 테스트 사용자 A와 B를 `/api/v1/auth/signup`으로 가입시킨다.
 - `/api/v1/auth/login`으로 로그인하고, 보호된 API에 `Authorization: Bearer <accessToken>`을 전달한다.
