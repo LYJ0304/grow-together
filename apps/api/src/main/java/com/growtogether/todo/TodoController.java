@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController 
 @RequestMapping("/api/v1/todos")
@@ -31,31 +33,33 @@ public class TodoController {
     private final TodoService todoService;
 
     @PostMapping
-    public ResponseEntity<Map<String, String>> createTodo(@Valid @RequestBody TodoRequest request) {
-        todoService.create(request);
+    public ResponseEntity<Map<String, String>> createTodo(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TodoRequest request) {
+        todoService.create(Long.valueOf(jwt.getSubject()), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Todo created Successful"));
     }
 
     @GetMapping 
     public ResponseEntity<List<TodoResponse>> getTodos(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(todoService.getTodos(date));
+        return ResponseEntity.ok(todoService.getTodos(Long.valueOf(jwt.getSubject()), date));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TodoResponse> getTodo(@PathVariable Long id) {
-        return ResponseEntity.ok(todoService.getTodo(id));
+    public ResponseEntity<TodoResponse> getTodo(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return ResponseEntity.ok(todoService.getTodo(Long.valueOf(jwt.getSubject()), id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<TodoResponse> updateTodo(
-            @PathVariable Long id, @Valid @RequestBody TodoRequest request) {
-        return ResponseEntity.ok(todoService.updateTodo(id, request));
+            @AuthenticationPrincipal Jwt jwt, @PathVariable Long id, @Valid @RequestBody TodoRequest request) {
+        return ResponseEntity.ok(todoService.updateTodo(Long.valueOf(jwt.getSubject()), id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTodo(@PathVariable Long id) {
-        todoService.deleteTodo(id);
+    public ResponseEntity<Void> deleteTodo(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        todoService.deleteTodo(Long.valueOf(jwt.getSubject()), id);
         return ResponseEntity.noContent().build();
     }
 }

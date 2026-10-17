@@ -100,7 +100,8 @@ paths:
   /api/v1/todos:
     post:
       operationId: createTodo
-      summary: Create a todo
+      summary: Create a todo for the authenticated user
+      description: The owner is taken from the access JWT, never from the request body.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -131,7 +132,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
     get:
       operationId: getTodos
-      summary: List todos for a date in scheduled time order
+      summary: List the authenticated user's todos for a date in scheduled time order
       security: [{ bearerAuth: [] }]
       parameters:
         - name: date
@@ -156,7 +157,7 @@ paths:
         schema: { type: integer, format: int64 }
     get:
       operationId: getTodo
-      summary: Get a todo
+      summary: Get a todo owned by the authenticated user
       security: [{ bearerAuth: [] }]
       responses:
         '200': { $ref: '#/components/responses/Todo' }
@@ -165,7 +166,7 @@ paths:
         '404': { $ref: '#/components/responses/TodoNotFound' }
     put:
       operationId: updateTodo
-      summary: Replace all editable todo fields
+      summary: Replace all editable fields of a todo owned by the authenticated user
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -179,7 +180,7 @@ paths:
         '404': { $ref: '#/components/responses/TodoNotFound' }
     delete:
       operationId: deleteTodo
-      summary: Delete a todo
+      summary: Delete a todo owned by the authenticated user
       security: [{ bearerAuth: [] }]
       responses:
         '204': { description: Todo deleted }
@@ -191,9 +192,10 @@ paths:
       operationId: createDiary
       summary: Create a diary for the authenticated user
       description: >-
-        Links existing todos by ID and stores image URLs. Duplicate todo IDs are
-        linked once. Todos linked to another user's diary are treated as missing;
-        todos linked to another diary of this user must be detached first.
+        Links existing todos owned by the authenticated user and stores image URLs.
+        Duplicate todo IDs are linked once. Todos owned by another user or without
+        a known owner are treated as missing, even if not linked to a diary.
+        Todos linked to another diary of this user must be detached first.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -228,7 +230,8 @@ paths:
         Only the owner can update a diary. Both lists are required; an empty list
         clears the corresponding links or images. Removed todos are preserved.
         The entire request is atomic. A todo linked to another diary of this
-        user returns 409; a todo linked to another user's diary returns 404.
+        user returns 409; a todo owned by another user or without a known owner
+        returns 404, even if not linked to a diary.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -365,7 +368,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/DiaryResponse' }
     DiaryOrTodoNotFound:
-      description: Diary or todo does not exist or is linked to another user's diary
+      description: Diary or todo does not exist, belongs to another user, or has no known owner
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -380,7 +383,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/TodoResponse' }
     TodoNotFound:
-      description: Todo does not exist
+      description: Todo does not exist, belongs to another user, or has no known owner
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

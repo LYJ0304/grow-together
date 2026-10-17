@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Objects;
 
 import com.growtogether.diary.domain.Diary;
 
@@ -30,6 +31,10 @@ public class Todo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // Nullable only for preserved legacy todos whose owner cannot be determined.
+    @Column(name = "user_id", updatable = false)
+    private Long userId;
 
     @NotBlank
     @Size(max = 80)
@@ -51,7 +56,8 @@ public class Todo {
     @JoinColumn(name = "diary_id")
     private Diary diary;
 
-    public Todo(String planName, String content, LocalDate scheduledDate, LocalTime scheduledTime) {
+    public Todo(Long userId, String planName, String content, LocalDate scheduledDate, LocalTime scheduledTime) {
+        this.userId = Objects.requireNonNull(userId, "Todo owner is required");
         this.planName = planName;
         this.content = content;
         this.scheduledDate = scheduledDate;
