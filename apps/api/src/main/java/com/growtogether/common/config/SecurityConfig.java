@@ -32,6 +32,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.POST, AUTH_ENDPOINTS.toArray(String[]::new)).permitAll()
                         .requestMatchers("/api/health", "/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**",
+                                "/v3/api-docs/swagger-config", "/openapi.yaml").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resource -> resource.jwt(Customizer.withDefaults())
                         // Refresh/logout are authenticated by their body token, even if the access JWT has expired.

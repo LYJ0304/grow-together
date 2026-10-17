@@ -1,0 +1,17 @@
+# Only send API build inputs and the canonical contract to the Docker daemon.
+*
+!apps
+apps/*
+!apps/api
+apps/api/*
+!apps/api/Dockerfile
+!apps/api/gradle
+!apps/api/gradlew
+!apps/api/build.gradle
+!apps/api/settings.gradle
+!apps/api/src
+!contracts
+contracts/*
+!contracts/openapi.yaml
+**/.env
+**/.env.*

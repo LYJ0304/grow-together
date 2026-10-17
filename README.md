@@ -71,16 +71,6 @@ docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run 
 
 API tests use PostgreSQL Testcontainers and require Docker. The API contract is in [contracts/openapi.yaml](contracts/openapi.yaml); health is available at `/api/health`.
 
+Swagger UI is available at `/swagger-ui.html` and serves the existing [OpenAPI contract](contracts/openapi.yaml) via `/openapi.yaml`. Use **Authorize** with a login access token to call protected APIs.
+
 For staging deployment on Render, see the [API staging deployment guide](apps/api/docs/staging/Development.md).
-
-## Todo ownership migration
-
-Todo APIs use the authenticated JWT subject as the owner. Lists include only that user's todos;
-reading, updating, deleting, or linking another user's todo returns `404`.
-
-Flyway V4 preserves existing data. Todos linked to a diary inherit that diary's owner.
-Unlinked legacy todos retain a `NULL` owner because their owner cannot be determined safely;
-they remain in the database but cannot be listed, read, changed, deleted, or linked through the API.
-New todos always require an owner. The nullable database column exists only to preserve legacy rows.
-If legacy rows need to be restored to a user, verify ownership before an explicit database repair;
-the migration never assigns all unlinked rows to an arbitrary account or deletes them.
