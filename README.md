@@ -71,6 +71,8 @@ docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run 
 
 API tests use PostgreSQL Testcontainers and require Docker. The API contract is in [contracts/openapi.yaml](contracts/openapi.yaml); health is available at `/api/health`.
 
+For staging deployment on Render, see the [API staging deployment guide](apps/api/docs/staging/Development.md).
+
 ## Todo ownership migration
 
 Todo APIs use the authenticated JWT subject as the owner. Lists include only that user's todos;
