@@ -156,6 +156,32 @@ export default function DiaryScreen() {
       params: { date: dateKey, saved: saved ? 'true' : '' },
     });
 
+  const goBack = () => {
+    if (savingRef.current) return;
+    Keyboard.dismiss();
+    if (viewing) returnToCalendar();
+    else if (step === 5) setStep(4);
+    else if (step === 4 || step === 3) setStep(2);
+    else if (step === 2) setStep(1);
+    else if (router.canGoBack()) router.back();
+    else returnToCalendar();
+  };
+
+  const backButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="뒤로가기"
+      disabled={saving}
+      onPress={goBack}
+      style={({ pressed }) => [
+        styles.backButton,
+        (pressed || saving) && styles.pressed,
+      ]}
+    >
+      <Text style={styles.backIcon}>‹</Text>
+    </Pressable>
+  );
+
   const persistDiary = async () => {
     if (savingRef.current) return;
     savingRef.current = true;
@@ -272,6 +298,7 @@ export default function DiaryScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
+        <View style={styles.recordHeader}>{backButton}</View>
         <View style={styles.readStatus}>
           <Text accessibilityLiveRegion="polite" style={styles.readStatusText}>
             {!hydrated || savedQuery.isPending
@@ -312,9 +339,12 @@ export default function DiaryScreen() {
         style={styles.flex}
       >
         <View style={styles.recordHeader}>
-          <Text accessibilityRole="header" style={styles.recordHeading}>
-            AI 육아 일기 생성
-          </Text>
+          <View style={styles.headerRow}>
+            {backButton}
+            <Text accessibilityRole="header" style={styles.recordHeading}>
+              AI 육아 일기 생성
+            </Text>
+          </View>
           <Text style={styles.recordStep}>
             {viewing
               ? '저장된 일기'
@@ -725,7 +755,16 @@ const styles = StyleSheet.create({
     boxShadow: '0px 3px 5px rgba(0, 0, 0, 0.12)',
     zIndex: 1,
   },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
   recordHeading: {
+    flex: 1,
     fontFamily: 'Jua',
     fontSize: 24,
     lineHeight: 32,
