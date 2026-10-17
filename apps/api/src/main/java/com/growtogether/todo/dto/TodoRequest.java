@@ -19,7 +19,7 @@ public record TodoRequest(
     @NotNull 
     LocalTime scheduledTime
 ) {
-    public Todo toEntity() {
-        return new Todo(planName, content, scheduledDate, scheduledTime);
+    public Todo toEntity(Long userId) {
+        return new Todo(userId, planName, content, scheduledDate, scheduledTime);
     }
 }

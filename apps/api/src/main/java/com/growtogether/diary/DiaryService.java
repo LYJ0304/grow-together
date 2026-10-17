@@ -56,7 +56,7 @@ public class DiaryService {
 
     private List<Todo> findTodos(Long userId, Long diaryId, List<Long> ids) {
         return ids.stream().distinct().sorted().map(id -> {
-            Todo todo = todoRepository.findForDiaryById(id)
+            Todo todo = todoRepository.findForDiaryByIdAndUserId(id, userId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo not found"));
             Diary linked = todo.getDiary();
             if (linked != null) {
