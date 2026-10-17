@@ -19,6 +19,7 @@ const { outputText } = ts.transpileModule(source, {
 const values = new Map();
 let failWrite = false;
 let failRead = false;
+let failDelete = false;
 const storage = {
   getItem: async (key) => {
     if (failRead) throw new Error('Unavailable');
@@ -27,6 +28,10 @@ const storage = {
   setItem: async (key, value) => {
     if (failWrite) throw new Error('Quota exceeded');
     values.set(key, value);
+  },
+  removeItem: async (key) => {
+    if (failDelete) throw new Error('Unavailable');
+    values.delete(key);
   },
   getAllKeys: async () => {
     if (failRead) throw new Error('Unavailable');
@@ -45,8 +50,14 @@ vm.runInNewContext(outputText, {
     return storage;
   },
 });
-const { diaryDateKey, parseDiaryDate, saveDiary, readDiary, savedDiaryDates } =
-  module.exports;
+const {
+  diaryDateKey,
+  parseDiaryDate,
+  saveDiary,
+  readDiary,
+  savedDiaryDates,
+  deleteDiary,
+} = module.exports;
 
 assert.equal(diaryDateKey(new Date(2026, 9, 10, 23, 59)), '2026-10-10');
 assert.equal(parseDiaryDate('2026-02-29'), null);
@@ -76,6 +87,20 @@ assert.deepEqual(
   diary,
   'Existing diary must remain unchanged',
 );
+
+await assert.rejects(deleteDiary('2026-02-31'), /날짜를 확인/);
+assert.deepEqual(await readDiary(diary.date), diary);
+failDelete = true;
+await assert.rejects(deleteDiary(diary.date), /삭제하지 못했어요/);
+assert.deepEqual(await readDiary(diary.date), diary);
+failDelete = false;
+await deleteDiary(diary.date);
+assert.equal(await readDiary(diary.date), null);
+assert.deepEqual(await savedDiaryDates(), ['2026-10-11']);
+assert.equal((await readDiary('2026-10-11')).content, diary.content);
+await deleteDiary(diary.date);
+await saveDiary(diary);
+assert.deepEqual(await readDiary(diary.date), diary);
 
 failWrite = true;
 await assert.rejects(
@@ -128,5 +153,5 @@ await assert.rejects(
   /저장소를 확인하지 못했어요/,
 );
 console.log(
-  'PASS: local dates, save/read, durable photos, duplicate protection, failed writes, invalid/corrupt data, storage failures',
+  'PASS: local dates, save/read, durable photos, duplicate protection, failed writes, invalid/corrupt data, storage failures, date-scoped deletion, failed deletes, and recreation',
 );

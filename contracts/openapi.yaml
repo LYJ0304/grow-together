@@ -186,6 +186,71 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+  /api/v1/diary:
+    post:
+      operationId: createDiary
+      summary: Create a diary for the authenticated user
+      description: >-
+        Links existing todos by ID and stores image URLs. Duplicate todo IDs are
+        linked once. Todos linked to another user's diary are treated as missing;
+        todos linked to another diary of this user must be detached first.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiaryRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Diary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+        '409': { $ref: '#/components/responses/TodoAlreadyLinked' }
+  /api/v1/diary/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      operationId: getDiary
+      summary: Get a diary owned by the authenticated user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Diary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+    put:
+      operationId: updateDiary
+      summary: Replace diary content, todo links, and image URLs
+      description: >-
+        Only the owner can update a diary. Both lists are required; an empty list
+        clears the corresponding links or images. Removed todos are preserved.
+        The entire request is atomic. A todo linked to another diary of this
+        user returns 409; a todo linked to another user's diary returns 404.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiaryRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Diary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+        '409': { $ref: '#/components/responses/TodoAlreadyLinked' }
+    delete:
+      operationId: deleteDiary
+      summary: Delete an owned diary and its image records, preserving todos
+      description: Todo links are cleared. No external image files are deleted.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Diary deleted }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
 components:
   securitySchemes:
     bearerAuth:
@@ -197,6 +262,39 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    DiaryRequest:
+      type: object
+      required: [todoIds, diaryFiles]
+      properties:
+        content: { type: [string, 'null'], maxLength: 1000 }
+        todoIds:
+          type: array
+          items: { type: integer, format: int64, minimum: 1 }
+        diaryFiles:
+          type: array
+          items: { $ref: '#/components/schemas/DiaryFileRequest' }
+    DiaryFileRequest:
+      type: object
+      required: [imageUrl]
+      properties:
+        imageUrl: { type: string, minLength: 1, maxLength: 2048, pattern: '\S' }
+    DiaryResponse:
+      type: object
+      required: [id, todos, diaryFiles]
+      properties:
+        id: { type: integer, format: int64 }
+        content: { type: [string, 'null'], maxLength: 1000 }
+        todos:
+          type: array
+          items: { $ref: '#/components/schemas/TodoResponse' }
+        diaryFiles:
+          type: array
+          items:
+            type: object
+            required: [id, imageUrl]
+            properties:
+              id: { type: integer, format: int64 }
+              imageUrl: { type: string, maxLength: 2048 }
     TodoRequest:
       type: object
       required: [planName, scheduledDate, scheduledTime]
@@ -258,9 +356,24 @@ components:
       properties:
         code:
           type: string
-          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, INTERNAL_ERROR]
+          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
         message: { type: string }
   responses:
+    Diary:
+      description: Diary details
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/DiaryResponse' }
+    DiaryOrTodoNotFound:
+      description: Diary or todo does not exist or is linked to another user's diary
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TodoAlreadyLinked:
+      description: Todo is already linked to another diary of the authenticated user
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     Todo:
       description: Todo details
       content:

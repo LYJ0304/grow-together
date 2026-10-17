@@ -12,6 +12,7 @@ public record TodoRequest(
     @NotBlank 
     @Size(max = 80)
     String planName,
+    @Size(max = 255)
     String content,
     @NotNull 
     LocalDate scheduledDate,
