@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePreventRemove } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  deleteDiary,
   diaryDateKey,
   parseDiaryDate,
   readDiary,
@@ -116,6 +118,7 @@ export default function DiaryScreen() {
     date?: string;
     mode?: string;
   }>();
+  const queryClient = useQueryClient();
   const viewing = mode === 'view';
   const [date] = useState(() => parseDiaryDate(dateParam) ?? new Date());
   const dateKey = diaryDateKey(date);
@@ -140,6 +143,65 @@ export default function DiaryScreen() {
   const [regenerationsRemaining, setRegenerationsRemaining] = useState(3);
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState('');
+  const deletingRef = useRef(false);
+  usePreventRemove(deleting, () => {});
+
+  useEffect(() => {
+    if (!deleted || deleting) return;
+    router.dismissTo({
+      pathname: '/calendar',
+      params: { date: dateKey, deleted: 'true', saved: '' },
+    });
+  }, [deleted, deleting, dateKey]);
+
+  useEffect(() => {
+    if (!deleting || Platform.OS !== 'web') return;
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    // Block traversal before Expo Router receives a popstate and changes its history.
+    const webNavigation = (window as Window & { navigation?: EventTarget })
+      .navigation;
+    const preventNavigation = (event: Event) => event.preventDefault();
+    webNavigation?.addEventListener('navigate', preventNavigation);
+    window.addEventListener('beforeunload', preventUnload);
+    return () => {
+      webNavigation?.removeEventListener('navigate', preventNavigation);
+      window.removeEventListener('beforeunload', preventUnload);
+    };
+  }, [deleting]);
+
+  const removeDiary = async () => {
+    if (deletingRef.current) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    setDeleteNotice('');
+    try {
+      await deleteDiary(dateKey);
+      await queryClient.cancelQueries({ queryKey: ['savedDiary', dateKey] });
+      await queryClient.cancelQueries({ queryKey: ['savedDiaryDates'] });
+      queryClient.setQueryData(['savedDiary', dateKey], null);
+      queryClient.setQueryData<string[]>(['savedDiaryDates'], (dates) =>
+        dates?.filter((date) => date !== dateKey),
+      );
+      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
+      setDeleted(true);
+    } catch (error) {
+      setDeleteNotice(
+        error instanceof Error
+          ? error.message
+          : '일기를 삭제하지 못했어요. 다시 시도해주세요.',
+      );
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  };
   const savingRef = useRef(false);
   const displayedDraft = viewing ? (savedQuery.data?.content ?? '') : draft;
   const displayedPhotos = viewing
@@ -153,11 +215,11 @@ export default function DiaryScreen() {
   const returnToCalendar = (saved = false) =>
     router.dismissTo({
       pathname: '/calendar',
-      params: { date: dateKey, saved: saved ? 'true' : '' },
+      params: { date: dateKey, saved: saved ? 'true' : '', deleted: '' },
     });
 
   const goBack = () => {
-    if (savingRef.current) return;
+    if (savingRef.current || deletingRef.current) return;
     Keyboard.dismiss();
     if (viewing) returnToCalendar();
     else if (step === 5) setStep(4);
@@ -171,11 +233,11 @@ export default function DiaryScreen() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="뒤로가기"
-      disabled={saving}
+      disabled={saving || deleting}
       onPress={goBack}
       style={({ pressed }) => [
         styles.backButton,
-        (pressed || saving) && styles.pressed,
+        (pressed || saving || deleting) && styles.pressed,
       ]}
     >
       <Text style={styles.backIcon}>‹</Text>
@@ -342,7 +404,7 @@ export default function DiaryScreen() {
           <View style={styles.headerRow}>
             {backButton}
             <Text accessibilityRole="header" style={styles.recordHeading}>
-              AI 육아 일기 생성
+              {viewing ? '육아 일기' : 'AI 육아 일기 생성'}
             </Text>
           </View>
           <Text style={styles.recordStep}>
@@ -634,6 +696,22 @@ export default function DiaryScreen() {
                 </Text>
               ) : null}
               <View style={styles.resultActions}>
+                {viewing ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={deleting}
+                    onPress={() => {
+                      setDeleteNotice('');
+                      setConfirmDelete(true);
+                    }}
+                    style={({ pressed }) => [
+                      styles.regenerateButton,
+                      (pressed || deleting) && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.deleteLabel}>일기 삭제</Text>
+                  </Pressable>
+                ) : null}
                 {!viewing ? (
                   <Pressable
                     accessibilityRole="button"
@@ -656,7 +734,7 @@ export default function DiaryScreen() {
                 ) : null}
                 <Pressable
                   accessibilityRole="button"
-                  disabled={saving}
+                  disabled={saving || deleting}
                   onPress={() =>
                     viewing
                       ? returnToCalendar()
@@ -666,10 +744,16 @@ export default function DiaryScreen() {
                   }
                   style={({ pressed }) => [
                     styles.resultSave,
+                    viewing && styles.viewReturn,
                     (pressed || saving) && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.resultSaveLabel}>
+                  <Text
+                    style={[
+                      styles.resultSaveLabel,
+                      viewing && styles.viewReturnLabel,
+                    ]}
+                  >
                     {viewing
                       ? '캘린더로 돌아가기'
                       : step === 4
@@ -684,6 +768,60 @@ export default function DiaryScreen() {
           </>
         )}
       </KeyboardAvoidingView>
+      <Modal
+        visible={confirmDelete}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!deletingRef.current) setConfirmDelete(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            accessibilityViewIsModal
+            style={styles.loadingCard}
+            contentContainerStyle={styles.loadingContent}
+          >
+            <Text accessibilityRole="header" style={styles.loadingTitle}>
+              일기를 삭제할까요?
+            </Text>
+            <Text style={styles.recordStep}>
+              {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
+            </Text>
+            <Text style={styles.recordHint}>
+              삭제한 일기는 복구할 수 없어요.
+            </Text>
+            {deleteNotice ? (
+              <Text accessibilityRole="alert" style={styles.saveNotice}>
+                {deleteNotice}
+              </Text>
+            ) : null}
+            <View style={styles.deleteActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={deleting}
+                onPress={() => setConfirmDelete(false)}
+                style={[styles.regenerateButton, deleting && styles.pressed]}
+              >
+                <Text style={styles.deleteLabel}>취소</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={deleting}
+                onPress={removeDiary}
+                style={[styles.resultSave, deleting && styles.pressed]}
+              >
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={styles.resultSaveLabel}
+                >
+                  {deleting ? '삭제 중...' : '삭제'}
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
       <Modal
         visible={step === 3}
         transparent
@@ -1155,5 +1293,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  deleteActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  deleteLabel: { fontFamily: 'Jua', fontSize: 16, color: '#C9534A' },
+  viewReturn: { flex: 2 },
+  viewReturnLabel: { fontSize: 16 },
   pressed: { opacity: 0.78 },
 });
