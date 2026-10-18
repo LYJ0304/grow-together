@@ -1,6 +1,6 @@
 # GrowTogether AI Worker
 
-Runs internal AI jobs independently from the API. It currently executes only an example job.
+Runs internal AI jobs independently from the API.
 
-From this directory, copy `.env.example` to `.env` and run `uv run python -m app.main`.
-The worker reads `SERVICE_NAME` and `LOG_LEVEL` from its local `.env`.
+See the [development guide](docs/development.md) for setup, example job execution,
+configuration, and checks.
