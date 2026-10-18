@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="90" fill="#FFF9F7" stroke="#F2E7E2" stroke-width="8"/>
+  <!-- Sample 70%: arc length is 0.7 * 2 * pi * 90. -->
+  <circle cx="100" cy="100" r="90" stroke="#D26A5C" stroke-width="8" stroke-linecap="round" stroke-dasharray="395.8406743523139 565.4866776461628" transform="rotate(-90 100 100)"/>
+</svg>
