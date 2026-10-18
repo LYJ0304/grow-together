@@ -1,3 +1,4 @@
+// Build with EXPO_PUBLIC_ENABLE_AUTH_BYPASS=true for this explicit UI preview test.
 import assert from 'node:assert/strict';
 
 // Run against an exported web build and Chrome with remote debugging enabled.

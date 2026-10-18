@@ -1,3 +1,4 @@
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium, webkit } from 'playwright-core';
@@ -19,6 +20,7 @@ try {
       timezoneId,
     });
     const page = await context.newPage();
+    await page.addInitScript(authenticatedSessionFixture);
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
     const name = page.getByRole('textbox', { name: '아이 이름', exact: true });

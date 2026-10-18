@@ -42,7 +42,8 @@
             "imageWidth": 145
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }
