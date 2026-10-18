@@ -12,7 +12,8 @@ description: Register the selected conversation plan as a GitHub issue on raise 
 - **plan:** task request → plan shown in the conversation.
 - **raise (this stage):** selected conversation plan plus user corrections → GitHub issue number/URL.
 - **start:** issue number → implementation, actual branch/checkout, verification results.
-- **ship:** task handoff → commit/push/PR and safe task-worktree cleanup result.
+- **ship:** task handoff → commit/push/PR, retain the work environment until merge;
+  a later invocation verifies merge and safely cleans up.
 
 Stop after this stage unless the user explicitly requested additional stages.
 For a combined request, read each requested skill and pass its result forward;
@@ -36,13 +37,17 @@ Do not create or modify a plan file or require one for registration.
    A linked closed issue needs an explicit continuation decision before reopening
    or creating a replacement.
 3. Prepare a title and body that retain the plan's scope, steps, completion
-   criteria, verification, and unresolved decisions. Apply conventions and
+   criteria, verification, and unresolved decisions. Write the title as
+   `<type>(<scope>): <한글 설명>` and the body in Korean; retain code/command/path
+   identifiers as written. Example: `docs(harness): 병합 후 정리 규칙 개선`.
+   Check this language/format on both creation and updates. Apply conventions and
    existing labels. A blocking unresolved decision remains visible in the issue.
 4. Write the exact body to a temporary transport file outside the repository
    (for example a `.txt` file). This is not a plan artifact. Create with `gh issue create
    --repo <owner/repo> --title <title> --label <existing-label> --body-file <file>`,
    or update the associated issue with `gh issue edit`.
-5. Verify the returned issue via `gh issue view`. Return its number and URL in
+5. Verify the returned issue via `gh issue view`, including its conventional
+   title with a Korean description and Korean body. Return its number and URL in
    the conversation; no plan file or backlink update is needed.
 
 A request to `raise` authorizes publishing the selected plan; do not ask for

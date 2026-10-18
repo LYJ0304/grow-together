@@ -13,7 +13,9 @@ issue persists the requirements; `start` reads it without a local plan file and
 returns repository, issue, base, PR target, intended merge method, task branch,
 actual checkout path (primary or linked), change scope, executed checks/results, and remaining limitations.
 `ship` verifies the latest handoff against Git/GitHub and returns commits, PR URL,
-verification and cleanup results.
+verification and `awaiting merge; environment retained` with the actual branch/path.
+A later ship invocation or separately requested merge verifies the completed merge
+before safe cleanup; it reports removal or the reason for retaining the environment.
 
 Only perform requested stages. Explicitly combined requests authorize that
 sequence without another confirmation; standalone stages stop at their own
@@ -27,12 +29,18 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
 
 - Resolve the GitHub repository from the current Git remote, then pass
   `--repo <owner/repo>` to `gh` commands. Do not hardcode this repository in skills.
-- Read any existing issue/PR templates first. Use `<type>(<scope>): <description>`
-  titles, for example `feat(todo): AI 일정 생성 연결`. Use `feat`, `fix`, `docs`,
-  or `chore` according to the final change. Body text may follow the user's language.
-- Commit messages must use `<type>(<scope>): <English description>`, for example
-  `feat(spouse): add search-based spouse finder UI`. Write any commit body in
-  English too. Issue/PR text may still follow the user's language.
+- Read any existing issue/PR templates first. Use `feat`, `fix`, `docs`, or
+  `chore` according to the final change and the actual module identifier as scope.
+- Issue titles must use `<type>(<scope>): <한글 설명>`, for example
+  `docs(harness): 병합 후 작업 환경 정리 규칙 개선`. Issue bodies must be in Korean.
+- PR titles must use `<type>(<scope>): <English description>`, for example
+  `feat(auth): persist mobile sessions`. PR bodies must be in Korean, including
+  the problem, behavior, verification, and remaining limitations.
+- Commit titles must use `<type>(<scope>): <English description>`; any commit body
+  must also be in English. Example: `feat(auth): persist mobile sessions`.
+- Korean prose requirements leave code, commands, paths, product names, URLs,
+  `type(scope)` identifiers, and `Closes #<number>` unchanged. Apply these language
+  rules to creation and updates, and verify the published title/body.
 - Issues: purpose, current state, scope, implementation steps, completion criteria,
   unresolved decisions, and relevant links. Use existing labels: `enhancement` for
   features, `bug` for fixes, `documentation` for docs. Do not create labels silently.
@@ -75,6 +83,8 @@ the production baseline. Deployment requires its own configuration and request.
   `gh pr merge <number> --repo <owner/repo>` with `--squash` for task integration
   or `--merge` for promotions.
   Verify the result; do not silently fall back to a different method if blocked.
+  After an explicitly requested merge completes, follow the ship skill's merge
+  verification and cleanup procedure. Queueing a merge is not completion.
 - Task PRs with an explicitly requested exceptional target (for example a hotfix
   to `main`) still use squash unless the user specifies otherwise. Synchronizing
   maintained branches, including hotfix back-merges to `staging` and `develop`,
@@ -93,7 +103,7 @@ Run checks relevant to the actual change, from the task worktree:
 | API | `./gradlew test` or focused tests; PostgreSQL/Flyway tests for migrations |
 | AI worker | `uv sync --locked`, `uv run ruff check .`, `uv run pytest` |
 | Contracts | Parse OpenAPI, resolve references, compare operations with Controllers |
-| Harness | Validate SKILL.md frontmatter/links; verify Codex skill discovery and Git lifecycle in an isolated repository |
+| Harness | Validate SKILL.md frontmatter/links; verify Codex skill discovery; run `python3 -m unittest discover -s .harness/tests -v` for isolated Git/GitHub-response checks |
 
 Always run `git diff --check` and inspect the intended staged diff before a commit.
 Report what ran, what passed, and what could not run. Do not claim an unexecuted
@@ -111,7 +121,12 @@ secret values or silently copy them between worktrees.
   rather than creating a duplicate. Do not replace another author's issue silently.
 - A failed required check is not successful shipping. Fix task-related failures;
   preserve the worktree if an external prerequisite prevents completion.
-- Push/PR failure: preserve the branch and worktree. No cleanup until both succeed.
+- Push/PR failure: preserve the branch and worktree. Successful publication still
+  retains the work environment while the PR is OPEN or awaiting merge.
+- Post-merge cleanup requires verified `MERGED` state and target-branch evidence;
+  CLOSED without merge, pending auto-merge/queue, lookup failures, or mismatched
+  evidence preserve the environment. Use the ship skill's cleanup-only path for
+  a merged PR; do not create another PR. No background polling is required.
 - Local changes, secrets, personal settings, unknown ignored data, or a worktree
   lock: preserve the worktree and report the reason. The ship skill's explicit
   regenerable-directory allowlist is the only ignored-data cleanup exception;
