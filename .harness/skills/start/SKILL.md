@@ -12,7 +12,8 @@ description: Implement a GitHub issue on start with an issue number, such as sta
 - **plan:** task request → plan shown in the conversation.
 - **raise:** selected conversation plan plus user corrections → GitHub issue number/URL.
 - **start (this stage):** issue number → implementation, actual branch/checkout, verification results.
-- **ship:** task handoff → commit/push/PR and safe task-worktree cleanup result.
+- **ship:** task handoff → commit/push/PR, retain the work environment until merge;
+  a later invocation verifies merge and safely cleans up.
 
 An existing issue can start here directly; no plan file or prior plan/raise run
 is required. Stop after this stage unless the user explicitly requested additional
@@ -79,6 +80,11 @@ For new general tasks, the PR target is `develop` and the intended merge method
 is squash. Follow conventions for explicit target exceptions and maintained-
 branch synchronization. Include both in the handoff so ship can set its base
 explicitly rather than relying on GitHub's default branch.
+
+Ship will retain this checkout and its review environment after publishing the PR;
+cleanup is a later, verified post-merge step. Reviews and conflict resolution resume
+in this retained checkout. If an associated PR is already merged, do not treat it
+as an open implementation task or create a replacement PR; use ship for cleanup.
 
 Standalone `start` authorizes worktree creation and implementation, not automatic publishing.
 Leave the result reviewable for `ship`; do not commit/push/create a PR unless

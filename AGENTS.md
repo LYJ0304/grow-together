@@ -23,7 +23,7 @@ use the repository skill linked below for this workflow.
 | `plan <task>` or `$plan <task>` | [plan](.harness/skills/plan/SKILL.md) | Plan shown in the conversation; no files or implementation by default |
 | `raise` or `$raise` | [raise](.harness/skills/raise/SKILL.md) | GitHub issue from the selected conversation plan and latest corrections |
 | `start 1321` or `$start 1321` | [start](.harness/skills/start/SKILL.md) | Implement issue #1321 in a separate worktree |
-| `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR, remove the clean task worktree |
+| `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR; preserve the environment until verified merge |
 
 These are agent requests, not shell commands. `/plan`, `/raise`, `/start 1321`,
 and `/ship` in user messages route to the same skills; they do not register
@@ -34,7 +34,8 @@ branch names, checks, and failure handling. `plan → raise → start <number> �
 is the usual sequence; an existing issue can go directly to `start`.
 Each SKILL.md describes the complete workflow and its own input/output boundary.
 The handoff is conversation plan → issue number/URL → actual task checkout and
-verification results → PR/cleanup results. No local plan file is required.
+verification results → PR publication with environment retained → verified
+merge/cleanup results on a later invocation. No local plan file is required.
 Invoke only the requested stages; explicitly combined requests can proceed
 through those stages without asking again. Standalone `plan` does not write
 files or publish. `start` implements and verifies; `ship` commits/pushes/publishes.
@@ -50,14 +51,25 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
   See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
+- Write issue titles as `<type>(<scope>): <한글 설명>` and issue bodies in Korean.
+  Write PR titles as `<type>(<scope>): <English description>` and PR bodies in Korean.
+  Keep code, commands, paths, URLs, and identifiers in their original form.
 - Write commit messages in English using `<type>(<scope>): <description>`;
   follow harness conventions for types and scope.
-- After a successful push and PR creation/update, `ship` removes only the linked
-  task worktree, from a retained worktree, with `git worktree remove`.
-  Verify the remote commit and inspect tracked, untracked, and ignored files first.
-  Remove only the regenerable directories allowed by the ship skill before cleanup.
-  Preserve a dirty/locked worktree or one with secrets, local settings, or other
-  local data; never force-remove it. Regenerable directories alone do not block cleanup.
+- After push and PR creation/update, preserve the linked task worktree and its
+  review/development environment for follow-up and conflict resolution. Report
+  `awaiting merge; environment retained` with the actual branch/path.
+- Clean up only after verifying the associated PR is `MERGED` and its merge commit
+  is present on the fetched target branch. A separate merge request, or a later
+  `ship` invocation after an external merge, can perform this check and cleanup.
+  `ship` alone never authorizes merging or auto-merge. A merged PR takes the
+  cleanup-only path; do not publish again or create a replacement PR.
+- Before post-merge cleanup, verify the final PR head against the local task HEAD,
+  then inspect tracked, untracked, and ignored files. Remove only the regenerable
+  directories allowed by the ship skill and the clean linked task worktree with
+  `git worktree remove`, from a retained worktree. Preserve unpublished/post-merge
+  work, dirty/locked worktrees, secrets, local settings, and other protected data;
+  never force-remove them. Only allowlisted regenerable directories may be removed.
 - A task branch in the primary checkout can be shipped there when explicitly
   requested. Retain the primary worktree and report cleanup as not applicable;
   never publish develop/main/staging as the task branch.
