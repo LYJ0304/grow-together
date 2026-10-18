@@ -71,7 +71,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
               <Image
                 source={item.icon}
                 style={styles.image}
-                tintColor={item.label === active ? '#D26A5C' : '#858895'}
+                tintColor={item.label === active ? '#D26A5C' : '#777574'}
                 contentFit="contain"
                 accessible={false}
               />
@@ -92,6 +92,9 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     minHeight: 48,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -110,5 +113,5 @@ const styles = StyleSheet.create({
   },
   image: { width: 24, height: 24 },
   selectedIcon: { backgroundColor: '#FDEDE8', borderRadius: 10 },
-  pressed: { opacity: 0.8 },
+  pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
 });
