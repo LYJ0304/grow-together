@@ -1,6 +1,6 @@
 import { env } from '@/config/env';
 import { ApiError, messages } from './errors';
-import { registerComponentStyleBuilder } from 'react-native-reanimated/lib/typescript/css/native';
+
 
 export async function http<T>(
     path: string,
