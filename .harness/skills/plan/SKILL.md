@@ -12,7 +12,8 @@ description: Plan a GrowTogether repository task on plan, /plan, or a work-plan 
 - **plan (this stage):** task request → plan shown in the conversation.
 - **raise:** selected conversation plan plus user corrections → GitHub issue number/URL.
 - **start:** issue number → implementation, actual branch/checkout, verification results.
-- **ship:** task handoff → commit/push/PR and safe task-worktree cleanup result.
+- **ship:** task handoff → commit/push/PR, retain the work environment until merge;
+  a later invocation verifies merge and safely cleans up.
 
 Stop after this stage unless the user explicitly requested additional stages.
 For a combined request, read each requested skill and pass its result forward;

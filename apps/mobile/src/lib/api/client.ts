@@ -329,7 +329,8 @@ export class ApiClient {
   }
 
   async preview() {
-    if (process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS !== 'true') return;
+    const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
+    if (authBypassSetting !== undefined && authBypassSetting !== 'true') return;
     const cleared = this.clearSession();
     const epoch = this.epoch;
     await cleared;

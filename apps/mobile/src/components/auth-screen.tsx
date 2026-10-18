@@ -24,7 +24,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   const pending = useRef(false);
   const [busy, setBusy] = useState(false);
   const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
-  const canSkipAuthentication = authBypassSetting === 'true';
+  const canSkipAuthentication =
+    authBypassSetting === undefined || authBypassSetting === 'true';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

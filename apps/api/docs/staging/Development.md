@@ -123,7 +123,7 @@ Swagger UI는 `https://<실제-API-호스트>/swagger-ui.html`에서 접근한�
 
 Swagger UI에서 회원가입·로그인 API의 **Try it out**으로 요청을 실행한다. 로그인 응답의 `accessToken` 값만 복사해 **Authorize → bearerAuth**에 입력한다(`Bearer ` 접두사는 입력하지 않는다). 이후 보호 API를 실행하면 UI가 Authorization 헤더를 붙인다. refresh token을 Authorize에 넣지 않는다. 갱신한 access token은 Authorize에 다시 입력한다. 기본 설정에서는 새로고침 후 토큰을 다시 입력해야 한다.
 
-기능 검증은 Swagger UI 또는 API 클라이언트로 진행한다. 현재 모바일 가입·로그인 화면은 인증 API와 연결되어 있지 않다.
+기능 검증은 Swagger UI 또는 API 클라이언트로 진행한다. 모바일 가입·로그인 화면도 인증 API와 연결되어 있다. 모바일 설정과 세션 동작은 [모바일 개발 가이드](../../../mobile/docs/development.md)와 [인증 문서](../../../mobile/docs/authentication.md)를 참고한다.
 
 - 테스트 사용자 A와 B를 `/api/v1/auth/signup`으로 가입시킨다.
 - `/api/v1/auth/login`으로 로그인하고, 보호된 API에 `Authorization: Bearer <accessToken>`을 전달한다.
