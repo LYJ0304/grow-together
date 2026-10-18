@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 
-// Start Expo with preview disabled and EXPO_PUBLIC_API_URL pointing at the test API.
+// Set AUTH_TEST_PREVIEW=true to test the default QA build; otherwise disable preview in Expo.
+// Point EXPO_PUBLIC_API_URL at the test API.
 // AUTH_TEST_LIVE=true uses the actual API; otherwise responses are intercepted.
 const siteUrl = process.argv[2] ?? 'http://localhost:8096';
 const live = process.env.AUTH_TEST_LIVE === 'true';
+const previewEnabled = process.env.AUTH_TEST_PREVIEW === 'true';
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH ?? '/usr/bin/google-chrome',
   headless: true,
@@ -73,9 +75,23 @@ try {
   await heading('다시 만났네요!').waitFor();
   assert.equal(
     await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).count(),
-    0,
+    previewEnabled ? 1 : 0,
   );
   assert.equal(await heading('마이페이지').count(), 0);
+
+  if (previewEnabled) {
+    await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
+    await page.waitForURL('**/main');
+    await page.getByText('미리보기 · 서버 API를 이용할 수 없어요.').waitFor();
+    assert.equal(
+      await page.evaluate((key) => sessionStorage.getItem(key), sessionKey),
+      null,
+    );
+    await page
+      .getByRole('button', { name: '미리보기 종료', exact: true })
+      .click();
+    await heading('다시 만났네요!').waitFor();
+  }
 
   await page.getByRole('link', { name: '회원가입', exact: true }).click();
   await heading('함께 키워가요').waitFor();

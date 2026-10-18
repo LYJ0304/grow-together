@@ -30,7 +30,7 @@ const deferred = () => {
   return { promise, resolve };
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function setup(handler, saved = null, preview = false) {
+function setup(handler, saved = null, preview) {
   let stored = saved;
   let clears = 0;
   const cache = new Map([['old-user', 'private']]);
@@ -47,7 +47,7 @@ function setup(handler, saved = null, preview = false) {
   vm.runInNewContext(outputText, {
     module,
     exports: module.exports,
-    process: { env: { EXPO_PUBLIC_ENABLE_AUTH_BYPASS: String(preview) } },
+    process: { env: { EXPO_PUBLIC_ENABLE_AUTH_BYPASS: preview } },
     fetch: handler,
     Headers,
     AbortController,
@@ -268,14 +268,20 @@ const login = (c) =>
     (e) => e.status === 401,
   );
 }
-// Preview requires explicit opt-in and never authenticates API requests.
-for (const enabled of [true, false]) {
+// Staging QA preview defaults on, honors opt-out, and never authenticates API requests.
+for (const [setting, enabled] of [
+  [undefined, true],
+  ['true', true],
+  ['false', false],
+  ['', false],
+  ['invalid', false],
+]) {
   const s = setup(
     async () => {
       throw new Error('must not fetch');
     },
     null,
-    enabled,
+    setting,
   );
   await s.client.restore();
   await s.client.preview();

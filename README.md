@@ -71,10 +71,11 @@ that the server session may remain until expiry. Storage deletion failure blocks
 access and offers another logout attempt. Device-local diaries remain preserved;
 their server migration/account ownership is tracked in issues #71/#72.
 
-`EXPO_PUBLIC_ENABLE_AUTH_BYPASS` defaults to false. Explicit `true` enables labeled
-UI preview only; protected API requests remain unavailable. Keep it false for API
-validation and Production. Use the actual API endpoint in `EXPO_PUBLIC_API_URL`
-(LAN address for physical devices). Never put secrets in `EXPO_PUBLIC_*` settings.
+`EXPO_PUBLIC_ENABLE_AUTH_BYPASS` defaults to true for staging QA, restoring the
+login-screen button for labeled UI preview. Protected API requests remain
+unavailable in preview. Set it explicitly to `false` for API validation and
+Production. Use the actual API endpoint in `EXPO_PUBLIC_API_URL` (LAN address for
+physical devices). Never put secrets in `EXPO_PUBLIC_*` settings.
 
 The worker currently runs an example job. Run it with:
 
