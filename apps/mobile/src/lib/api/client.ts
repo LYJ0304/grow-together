@@ -1,4 +1,4 @@
-const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
+import { env } from '@/config/env';
 
 export type TokenStorage = {
   read(): Promise<string | null>;
@@ -19,62 +19,6 @@ type SessionStatus =
   | 'authenticated'
   | 'preview';
 type Session = { status: SessionStatus; notice: string };
-
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-const messages: Record<string, string> = {
-  EMAIL_ALREADY_EXISTS: '이미 가입된 이메일이에요.',
-  INVALID_CREDENTIALS: '이메일 또는 비밀번호를 확인해 주세요.',
-  INVALID_REQUEST: '입력 내용을 확인해 주세요.',
-  UNAUTHORIZED: '다시 로그인해 주세요.',
-  INVALID_REFRESH_TOKEN: '로그인이 만료되었어요. 다시 로그인해 주세요.',
-  FORBIDDEN: '접근 권한이 없어요.',
-  NOT_FOUND: '요청한 정보를 찾지 못했어요.',
-  CONFLICT: '이미 처리되었거나 다른 기록에 연결된 정보예요.',
-};
-
-async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-  try {
-    const headers = new Headers(init.headers);
-    headers.set('Accept', 'application/json');
-    if (init.body) headers.set('Content-Type', 'application/json');
-    const response = await fetch(`${apiUrl}${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => null);
-      const code = typeof error?.code === 'string' ? error.code : 'HTTP_ERROR';
-      throw new ApiError(
-        response.status,
-        code,
-        messages[code] ?? '요청을 처리하지 못했어요. 다시 시도해 주세요.',
-      );
-    }
-    if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      'NETWORK_ERROR',
-      '서버에 연결하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.',
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 function parseTokens(value: unknown): Tokens {
   const tokens = value as Partial<Tokens> | null;
