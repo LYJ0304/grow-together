@@ -1,3 +1,4 @@
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 
 // Run against an exported web build and Chrome with remote debugging enabled.
@@ -67,6 +68,9 @@ async function fill(label, value) {
 const planField = `document.querySelector('[aria-label="계획명"]')`;
 try {
   await call('Page.enable');
+  await call('Page.addScriptToEvaluateOnNewDocument', {
+    source: `(${authenticatedSessionFixture.toString()})()`,
+  });
   await call('Emulation.setDeviceMetricsOverride', {
     width: 320,
     height: 568,

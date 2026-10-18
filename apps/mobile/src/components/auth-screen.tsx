@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useAuth } from './auth-provider';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,9 +19,12 @@ type AuthScreenProps = { mode: 'login' | 'signup' };
 
 export function AuthScreen({ mode }: AuthScreenProps) {
   const isSignup = mode === 'signup';
+  const { client, notice: sessionNotice } = useAuth();
+  const { registered } = useLocalSearchParams<{ registered?: string }>();
+  const pending = useRef(false);
+  const [busy, setBusy] = useState(false);
   const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
-  const canSkipAuthentication =
-    authBypassSetting === undefined || authBypassSetting === 'true';
+  const canSkipAuthentication = authBypassSetting === 'true';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +32,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const submit = () => {
+  const submit = async () => {
+    if (pending.current) return;
     if (isSignup && !name.trim()) {
       setNotice('이름을 입력해 주세요.');
       return;
@@ -45,7 +50,26 @@ export function AuthScreen({ mode }: AuthScreenProps) {
       setNotice('비밀번호가 일치하지 않아요.');
       return;
     }
-    setNotice('인증 API 연결은 아직 준비 중이에요.');
+    pending.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      if (isSignup) {
+        await client.signup({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+        });
+        router.replace({ pathname: '/login', params: { registered: 'true' } });
+      } else {
+        await client.login({ email: email.trim(), password });
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '다시 시도해 주세요.');
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
   };
 
   return (
@@ -58,7 +82,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="이전 화면으로 돌아가기"
-          onPress={() => router.back()}
+          disabled={busy}
+          onPress={() =>
+            router.canGoBack() ? router.back() : router.replace('/welcome')
+          }
           style={({ pressed }) => [
             styles.backButton,
             pressed && styles.pressed,
@@ -113,6 +140,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             secureTextEntry={!showPassword}
             autoComplete={isSignup ? 'new-password' : 'current-password'}
             returnKeyType={isSignup ? 'next' : 'done'}
+            onSubmitEditing={isSignup ? undefined : () => void submit()}
             accessory={
               <Pressable
                 accessibilityRole="button"
@@ -141,13 +169,15 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             />
           ) : null}
 
-          {notice ? (
+          {notice || sessionNotice || (!isSignup && registered === 'true') ? (
             <Text
               accessibilityRole="alert"
               accessibilityLiveRegion="polite"
               style={styles.notice}
             >
-              {notice}
+              {notice ||
+                sessionNotice ||
+                '가입이 완료되었어요. 로그인해 주세요.'}
             </Text>
           ) : null}
 
@@ -155,7 +185,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             <Pressable
               accessibilityRole="button"
               accessibilityHint="인증 없이 UI 미리보기 메인 화면으로 이동합니다"
-              onPress={() => router.replace('/main')}
+              disabled={busy}
+              onPress={() => {
+                void client
+                  .preview()
+                  .catch((error: Error) => setNotice(error.message));
+              }}
               style={({ pressed }) => [
                 styles.previewButton,
                 pressed && styles.pressed,
@@ -166,14 +201,16 @@ export function AuthScreen({ mode }: AuthScreenProps) {
           ) : null}
           <Pressable
             accessibilityRole="button"
-            onPress={submit}
+            disabled={busy}
+            accessibilityState={{ busy, disabled: busy }}
+            onPress={() => void submit()}
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.pressed,
             ]}
           >
             <Text style={styles.primaryLabel}>
-              {isSignup ? '가입하기' : '로그인'}
+              {busy ? '처리 중…' : isSignup ? '가입하기' : '로그인'}
             </Text>
           </Pressable>
           <View style={styles.switchRow}>
@@ -182,6 +219,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             </Text>
             <Pressable
               accessibilityRole="link"
+              disabled={busy}
               onPress={() => router.replace(isSignup ? '/login' : '/signup')}
               hitSlop={8}
             >

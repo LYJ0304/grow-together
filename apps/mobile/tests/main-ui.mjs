@@ -1,3 +1,4 @@
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { chromium, webkit } from 'playwright-core';
@@ -24,6 +25,7 @@ const page = await browser.newPage({
   viewport: { width: 393, height: 852 },
   reducedMotion: 'no-preference',
 });
+await page.addInitScript(authenticatedSessionFixture);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const progress = page.getByRole('progressbar', { name: '오늘의 루틴' });

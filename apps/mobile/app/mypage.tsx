@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { useAuth } from '../src/components/auth-provider';
 import { BottomNavigation } from '../src/components/bottom-navigation';
 
 const menuGroups = [
@@ -26,6 +27,7 @@ const menuGroups = [
 ];
 
 export default function MyPageScreen() {
+  const { client, status } = useAuth();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [notice, setNotice] = useState('');
@@ -92,13 +94,15 @@ export default function MyPageScreen() {
 
         <Pressable
           accessibilityRole="button"
-          onPress={() => setNotice('로그아웃 기능은 준비 중입니다.')}
+          onPress={() => void client.logout()}
           style={({ pressed }) => [
             styles.logoutButton,
             pressed && styles.pressed,
           ]}
         >
-          <Text style={styles.logoutLabel}>로그아웃</Text>
+          <Text style={styles.logoutLabel}>
+            {status === 'preview' ? '미리보기 종료' : '로그아웃'}
+          </Text>
         </Pressable>
 
         {notice ? (

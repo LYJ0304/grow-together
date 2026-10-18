@@ -1,3 +1,4 @@
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { chromium } from 'playwright-core';
@@ -10,6 +11,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
+await page.addInitScript(authenticatedSessionFixture);
 const back = () => page.getByRole('button', { name: '뒤로가기', exact: true });
 const click = (name) => page.getByRole('button', { name, exact: true }).click();
 const note = () =>
