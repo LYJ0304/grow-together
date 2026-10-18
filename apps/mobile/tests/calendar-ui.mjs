@@ -1,3 +1,4 @@
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -37,6 +38,7 @@ await context.addInitScript(() => {
   };
 });
 const page = await context.newPage();
+await page.addInitScript(authenticatedSessionFixture);
 page.setDefaultTimeout(15000);
 const grid = page.getByTestId('calendar-grid');
 const weeks = page.getByTestId('calendar-week');

@@ -17,7 +17,9 @@ services:
       retries: 10
 
   api:
-    build: ../apps/api
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
     env_file: ../apps/api/.env
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
