@@ -21,7 +21,8 @@
     "test:spouse": "node tests/spouse-ui.mjs",
     "test:auth": "node tests/auth-session.mjs",
     "test:auth:ui": "node tests/auth-ui.mjs",
-    "test:auth:api": "node tests/auth-api.mjs"
+    "test:auth:api": "node tests/auth-api.mjs",
+    "test:main:ui": "node tests/main-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
