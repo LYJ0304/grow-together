@@ -10,6 +10,7 @@
   "include": [
     "app/**/*.ts",
     "app/**/*.tsx",
+    "src/config/**/*.ts",
     "src/lib/**/*.ts",
     "src/components/**/*.tsx",
     ".expo/types/**/*.ts",

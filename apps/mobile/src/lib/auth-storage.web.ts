@@ -1,4 +1,4 @@
-import type { TokenStorage } from './api/client';
+import type { TokenStorage } from './features/auth';
 
 const key = 'growtogether.auth.v1';
 // shortcut: tab-scoped storage is accessible to page scripts; use an HttpOnly-cookie

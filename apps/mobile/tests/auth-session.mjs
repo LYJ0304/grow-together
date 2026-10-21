@@ -1,18 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import vm from 'node:vm';
-const ts = createRequire(import.meta.url)('typescript');
-const source = await readFile(
-  new URL('../src/lib/api/client.ts', import.meta.url),
-  'utf8',
-);
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.CommonJS,
-  },
-});
+import { loadAuthModule } from './auth-loader.mjs';
+
 const pair = (id) => ({
   accessToken: `access-${id}`,
   refreshToken: `refresh-${id}`,
@@ -43,21 +31,16 @@ function setup(handler, saved = null, preview) {
       stored = null;
     },
   };
-  const module = { exports: {} };
-  vm.runInNewContext(outputText, {
-    module,
-    exports: module.exports,
-    process: { env: { EXPO_PUBLIC_ENABLE_AUTH_BYPASS: preview } },
+  const { AuthSession } = loadAuthModule({
+    process: {
+      env: {
+        EXPO_PUBLIC_API_URL: 'http://localhost:18069',
+        EXPO_PUBLIC_ENABLE_AUTH_BYPASS: preview,
+      },
+    },
     fetch: handler,
-    Headers,
-    AbortController,
-    setTimeout,
-    clearTimeout,
-    Error,
-    JSON,
-    Number,
   });
-  const client = new module.exports.ApiClient(storage, () => {
+  const client = new AuthSession(storage, () => {
     clears++;
     cache.clear();
   });
@@ -371,5 +354,51 @@ for (const [setting, enabled] of [
   assert.equal(revoked, true);
   assert.equal(s.stored(), null);
   assert.equal(s.client.getSnapshot().status, 'signedOut');
+}
+// Auth endpoints use the shared HTTP headers and cancel timed-out requests.
+{
+  const s = setup(async (url, init) => {
+    assert.equal(url, 'http://localhost:18069/api/v1/auth/signup');
+    assert.equal(init.headers.get('Accept'), 'application/json');
+    assert.equal(init.headers.get('Content-Type'), 'application/json');
+    assert.equal(JSON.parse(init.body).name, '테스트');
+    return new Response(null, { status: 204 });
+  });
+  await s.client.signup({
+    name: '테스트',
+    email: 'user@example.com',
+    password: 'password123',
+  });
+}
+{
+  let expire;
+  let cleared = false;
+  const { AuthSession } = loadAuthModule({
+    process: { env: { EXPO_PUBLIC_API_URL: 'http://localhost:18069' } },
+    setTimeout: (callback, delay) => {
+      assert.equal(delay, 15000);
+      expire = callback;
+      return 1;
+    },
+    clearTimeout: (timer) => {
+      assert.equal(timer, 1);
+      cleared = true;
+    },
+    fetch: async (_url, init) => {
+      expire();
+      assert.equal(init.signal.aborted, true);
+      throw new Error('aborted');
+    },
+  });
+  const client = new AuthSession({}, () => {});
+  await assert.rejects(
+    client.signup({
+      name: '테스트',
+      email: 'user@example.com',
+      password: 'password123',
+    }),
+    (error) => error.status === 0 && error.code === 'NETWORK_ERROR',
+  );
+  assert.equal(cleared, true);
 }
 console.log('Auth session checks passed');

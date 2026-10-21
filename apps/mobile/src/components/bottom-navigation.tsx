@@ -14,7 +14,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
   const items: {
     label: string;
     icon: number;
-    href: '/main' | '/calendar' | '/todo' | '/persona' | '/mypage';
+    href: '/main' | '/calendar' | '/todo' | '/chat' | '/mypage';
   }[] = [
     {
       label: '캘린더',
@@ -34,7 +34,7 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     {
       label: '질문',
       icon: require('../../assets/images/main/search.svg'),
-      href: '/persona',
+      href: '/chat',
     },
     {
       label: '마이',
