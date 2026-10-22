@@ -187,6 +187,7 @@ export class AuthSession {
       throw new ApiError(401, 'UNAUTHORIZED', messages.UNAUTHORIZED);
     const invoke = (token: string) => {
       const headers = new Headers(init.headers);
+      if (init.body) headers.set('Content-Type', 'application/json');
       headers.set('Authorization', `Bearer ${token}`);
       return http<T>(path, { ...init, headers });
     };
