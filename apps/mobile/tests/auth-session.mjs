@@ -362,7 +362,7 @@ for (const [setting, enabled] of [
     assert.equal(init.headers.get('Accept'), 'application/json');
     assert.equal(init.headers.get('Content-Type'), 'application/json');
     assert.equal(JSON.parse(init.body).name, '테스트');
-    return new Response(null, { status: 204 });
+    return json({ message: 'Signup Successful' }, 201);
   });
   await s.client.signup({
     name: '테스트',
@@ -400,5 +400,63 @@ for (const [setting, enabled] of [
     (error) => error.status === 0 && error.code === 'NETWORK_ERROR',
   );
   assert.equal(cleared, true);
+}
+// API response schemas reject malformed success responses before storage.
+for (const value of [
+  null,
+  {},
+  { ...pair(1), accessToken: '' },
+  { ...pair(1), accessToken: 123 },
+  { ...pair(1), refreshToken: '' },
+  { ...pair(1), refreshToken: null },
+  { ...pair(1), tokenType: 'Basic' },
+  { ...pair(1), expiresIn: '900' },
+  { ...pair(1), expiresIn: 0 },
+  { ...pair(1), expiresIn: -1 },
+  { ...pair(1), expiresIn: 1.5 },
+]) {
+  const s = setup(async () => json(value));
+  await assert.rejects(login(s.client), /로그인 응답을 확인하지 못했어요/);
+  assert.equal(s.stored(), null);
+  assert.equal(s.client.getSnapshot().status, 'signedOut');
+
+  const restored = setup(async () => json(value), JSON.stringify(pair(1)));
+  await restored.client.restore();
+  assert.equal(restored.stored(), null);
+  assert.equal(restored.client.getSnapshot().status, 'signedOut');
+
+  const persisted = setup(async () => {
+    throw new Error('invalid stored tokens must not reach the API');
+  }, JSON.stringify(value));
+  await persisted.client.restore();
+  assert.equal(persisted.stored(), null);
+  assert.equal(persisted.client.getSnapshot().status, 'signedOut');
+}
+for (const value of [null, {}, { message: 123 }, undefined]) {
+  const s = setup(async () =>
+    value === undefined
+      ? new Response(null, { status: 204 })
+      : json(value, 201),
+  );
+  await assert.rejects(
+    s.client.signup({
+      name: '테스트',
+      email: 'user@example.com',
+      password: 'password123',
+    }),
+    /회원가입 응답을 확인하지 못했어요/,
+  );
+}
+{
+  const s = setup(async (url) =>
+    url.endsWith('/login')
+      ? json({ ...pair(1), extra: 'not part of the token contract' })
+      : json({ unexpected: 'logout response' }),
+  );
+  await login(s.client);
+  assert.deepEqual(JSON.parse(s.stored()), pair(1));
+  await s.client.logout();
+  assert.equal(s.stored(), null);
+  assert.match(s.client.getSnapshot().notice, /서버 연결 실패/);
 }
 console.log('Auth session checks passed');

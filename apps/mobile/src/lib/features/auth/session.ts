@@ -67,8 +67,7 @@ export class AuthSession {
     }
   }
 
-  private async saveTokens(value: unknown, epoch: number) {
-    const tokens = parseTokens(value);
+  private async saveTokens(tokens: Tokens, epoch: number) {
     try {
       this.checkEpoch(epoch);
       await this.persist(async () => {
@@ -187,6 +186,7 @@ export class AuthSession {
       throw new ApiError(401, 'UNAUTHORIZED', messages.UNAUTHORIZED);
     const invoke = (token: string) => {
       const headers = new Headers(init.headers);
+      if (init.body) headers.set('Content-Type', 'application/json');
       headers.set('Authorization', `Bearer ${token}`);
       return http<T>(path, { ...init, headers });
     };

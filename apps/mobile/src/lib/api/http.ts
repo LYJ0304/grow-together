@@ -10,7 +10,6 @@ export async function http<T>(
   try {
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
-    if (init.body) headers.set('Content-Type', 'application/json');
     const response = await fetch(`${env.apiBaseUrl}${path}`, {
       ...init,
       signal: controller.signal,
