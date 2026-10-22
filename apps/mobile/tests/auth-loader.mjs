@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 
-const ts = createRequire(import.meta.url)('typescript');
+const require = createRequire(import.meta.url);
+const ts = require('typescript');
 
 // Load the auth module graph with an isolated environment and fetch per test.
 export function loadAuthModule(globals) {
@@ -33,7 +34,9 @@ export function loadAuthModule(globals) {
       { filename: url.pathname },
     );
     execute(module, module.exports, (specifier) =>
-      load(new URL(`${specifier}.ts`, url)),
+      specifier.startsWith('.')
+        ? load(new URL(`${specifier}.ts`, url))
+        : require(specifier),
     );
     return module.exports;
   }

@@ -67,8 +67,7 @@ export class AuthSession {
     }
   }
 
-  private async saveTokens(value: unknown, epoch: number) {
-    const tokens = parseTokens(value);
+  private async saveTokens(tokens: Tokens, epoch: number) {
     try {
       this.checkEpoch(epoch);
       await this.persist(async () => {
