@@ -53,7 +53,7 @@ try {
     .getByRole('heading', { name: 'AI 육아 일기 생성' })
     .boundingBox();
   assert(iconBounds.width >= 44 && iconBounds.height >= 44);
-  assert(iconBounds.x + iconBounds.width <= titleBounds.x);
+  assert(iconBounds.y + iconBounds.height <= titleBounds.y);
   assert(titleBounds.x + titleBounds.width <= 320);
   await click('뒤로가기');
   await assertCalendar();
@@ -69,14 +69,16 @@ try {
   const chooserPromise = page.waitForEvent('filechooser');
   await click('사진 첨부');
   const chooser = await chooserPromise;
-  await chooser.setFiles({
-    name: 'photo.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH9sAAAAASUVORK5CYII=',
-      'base64',
-    ),
-  });
+  await chooser.setFiles(
+    [0, 1, 2].map((index) => ({
+      name: `photo-${index}.png`,
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH9sAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    })),
+  );
   await page.getByRole('button', { name: '첨부 사진 변경' }).waitFor();
   await click('뒤로가기');
   assert.equal(await record.getAttribute('aria-checked'), 'true');
@@ -92,25 +94,20 @@ try {
     await page.getByRole('button', { name: '첨부 사진 변경' }).isVisible(),
   );
   await click('일기 생성하기');
-  await page.getByRole('dialog').waitFor();
-  await page.keyboard.press('Escape');
-  await note().waitFor();
-  await page.waitForTimeout(3200);
-  assert(await note().isVisible());
-  await click('일기 생성하기');
   await page.getByRole('button', { name: /^다시 생성하기/ }).waitFor();
-  await click('다음으로');
-  await page.getByRole('button', { name: '저장하기', exact: true }).waitFor();
-  await click('뒤로가기');
-  await page.getByRole('button', { name: '다음으로', exact: true }).waitFor();
   await click('뒤로가기');
   assert.equal(await note().inputValue(), '혼자 숟가락을 잡았어요.');
   assert(
     await page.getByRole('button', { name: '첨부 사진 변경' }).isVisible(),
   );
-  await click('일기 생성하기');
-  await page.getByRole('button', { name: /^다시 생성하기/ }).waitFor();
-  await click('다음으로');
+  await click('작성 중인 일기로 돌아가기');
+  assert.equal(
+    await page.getByRole('img', { name: /^일기 사진 [123], 총 3장$/ }).count(),
+    3,
+  );
+  await page
+    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .waitFor();
   // Hold the storage read so the saving state can be observed before it completes.
   await page.evaluate((diaryDate) => {
     const getItem = Storage.prototype.getItem;
@@ -124,7 +121,7 @@ try {
       return getItem.call(this, key);
     };
   }, date);
-  await click('저장하기');
+  await click('이 일기 저장하기');
   await page.getByRole('button', { name: '저장 중...', exact: true }).waitFor();
   assert(await back().isDisabled());
   await back().dispatchEvent('click');
@@ -258,8 +255,7 @@ try {
   await note().fill('삭제 후 다시 작성한 일기');
   await click('일기 생성하기');
   await page.getByRole('button', { name: /^다시 생성하기/ }).waitFor();
-  await click('다음으로');
-  await click('저장하기');
+  await click('이 일기 저장하기');
   await assertCalendar();
   await waitForText('일기를 저장했어요.');
   await click('선택한 날짜의 일기 보기');

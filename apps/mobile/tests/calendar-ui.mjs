@@ -173,17 +173,19 @@ try {
     .click();
   await view.waitFor();
 
-  // Exercise the existing create/save/return flow through the redesigned CTA.
+  // Exercise the direct preview/save flow through the calendar CTA.
   await page
     .getByRole('button', { name: '2026년 10월 11일', exact: true })
     .click();
   await create.click();
+  await page.getByRole('checkbox').first().click();
   await page.getByRole('button', { name: '다음으로', exact: true }).click();
   await page
     .getByRole('button', { name: '일기 생성하기', exact: true })
     .click();
-  await page.getByRole('button', { name: '다음으로', exact: true }).click();
-  await page.getByRole('button', { name: '저장하기', exact: true }).click();
+  await page
+    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .click();
   await view.waitFor();
   await page.getByText('일기를 저장했어요.', { exact: true }).waitFor();
   assert.equal(
