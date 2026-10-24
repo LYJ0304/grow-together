@@ -459,4 +459,45 @@ for (const value of [null, {}, { message: 123 }, undefined]) {
   assert.equal(s.stored(), null);
   assert.match(s.client.getSnapshot().notice, /서버 연결 실패/);
 }
+// Missing API configuration must allow startup/preview without sending requests.
+for (const apiUrl of [undefined, '', '   ']) {
+  let requests = 0;
+  const { AuthSession } = loadAuthModule({
+    process: {
+      env: {
+        EXPO_PUBLIC_API_URL: apiUrl,
+        EXPO_PUBLIC_ENABLE_AUTH_BYPASS: 'true',
+      },
+    },
+    fetch: () => {
+      requests++;
+      throw new Error('Unexpected API request');
+    },
+  });
+  const client = new AuthSession(
+    {
+      read: async () => null,
+      write: async () => {},
+      clear: async () => {},
+    },
+    () => {},
+  );
+  await client.restore();
+  assert.equal(client.getSnapshot().status, 'signedOut');
+  await assert.rejects(
+    client.login({ email: 'user@example.com', password: 'password123' }),
+    { code: 'API_NOT_CONFIGURED' },
+  );
+  await assert.rejects(
+    client.signup({
+      name: '테스트',
+      email: 'user@example.com',
+      password: 'password123',
+    }),
+    { code: 'API_NOT_CONFIGURED' },
+  );
+  await client.preview();
+  assert.equal(client.getSnapshot().status, 'preview');
+  assert.equal(requests, 0);
+}
 console.log('Auth session checks passed');
