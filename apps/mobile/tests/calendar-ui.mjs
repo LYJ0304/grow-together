@@ -228,13 +228,6 @@ try {
   ]) {
     await page.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
-    if (label === '질문') {
-      await page.getByRole('textbox', { name: '상담 질문 입력' }).waitFor();
-      assert.equal(await tabs.count(), 0);
-      await open('2026-10-11');
-      continue;
-    }
-
     assert.equal(
       await tabs
         .getByRole('tab', { selected: true })

@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { BottomNavigation } from '../src/components/bottom-navigation';
 
 const suggestions = [
   {
@@ -34,6 +36,7 @@ const suggestions = [
 ];
 
 export default function CounselorChatScreen() {
+  const scroll = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
   const send = () => {
@@ -42,30 +45,18 @@ export default function CounselorChatScreen() {
   };
 
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right', 'bottom']}
-      style={styles.container}
-    >
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
         <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="페르소나 선택으로 돌아가기"
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.backIcon}>‹</Text>
-          </Pressable>
           <View style={styles.avatar} accessible={false} />
           <View style={styles.headerCopy}>
-            <Text style={styles.personaName}>차분한 상담선생님</Text>
+            <Text accessibilityRole="header" style={styles.personaName}>
+              차분한 상담선생님
+            </Text>
             <Text style={styles.online}>
               <Text style={styles.onlineDot}>●</Text> Online
             </Text>
@@ -81,11 +72,17 @@ export default function CounselorChatScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={styles.settingsIcon}>⚙</Text>
+            <Image
+              source={require('../assets/images/chat/settings.svg')}
+              style={styles.settingsIcon}
+              contentFit="contain"
+              accessible={false}
+            />
           </Pressable>
         </View>
 
         <ScrollView
+          ref={scroll}
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
@@ -145,6 +142,10 @@ export default function CounselorChatScreen() {
             <Text style={styles.sendIcon}>➤</Text>
           </Pressable>
         </View>
+        <BottomNavigation
+          active="질문"
+          onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -152,33 +153,25 @@ export default function CounselorChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
-  keyboard: { flex: 1 },
+  keyboard: { flex: 1, minHeight: 0 },
   header: {
     minHeight: 67,
-    paddingHorizontal: 25,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    gap: 12,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#EAEAEA',
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 12px rgba(84, 87, 92, 0.08)',
-  },
-  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
   avatar: {
-    width: 30,
-    height: 30,
-    marginLeft: 24,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
   },
-  headerCopy: { flex: 1, marginLeft: 8 },
+  headerCopy: { flex: 1, gap: 3 },
   personaName: {
     fontFamily: 'Jua',
     fontSize: 15,
@@ -188,12 +181,16 @@ const styles = StyleSheet.create({
   online: { fontFamily: 'Jua', fontSize: 12, lineHeight: 16, color: '#487B61' },
   onlineDot: { color: '#65A87B', fontSize: 10 },
   settingsButton: {
-    width: 34,
-    height: 42,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#EAE6E4',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsIcon: { fontSize: 27, color: '#4F4F4F' },
+  settingsIcon: { width: 22, height: 22 },
   messages: {
     flexGrow: 1,
     paddingHorizontal: 24,
