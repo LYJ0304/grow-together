@@ -5,6 +5,13 @@ export async function http<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  if (!env.apiBaseUrl) {
+    throw new ApiError(
+      0,
+      'API_NOT_CONFIGURED',
+      '서버 연결이 아직 설정되지 않았어요. UI 미리보기를 이용해 주세요.',
+    );
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
