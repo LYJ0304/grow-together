@@ -173,17 +173,19 @@ try {
     .click();
   await view.waitFor();
 
-  // Exercise the existing create/save/return flow through the redesigned CTA.
+  // Exercise the direct preview/save flow through the calendar CTA.
   await page
     .getByRole('button', { name: '2026년 10월 11일', exact: true })
     .click();
   await create.click();
+  await page.getByRole('checkbox').first().click();
   await page.getByRole('button', { name: '다음으로', exact: true }).click();
   await page
     .getByRole('button', { name: '일기 생성하기', exact: true })
     .click();
-  await page.getByRole('button', { name: '다음으로', exact: true }).click();
-  await page.getByRole('button', { name: '저장하기', exact: true }).click();
+  await page
+    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .click();
   await view.waitFor();
   await page.getByText('일기를 저장했어요.', { exact: true }).waitFor();
   assert.equal(
@@ -220,12 +222,19 @@ try {
   for (const [label, route] of [
     ['투두', '/todo'],
     ['홈', '/main'],
-    ['질문', '/persona'],
+    ['질문', '/chat'],
     ['마이', '/mypage'],
     ['캘린더', '/calendar'],
   ]) {
     await page.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
+    if (label === '질문') {
+      await page.getByRole('textbox', { name: '상담 질문 입력' }).waitFor();
+      assert.equal(await tabs.count(), 0);
+      await open('2026-10-11');
+      continue;
+    }
+
     assert.equal(
       await tabs
         .getByRole('tab', { selected: true })
