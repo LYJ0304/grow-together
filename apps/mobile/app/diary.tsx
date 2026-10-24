@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { usePreventRemove } from '@react-navigation/native';
+import { useNavigation, usePreventRemove } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -27,89 +27,68 @@ import {
   saveDiary,
 } from '../src/lib/diary-storage';
 
-const diaryRecords = [
+import {
+  DiaryGeneratingView,
+  DiaryResultView,
+} from '../src/components/diary/diary-result';
+import {
+  generateDiary,
+  type DiaryGenerationResult,
+  type DiarySourceRecords,
+} from '../src/lib/diary-generation';
+
+const activityOptions = [
   {
     time: '07:00',
     title: '기상 & 기저귀 갈기',
-    description: '아이가 깼어요. 기저귀를 갈아주세요.',
-    tag: '#기본 루틴',
   },
   {
     time: '07:30',
     title: '아침 이유식',
-    description: '아침 식사 시간이에요. 새로운 재료를 시도해요.',
-    tag: '#식습관 안정화',
   },
   {
     time: '09:00',
     title: '놀이 & 탐색',
-    description: '탐색 놀이 시간이에요. 블록이나 촉감놀이 추천!',
-    tag: '#발달 자극',
   },
   {
     time: '10:00',
     title: '낮잠 (1~1.5시간)',
-    description: '졸려할 수 있어요. 조용한 환경을 만들어주세요.',
-    tag: '#휴식 루틴',
   },
   {
     time: '12:30',
     title: '산책 & 외부 활동',
-    description: '햇볕을 쬐면 비타민 D 합성에 좋아요.',
-    tag: '#활동/면역',
   },
   {
     time: '14:00',
     title: '책 읽기 & 놀이',
-    description: '짧은 그림책을 같이 읽어주세요.',
-    tag: '#언어 발달',
   },
   {
     time: '15:00',
     title: '낮잠 (1시간)',
-    description: '점심 시간이에요. 새로운 식감 시도도 좋아요.',
-    tag: '#피로 회복',
   },
   {
     time: '17:30',
     title: '산책 / 외부 활동',
-    description: '밥을 잘 먹을 수 있도록 산책을 해요.',
-    tag: '#발달 자극',
   },
   {
     time: '18:00',
     title: '저녁 이유식',
-    description: '저녁 식사 시간이에요. 단백질 식품을 포함해보세요.',
-    tag: '#성장 #영양',
   },
   {
     time: '19:30',
     title: '책 읽기 & 차분한 놀이',
-    description: '짧은 그림책을 읽어주며 하루를 마무리해요.',
-    tag: '#언어 발달 #정서 안정',
   },
   {
     time: '20:00',
     title: '취침 준비',
-    description: '잔잔한 조명과 음악으로 잠잘 분위기를 만들어주세요.',
-    tag: '#수면 유도',
   },
   {
     time: '21:00',
     title: '취침',
-    description: '오늘 하루가 끝났어요. 아기를 재워주세요.',
-    tag: '#마무리',
   },
 ];
 const growthTags = ['#성취/시도', '#언어/표현', '#감정'];
-const sampleEmotions = ['성취감', '호기심', '만족스러움', '차분함'];
-// shortcut: sample interpretations for UI preview; replace with the AI response when connected.
-const sampleGrowthPoints = [
-  '자립심 발달: 숟가락을 스스로 잡으려는 시도가 늘었어요.',
-  '집중력 향상: 블록 놀이에서 전보다 긴 시간 집중했어요.',
-  '관심 표현: 산책 중 사물을 가리키며 표현하려 했어요.',
-  '정서 안정: 부모와 함께하는 책 읽기에 차분하게 집중했어요.',
-];
+type DiaryStep = 'activities' | 'notes' | 'generating' | 'result' | 'saved';
 
 export default function DiaryScreen() {
   const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
@@ -122,7 +101,7 @@ export default function DiaryScreen() {
   const viewing = mode === 'view';
   const [date] = useState(() => parseDiaryDate(dateParam) ?? new Date());
   const dateKey = diaryDateKey(date);
-  const [step, setStep] = useState(viewing ? 5 : 1);
+  const [step, setStep] = useState<DiaryStep>(viewing ? 'saved' : 'activities');
   const savedQuery = useQuery({
     queryKey: ['savedDiary', dateKey],
     queryFn: () => readDiary(dateKey),
@@ -130,7 +109,7 @@ export default function DiaryScreen() {
     retry: false,
   });
   const [selectedRecordTimes, setSelectedRecordTimes] = useState<string[]>([]);
-  const selectedRecords = diaryRecords.filter((record) =>
+  const selectedRecords = activityOptions.filter((record) =>
     selectedRecordTimes.includes(record.time),
   );
   const [growthNote, setGrowthNote] = useState('');
@@ -139,7 +118,16 @@ export default function DiaryScreen() {
   const photoUri = photoUris[0] ?? null;
   const [photoNotice, setPhotoNotice] = useState('');
   const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const [result, setResult] = useState<DiaryGenerationResult | null>(null);
+  const [sourceRecords, setSourceRecords] = useState<DiarySourceRecords>();
   const [draft, setDraft] = useState('');
+  const [editingText, setEditingText] = useState<string | null>(null);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const generatingRef = useRef(false);
+  const savingRef = useRef(false);
+  const [saved, setSaved] = useState(false);
+  const navigation = useNavigation();
+  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
   const [regenerationsRemaining, setRegenerationsRemaining] = useState(3);
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
@@ -148,7 +136,18 @@ export default function DiaryScreen() {
   const [deleted, setDeleted] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState('');
   const deletingRef = useRef(false);
-  usePreventRemove(deleting, () => {});
+  const dirty =
+    !viewing &&
+    !saved &&
+    (selectedRecordTimes.length > 0 ||
+      !!growthNote.trim() ||
+      selectedGrowthTags.length > 0 ||
+      photoUris.length > 0 ||
+      !!draft);
+  usePreventRemove(dirty || saving || deleting, ({ data }) => {
+    if (savingRef.current || deletingRef.current) return;
+    setLeaveAction(() => () => navigation.dispatch(data.action));
+  });
 
   useEffect(() => {
     if (!deleted || deleting) return;
@@ -159,7 +158,7 @@ export default function DiaryScreen() {
   }, [deleted, deleting, dateKey]);
 
   useEffect(() => {
-    if (!deleting || Platform.OS !== 'web') return;
+    if ((!deleting && !saving && !dirty) || Platform.OS !== 'web') return;
     const preventUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
@@ -168,13 +167,14 @@ export default function DiaryScreen() {
     const webNavigation = (window as Window & { navigation?: EventTarget })
       .navigation;
     const preventNavigation = (event: Event) => event.preventDefault();
-    webNavigation?.addEventListener('navigate', preventNavigation);
+    if (deleting || saving)
+      webNavigation?.addEventListener('navigate', preventNavigation);
     window.addEventListener('beforeunload', preventUnload);
     return () => {
       webNavigation?.removeEventListener('navigate', preventNavigation);
       window.removeEventListener('beforeunload', preventUnload);
     };
-  }, [deleting]);
+  }, [deleting, saving, dirty]);
 
   const removeDiary = async () => {
     if (deletingRef.current) return;
@@ -202,15 +202,16 @@ export default function DiaryScreen() {
       setDeleting(false);
     }
   };
-  const savingRef = useRef(false);
   const displayedDraft = viewing ? (savedQuery.data?.content ?? '') : draft;
   const displayedPhotos = viewing
     ? (savedQuery.data?.photoUris ?? [])
     : photoUris;
-  const emotions = viewing ? (savedQuery.data?.emotions ?? []) : sampleEmotions;
+  const emotions = viewing
+    ? (savedQuery.data?.emotions ?? [])
+    : (result?.emotions ?? []);
   const growthPoints = viewing
     ? (savedQuery.data?.growthPoints ?? [])
-    : sampleGrowthPoints;
+    : (result?.growthPoints ?? []);
 
   const returnToCalendar = (saved = false) =>
     router.dismissTo({
@@ -222,9 +223,11 @@ export default function DiaryScreen() {
     if (savingRef.current || deletingRef.current) return;
     Keyboard.dismiss();
     if (viewing) returnToCalendar();
-    else if (step === 5) setStep(4);
-    else if (step === 4 || step === 3) setStep(2);
-    else if (step === 2) setStep(1);
+    else if (editingText !== null)
+      setSaveNotice('수정을 완료하거나 취소한 후 이동해주세요.');
+    else if (step === 'generating') return;
+    else if (step === 'result') setStep('notes');
+    else if (step === 'notes') setStep('activities');
     else if (router.canGoBack()) router.back();
     else returnToCalendar();
   };
@@ -233,7 +236,7 @@ export default function DiaryScreen() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="뒤로가기"
-      disabled={saving || deleting}
+      disabled={saving || deleting || step === 'generating'}
       onPress={goBack}
       style={({ pressed }) => [
         styles.backButton,
@@ -245,19 +248,31 @@ export default function DiaryScreen() {
   );
 
   const persistDiary = async () => {
-    if (savingRef.current) return;
+    if (
+      savingRef.current ||
+      saved ||
+      generatingRef.current ||
+      editingText !== null ||
+      !draft.trim()
+    )
+      return;
     savingRef.current = true;
     setSaving(true);
     setSaveNotice('');
     try {
-      await saveDiary({
+      const diary = {
         date: dateKey,
-        content: draft,
-        emotions: sampleEmotions,
-        growthPoints: sampleGrowthPoints,
+        content: draft.trim(),
+        emotions,
+        growthPoints,
+        tomorrowTip: result?.tomorrowTip,
+        sourceRecords,
         photoUris,
-      });
-      returnToCalendar(true);
+      };
+      await saveDiary(diary);
+      queryClient.setQueryData(['savedDiary', dateKey], diary);
+      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
+      setSaved(true);
     } catch (error) {
       setSaveNotice(
         error instanceof Error
@@ -271,21 +286,69 @@ export default function DiaryScreen() {
   };
 
   useEffect(() => {
-    if (step !== 3) return;
-    // shortcut: show a sample after the loading preview; replace with the AI response when connected.
-    const timer = setTimeout(() => setStep(4), 3000);
-    return () => clearTimeout(timer);
-  }, [step]);
+    if (saved && !saving) {
+      router.dismissTo({
+        pathname: '/calendar',
+        params: { date: dateKey, saved: 'true', deleted: '' },
+      });
+    }
+  }, [saved, saving, dateKey]);
 
-  const createPreview = () => {
-    const highlights = selectedRecords.length
-      ? selectedRecords.map((record) => record.title).join(', ')
-      : '엄마 아빠와 함께한 시간';
-    setDraft(
-      `${date.getMonth() + 1}월 ${date.getDate()}일의 기록\n\n오늘 기억하고 싶은 순간은 ${highlights}이에요. 하루하루 자라나는 모습이 참 사랑스러워요. 내일은 또 어떤 새로운 순간을 만나게 될까요?${growthNote.trim() ? `\n\n오늘의 성장 기록\n${growthNote.trim()}` : ''}${selectedGrowthTags.length ? `\n\n${selectedGrowthTags.join(' ')}` : ''}`,
-    );
+  const createPreview = async (regenerate = false) => {
+    if (
+      generatingRef.current ||
+      savingRef.current ||
+      (result && regenerationsRemaining === 0)
+    )
+      return;
+    if (
+      result &&
+      (draft !== result.content || editingText !== null) &&
+      !regenerate
+    ) {
+      setConfirmRegenerate(true);
+      return;
+    }
+    generatingRef.current = true;
+    const previousStep = step;
+    const source = {
+      activities: selectedRecords.map((record) => record.title),
+      note: growthNote.trim(),
+      tags: [...selectedGrowthTags],
+    };
     Keyboard.dismiss();
-    setStep(3);
+    setSaveNotice('');
+    setStep('generating');
+    try {
+      const generated = await generateDiary(date, source);
+      setResult(generated);
+      setSourceRecords(source);
+      setDraft(generated.content);
+      setEditingText(null);
+      if (result) setRegenerationsRemaining((remaining) => remaining - 1);
+      setStep('result');
+    } catch (error) {
+      setSaveNotice(
+        error instanceof Error
+          ? error.message
+          : '일기를 만들지 못했어요. 다시 시도해주세요.',
+      );
+      setStep(previousStep);
+    } finally {
+      generatingRef.current = false;
+    }
+  };
+
+  const requestRegeneration = () => {
+    if (
+      generatingRef.current ||
+      savingRef.current ||
+      regenerationsRemaining === 0
+    )
+      return;
+    if (result && (draft !== result.content || editingText !== null))
+      setConfirmRegenerate(true);
+    else void createPreview(true);
   };
 
   const toggleRecord = (time: string) => {
@@ -403,38 +466,38 @@ export default function DiaryScreen() {
         <View style={styles.recordHeader}>
           <View style={styles.headerRow}>
             {backButton}
-            <Text accessibilityRole="header" style={styles.recordHeading}>
-              {viewing ? '육아 일기' : 'AI 육아 일기 생성'}
+            <Text style={styles.dateLabel}>
+              {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
             </Text>
           </View>
-          <Text style={styles.recordStep}>
+          <Text accessibilityRole="header" style={styles.recordHeading}>
             {viewing
-              ? '저장된 일기'
-              : step === 1
-                ? 'STEP 01 : 남기고 싶은 기억을 골라봐요!'
-                : step >= 4
-                  ? 'STEP 04 : 추가로 남기고 싶은 기록이 있나요?'
-                  : 'STEP 02 : 추가로 남기고 싶은 기록이 있나요?'}
+              ? '육아 일기'
+              : step === 'result'
+                ? '하루의 이야기가 완성됐어요'
+                : step === 'generating'
+                  ? '오늘을 한 편의 이야기로'
+                  : 'AI 육아 일기 생성'}
           </Text>
           <Text style={styles.recordHint}>
             {viewing
-              ? `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
-              : step === 1
-                ? '아이와 오늘 한 활동을 선택해주세요.'
-                : step >= 4
-                  ? '아이의 하루가 하나의 이야기로 완성되었습니다.'
-                  : '오늘 아이에게 어떤 변화가 있었나요? 작은 시도나 웃음도 괜찮아요.'}
+              ? '저장된 일기'
+              : step === 'activities'
+                ? '오늘 직접 한 활동을 골라주세요. 선택한 활동만 일기에 담아요.'
+                : step === 'result'
+                  ? '오늘의 기록을 한 편의 일기로 정리했어요.'
+                  : '작은 시도와 웃음, 기억하고 싶은 순간을 적어주세요.'}
           </Text>
         </View>
 
-        {step === 1 && (
+        {step === 'activities' && (
           <>
             <ScrollView
               style={styles.recordScroll}
               contentContainerStyle={styles.recordList}
               keyboardShouldPersistTaps="handled"
             >
-              {diaryRecords.map((record) => {
+              {activityOptions.map((record) => {
                 const selected = selectedRecordTimes.includes(record.time);
                 return (
                   <Pressable
@@ -454,10 +517,6 @@ export default function DiaryScreen() {
                         <Text style={styles.recordTime}>{record.time}</Text>
                         <Text style={styles.recordTitle}>{record.title}</Text>
                       </View>
-                      <Text style={styles.recordDescription}>
-                        {record.description}
-                      </Text>
-                      <Text style={styles.recordTag}>{record.tag}</Text>
                     </View>
                     <View
                       style={[
@@ -476,7 +535,7 @@ export default function DiaryScreen() {
             <View style={styles.recordFooter}>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setStep(2)}
+                onPress={() => setStep('notes')}
                 style={({ pressed }) => [
                   styles.recordNext,
                   pressed && styles.pressed,
@@ -488,7 +547,7 @@ export default function DiaryScreen() {
           </>
         )}
 
-        {(step === 2 || step === 3) && (
+        {step === 'notes' && (
           <>
             <ScrollView
               style={styles.recordScroll}
@@ -540,7 +599,8 @@ export default function DiaryScreen() {
                   ))}
                 </View>
                 <Text style={styles.growthHint}>
-                  짧은 문장이라도 괜찮아요. AI가 의미를 분석해드려요.
+                  지금은 입력한 기록을 엮는 미리보기예요. AI 분석은 제공하지
+                  않아요.
                 </Text>
                 <View style={styles.growthDivider} />
                 <Text style={styles.photoLabel}>
@@ -598,8 +658,10 @@ export default function DiaryScreen() {
             <View style={styles.recordFooter}>
               <Pressable
                 accessibilityRole="button"
-                onPress={createPreview}
-                disabled={preparingPhotos}
+                onPress={() => void createPreview()}
+                disabled={
+                  preparingPhotos || (!!result && regenerationsRemaining === 0)
+                }
                 style={({ pressed }) => [
                   styles.recordNext,
                   preparingPhotos && styles.pressed,
@@ -608,86 +670,72 @@ export default function DiaryScreen() {
               >
                 <Text style={styles.recordNextLabel}>일기 생성하기</Text>
               </Pressable>
+              {result ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setStep('result')}
+                  style={styles.quietAction}
+                >
+                  <Text style={styles.regenerateLabel}>
+                    작성 중인 일기로 돌아가기
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           </>
         )}
 
-        {(step === 4 || step === 5) && (
+        {step === 'generating' ? (
+          <ScrollView
+            style={styles.recordScroll}
+            contentContainerStyle={styles.resultContent}
+          >
+            <DiaryGeneratingView />
+          </ScrollView>
+        ) : null}
+        {(step === 'result' || step === 'saved') && (
           <>
             <ScrollView
-              key={`result-${step}`}
               style={styles.recordScroll}
               contentContainerStyle={styles.resultContent}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
-              {step === 5 ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoGallery}
-                  contentContainerStyle={styles.photoGalleryContent}
-                  accessibilityLabel="일기 사진 목록"
-                >
-                  {(displayedPhotos.length
-                    ? displayedPhotos
-                    : [null, null, null]
-                  ).map((uri, index) => (
-                    <View key={index} style={styles.galleryTile}>
-                      {uri ? (
-                        <Image
-                          source={{ uri }}
-                          style={styles.galleryPhoto}
-                          contentFit="cover"
-                          accessibilityLabel={`일기 사진 ${index + 1}`}
-                        />
-                      ) : (
-                        <Text style={styles.galleryPlaceholder}>사진 없음</Text>
-                      )}
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : null}
-              <View style={[styles.resultCard, styles.resultDiaryCard]}>
-                <View style={styles.resultHeadingRow}>
-                  <View style={styles.resultIcon} />
-                  <Text accessibilityRole="header" style={styles.resultHeading}>
-                    오늘의 일기
-                  </Text>
-                </View>
-                {photoUri && step === 4 ? (
-                  <Image
-                    source={{ uri: photoUri }}
-                    style={[styles.diaryPhoto, styles.resultPhoto]}
-                    contentFit="cover"
-                    accessibilityLabel="일기 첨부 사진"
-                  />
-                ) : null}
-                <Text style={styles.resultBody}>{displayedDraft}</Text>
-              </View>
-              <View style={styles.resultCard}>
-                <View style={styles.resultHeadingRow}>
-                  <View style={styles.resultIcon} />
-                  <Text accessibilityRole="header" style={styles.resultHeading}>
-                    오늘의 감정
-                  </Text>
-                </View>
-                <Text style={styles.resultBody}>{emotions.join(', ')}</Text>
-              </View>
-              <View style={[styles.resultCard, styles.resultGrowthCard]}>
-                <View style={styles.resultHeadingRow}>
-                  <View style={styles.resultIcon} />
-                  <Text accessibilityRole="header" style={styles.resultHeading}>
-                    성장 포인트
-                  </Text>
-                </View>
-                <View style={styles.resultGrowthPoints}>
-                  {growthPoints.map((point) => (
-                    <Text key={point} style={styles.resultGrowthPoint}>
-                      · {point}
-                    </Text>
-                  ))}
-                </View>
-              </View>
+              <DiaryResultView
+                result={{
+                  content: displayedDraft,
+                  emotions,
+                  growthPoints,
+                  tomorrowTip: viewing
+                    ? savedQuery.data?.tomorrowTip
+                    : result?.tomorrowTip,
+                }}
+                photos={displayedPhotos}
+                source={
+                  viewing ? savedQuery.data?.sourceRecords : sourceRecords
+                }
+                editingText={editingText}
+                onChangeText={setEditingText}
+                onEdit={
+                  !viewing && !saving
+                    ? () => {
+                        setSaveNotice('');
+                        setEditingText(draft);
+                      }
+                    : undefined
+                }
+                onCancel={() => {
+                  Keyboard.dismiss();
+                  setEditingText(null);
+                }}
+                onComplete={() => {
+                  if (editingText?.trim()) {
+                    setDraft(editingText.trim());
+                    setEditingText(null);
+                    Keyboard.dismiss();
+                  }
+                }}
+              />
             </ScrollView>
             <View style={styles.resultFooter}>
               {saveNotice ? (
@@ -695,78 +743,72 @@ export default function DiaryScreen() {
                   {saveNotice}
                 </Text>
               ) : null}
-              <View style={styles.resultActions}>
-                {viewing ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={deleting}
-                    onPress={() => {
-                      setDeleteNotice('');
-                      setConfirmDelete(true);
-                    }}
-                    style={({ pressed }) => [
-                      styles.regenerateButton,
-                      (pressed || deleting) && styles.pressed,
-                    ]}
-                  >
-                    <Text style={styles.deleteLabel}>일기 삭제</Text>
-                  </Pressable>
-                ) : null}
-                {!viewing ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
-                    disabled={regenerationsRemaining === 0 || saving}
-                    onPress={() => {
-                      setRegenerationsRemaining((remaining) => remaining - 1);
-                      createPreview();
-                    }}
-                    style={({ pressed }) => [
-                      styles.regenerateButton,
-                      (pressed || regenerationsRemaining === 0) &&
-                        styles.pressed,
-                    ]}
-                  >
-                    <Text style={styles.regenerateLabel}>
-                      다시 생성하기{'\n'}(1일 {regenerationsRemaining}/3번)
-                    </Text>
-                  </Pressable>
-                ) : null}
+              {editingText !== null ? (
+                <Text style={styles.recordHint}>
+                  본문에서 수정을 완료한 후 저장해주세요.
+                </Text>
+              ) : (
                 <Pressable
                   accessibilityRole="button"
-                  disabled={saving || deleting}
+                  disabled={saving || deleting || (!viewing && !draft.trim())}
                   onPress={() =>
-                    viewing
-                      ? returnToCalendar()
-                      : step === 4
-                        ? setStep(5)
-                        : persistDiary()
+                    viewing ? returnToCalendar() : void persistDiary()
                   }
                   style={({ pressed }) => [
                     styles.resultSave,
-                    viewing && styles.viewReturn,
-                    (pressed || saving) && styles.pressed,
+                    (pressed || saving || deleting) && styles.pressed,
                   ]}
                 >
                   <Text
-                    style={[
-                      styles.resultSaveLabel,
-                      viewing && styles.viewReturnLabel,
-                    ]}
+                    accessibilityLiveRegion="polite"
+                    style={styles.resultSaveLabel}
                   >
                     {viewing
                       ? '캘린더로 돌아가기'
-                      : step === 4
-                        ? '다음으로'
-                        : saving
-                          ? '저장 중...'
-                          : '저장하기'}
+                      : saving
+                        ? '저장 중...'
+                        : '이 일기 저장하기'}
                   </Text>
                 </Pressable>
-              </View>
+              )}
+              {viewing ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={deleting}
+                  onPress={() => {
+                    setDeleteNotice('');
+                    setConfirmDelete(true);
+                  }}
+                  style={styles.quietAction}
+                >
+                  <Text style={styles.deleteLabel}>일기 삭제</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
+                  disabled={regenerationsRemaining === 0 || saving}
+                  onPress={requestRegeneration}
+                  style={({ pressed }) => [
+                    styles.quietAction,
+                    (pressed || regenerationsRemaining === 0 || saving) &&
+                      styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.regenerateLabel}>
+                    다시 생성하기 · 이번 작성에서 {regenerationsRemaining}회
+                    남음
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </>
         )}
+        {step === 'notes' && saveNotice ? (
+          <Text accessibilityRole="alert" style={styles.saveNotice}>
+            {saveNotice}
+          </Text>
+        ) : null}
       </KeyboardAvoidingView>
       <Modal
         visible={confirmDelete}
@@ -779,10 +821,10 @@ export default function DiaryScreen() {
         <View style={styles.modalOverlay}>
           <ScrollView
             accessibilityViewIsModal
-            style={styles.loadingCard}
-            contentContainerStyle={styles.loadingContent}
+            style={styles.confirmationCard}
+            contentContainerStyle={styles.confirmationContent}
           >
-            <Text accessibilityRole="header" style={styles.loadingTitle}>
+            <Text accessibilityRole="header" style={styles.confirmationTitle}>
               일기를 삭제할까요?
             </Text>
             <Text style={styles.recordStep}>
@@ -823,54 +865,59 @@ export default function DiaryScreen() {
         </View>
       </Modal>
       <Modal
-        visible={step === 3}
+        visible={confirmRegenerate || leaveAction !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setStep(2)}
+        onRequestClose={() => {
+          setConfirmRegenerate(false);
+          setLeaveAction(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <ScrollView
             accessibilityViewIsModal
-            style={styles.loadingCard}
-            contentContainerStyle={styles.loadingContent}
+            style={styles.confirmationCard}
+            contentContainerStyle={styles.confirmationContent}
           >
-            <Text accessibilityRole="header" style={styles.loadingTitle}>
-              AI 일기 생성 중입니다...
+            <Text accessibilityRole="header" style={styles.confirmationTitle}>
+              {leaveAction
+                ? '작성을 마칠까요?'
+                : '수정한 일기를 다시 생성할까요?'}
             </Text>
-            <Text style={styles.loadingSubtitle}>
-              오늘의 기록을 바탕으로 아이의 하루를 정리하고 있어요.
+            <Text style={styles.recordHint}>
+              {leaveAction
+                ? '저장하지 않은 기록은 사라져요.'
+                : '수정한 본문이 새 초안으로 바뀌어요. 활동과 메모, 사진은 유지돼요.'}
             </Text>
-            <Text style={styles.loadingDetails}>
-              성장 의미 + 내일 조언이 포함돼요.
-            </Text>
-            <View style={styles.loadingSummary}>
-              <Text
-                accessibilityRole="header"
-                style={styles.loadingSummaryTitle}
+            <View style={styles.deleteActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setConfirmRegenerate(false);
+                  setLeaveAction(null);
+                }}
+                style={styles.regenerateButton}
               >
-                일기에는 이런 내용이 들어가요
-              </Text>
-              <View style={styles.loadingItems}>
-                {[
-                  '오늘의 루틴 요약 (기상·식사·놀이·휴식)',
-                  '메모 키워드 분석 (행복, 성취, 피곤 등)',
-                  '사진/메모 연동 (선택)',
-                ].map((label) => (
-                  <View key={label} style={styles.loadingItem}>
-                    <View style={styles.loadingBullet} />
-                    <Text style={styles.loadingItemLabel}>{label}</Text>
-                  </View>
-                ))}
-              </View>
-              <View
-                accessibilityRole="progressbar"
-                accessibilityLabel="일기 생성 중"
-                style={styles.loadingProgress}
+                <Text style={styles.deleteLabel}>취소</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  if (leaveAction) {
+                    const leave = leaveAction;
+                    setLeaveAction(null);
+                    leave();
+                  } else {
+                    setConfirmRegenerate(false);
+                    void createPreview(true);
+                  }
+                }}
+                style={styles.resultSave}
               >
-                <Text style={styles.loadingProgressLabel}>
-                  AI가 성장 포인트를 찾아 정리해요
+                <Text style={styles.resultSaveLabel}>
+                  {leaveAction ? '나가기' : '다시 생성'}
                 </Text>
-              </View>
+              </Pressable>
             </View>
           </ScrollView>
         </View>
@@ -882,16 +929,15 @@ export default function DiaryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
   flex: { flex: 1 },
-  recordContainer: { backgroundColor: '#FFFFFF' },
+  recordContainer: { backgroundColor: '#FAF9F9' },
   recordHeader: {
-    paddingTop: 26,
-    paddingBottom: 24,
-    paddingHorizontal: 28,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 5px rgba(0, 0, 0, 0.12)',
-    zIndex: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    paddingTop: 8,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    gap: 8,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backButton: {
@@ -902,7 +948,6 @@ const styles = StyleSheet.create({
   },
   backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
   recordHeading: {
-    flex: 1,
     fontFamily: 'Jua',
     fontSize: 24,
     lineHeight: 32,
@@ -915,7 +960,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4F4F4F',
   },
-  recordHint: { marginTop: 7, fontSize: 12, lineHeight: 18, color: '#222222' },
+  recordHint: { fontSize: 13, lineHeight: 21, color: '#777574' },
   recordScroll: { backgroundColor: '#FAF9F9' },
   recordList: {
     width: '100%',
@@ -924,11 +969,11 @@ const styles = StyleSheet.create({
     paddingLeft: 18,
     paddingRight: 25,
     paddingTop: 24,
-    paddingBottom: 105,
+    paddingBottom: 24,
     gap: 20,
   },
   recordCard: {
-    minHeight: 90,
+    minHeight: 64,
     paddingLeft: 16,
     paddingRight: 20,
     paddingVertical: 12,
@@ -951,13 +996,6 @@ const styles = StyleSheet.create({
     color: '#4F4F4F',
   },
   recordTitle: { flex: 1, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
-  recordDescription: {
-    marginTop: 6,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#4F4F4F',
-  },
-  recordTag: { marginTop: 1, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
   recordCheck: {
     width: 20,
     height: 20,
@@ -970,17 +1008,15 @@ const styles = StyleSheet.create({
   recordCheckSelected: { backgroundColor: '#D26A5C' },
   recordCheckLabel: { fontSize: 12, lineHeight: 16, color: '#FFFFFF' },
   recordFooter: {
-    position: 'absolute',
-    bottom: 26,
-    left: 0,
-    right: 0,
+    paddingVertical: 12,
     alignItems: 'center',
+    backgroundColor: '#FAF9F9',
   },
   recordNext: {
     width: 239,
     minHeight: 51,
     borderRadius: 14,
-    backgroundColor: '#D26A5C',
+    backgroundColor: '#B25447',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -996,7 +1032,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: 21.5,
     paddingTop: 18,
-    paddingBottom: 105,
+    paddingBottom: 24,
   },
   growthCard: {
     paddingHorizontal: 18,
@@ -1020,7 +1056,7 @@ const styles = StyleSheet.create({
     color: '#4F4F4F',
   },
   growthInput: {
-    height: 188,
+    minHeight: 144,
     marginTop: 14,
     paddingHorizontal: 12,
     paddingTop: 14,
@@ -1028,14 +1064,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAEAEA',
     borderRadius: 12,
-    fontSize: 12,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 25,
     color: '#4F4F4F',
   },
   growthTags: { marginTop: 12, flexDirection: 'row', gap: 9 },
   growthTag: {
     flex: 1,
-    minHeight: 31,
+    minHeight: 44,
     paddingHorizontal: 5,
     borderWidth: 1,
     borderColor: '#FFE4DE',
@@ -1089,13 +1125,7 @@ const styles = StyleSheet.create({
   },
   photoRemoveLabel: { fontSize: 12, color: '#D26A5C' },
   photoNotice: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#D26A5C' },
-  diaryPhoto: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    marginBottom: 15,
-  },
-  loadingCard: {
+  confirmationCard: {
     width: '100%',
     maxWidth: 350,
     maxHeight: '90%',
@@ -1104,111 +1134,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     boxShadow: '0px 8px 30px rgba(84, 87, 92, 0.12)',
   },
-  loadingContent: { paddingTop: 24, paddingHorizontal: 24, paddingBottom: 20 },
-  loadingTitle: {
+  confirmationContent: {
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  confirmationTitle: {
     fontFamily: 'Jua',
     fontSize: 24,
     lineHeight: 32,
     color: '#D26A5C',
   },
-  loadingSubtitle: {
-    marginTop: 8,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#606060',
-  },
-  loadingDetails: {
-    marginTop: 18,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#606060',
-  },
-  loadingSummary: {
-    marginTop: 18,
-    minHeight: 256,
-    marginHorizontal: -4,
-    padding: 22,
-    borderWidth: 2,
-    borderColor: '#F0F0F0',
-    borderRadius: 16,
-    backgroundColor: '#FAF9F9',
-  },
-  loadingSummaryTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
-    color: '#111111',
-  },
-  loadingItems: { marginTop: 19, gap: 16 },
-  loadingItem: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  loadingBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E58A78',
-  },
-  loadingItemLabel: { flex: 1, fontSize: 12, lineHeight: 20, color: '#111111' },
-  loadingProgress: {
-    marginTop: 24,
-    minHeight: 36,
-    borderWidth: 2,
-    borderColor: '#FFE4DE',
-    borderRadius: 18,
-    backgroundColor: '#FFF5F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  loadingProgressLabel: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: '#D26A5C',
-  },
   resultContent: {
     width: '100%',
-    maxWidth: 430,
+    maxWidth: 600,
     alignSelf: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 110,
-    gap: 12,
+    paddingBottom: 28,
+    gap: 20,
   },
-  resultCard: {
-    padding: 18,
-    borderWidth: 2,
-    borderColor: '#F2F2F2',
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  resultDiaryCard: { minHeight: 252 },
-  resultHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  resultIcon: { width: 16, height: 16, backgroundColor: '#4F4F4F' },
-  resultHeading: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: '#4F4F4F',
-  },
-  resultBody: { marginTop: 8, fontSize: 12, lineHeight: 20, color: '#606060' },
-  resultPhoto: { marginTop: 12, marginBottom: 0 },
-  resultGrowthCard: { minHeight: 186 },
-  resultGrowthPoints: { marginTop: 14, gap: 8 },
-  resultGrowthPoint: { fontSize: 12, lineHeight: 20, color: '#606060' },
   resultFooter: {
-    position: 'absolute',
-    bottom: 26,
-    left: 0,
-    right: 0,
     width: '100%',
-    maxWidth: 430,
+    maxWidth: 600,
     alignSelf: 'center',
-    paddingHorizontal: 24,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEE8E5',
+    backgroundColor: '#FAF9F9',
+    gap: 4,
   },
-  resultActions: { flexDirection: 'row', gap: 22 },
+  quietAction: {
+    minHeight: 44,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateLabel: { fontSize: 13, lineHeight: 21, color: '#777574', flex: 1 },
   saveNotice: {
     fontSize: 12,
     lineHeight: 18,
@@ -1253,39 +1217,28 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   regenerateLabel: {
-    fontFamily: 'Jua',
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#A0A3B1',
+    fontSize: 13,
+    lineHeight: 21,
+    color: '#777574',
     textAlign: 'center',
   },
   resultSave: {
-    flex: 1,
-    minHeight: 49,
-    borderRadius: 10,
-    backgroundColor: '#D26A5C',
+    minHeight: 50,
+    flexShrink: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#B25447',
     alignItems: 'center',
     justifyContent: 'center',
   },
   resultSaveLabel: {
-    fontFamily: 'Jua',
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
-  photoGallery: { height: 130, flexGrow: 0, flexShrink: 0, marginRight: -24 },
-  photoGalleryContent: { gap: 20 },
-  galleryTile: {
-    width: 130,
-    height: 130,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#F0EBE9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  galleryPhoto: { width: '100%', height: '100%' },
-  galleryPlaceholder: { fontSize: 12, color: '#A0A3B1' },
   modalOverlay: {
     flex: 1,
     paddingHorizontal: 20,
@@ -1295,7 +1248,5 @@ const styles = StyleSheet.create({
   },
   deleteActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
   deleteLabel: { fontFamily: 'Jua', fontSize: 16, color: '#C9534A' },
-  viewReturn: { flex: 2 },
-  viewReturnLabel: { fontSize: 16 },
   pressed: { opacity: 0.78 },
 });

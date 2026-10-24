@@ -1,38 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import vm from 'node:vm';
+import { loadAuthModule } from './auth-loader.mjs';
 
 // Use an isolated test API with JWT_ACCESS_TOKEN_SECONDS=5; creates disposable data.
 const apiUrl = process.argv[2] ?? 'http://localhost:18069';
-const ts = createRequire(import.meta.url)('typescript');
-const source = await readFile(
-  new URL('../src/lib/api/client.ts', import.meta.url),
-  'utf8',
-);
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.CommonJS,
-  },
-});
-const module = { exports: {} };
 let refreshes = 0;
-vm.runInNewContext(outputText, {
-  module,
-  exports: module.exports,
+const { AuthSession } = loadAuthModule({
   process: { env: { EXPO_PUBLIC_API_URL: apiUrl } },
   fetch: (url, init) => {
     if (url.endsWith('/refresh')) refreshes++;
     return fetch(url, init);
   },
-  Headers,
-  AbortController,
-  setTimeout,
-  clearTimeout,
-  Error,
-  JSON,
-  Number,
 });
 let saved = null;
 const storage = {
@@ -44,8 +21,7 @@ const storage = {
     saved = null;
   },
 };
-const { ApiClient } = module.exports;
-const client = new ApiClient(storage, () => {});
+const client = new AuthSession(storage, () => {});
 const credentials = {
   email: `api-auth-${Date.now()}@example.com`,
   password: 'auth-test-password',
@@ -70,7 +46,7 @@ await Promise.all([
 ]);
 assert.equal(refreshes, 1);
 assert.notEqual(JSON.parse(saved).accessToken, oldAccess);
-const restored = new ApiClient(storage, () => {});
+const restored = new AuthSession(storage, () => {});
 await restored.restore();
 assert.equal(restored.getSnapshot().status, 'authenticated');
 assert.equal(refreshes, 2);

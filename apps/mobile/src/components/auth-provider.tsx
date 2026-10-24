@@ -7,15 +7,15 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { ApiClient } from '../lib/api/client';
+import { AuthSession } from '../lib/features/auth';
 import { tokenStorage } from '../lib/auth-storage';
 
-const AuthContext = createContext<ApiClient | null>(null);
+const AuthContext = createContext<AuthSession | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [client] = useState(
-    () => new ApiClient(tokenStorage, () => queryClient.clear()),
+    () => new AuthSession(tokenStorage, () => queryClient.clear()),
   );
   useEffect(() => {
     void client.restore();

@@ -102,6 +102,32 @@ await deleteDiary(diary.date);
 await saveDiary(diary);
 assert.deepEqual(await readDiary(diary.date), diary);
 
+const withSources = {
+  ...diary,
+  date: '2026-10-16',
+  tomorrowTip: '그림책을 함께 읽어보세요.',
+  sourceRecords: {
+    activities: ['책 읽기'],
+    note: '책장을 넘겼어요.',
+    tags: ['#성취/시도'],
+  },
+};
+await saveDiary(withSources);
+assert.deepEqual(await readDiary(withSources.date), withSources);
+await assert.rejects(
+  saveDiary({
+    ...diary,
+    date: '2026-10-17',
+    sourceRecords: { activities: [], note: 42, tags: [] },
+  }),
+  /내용을 확인/,
+);
+await assert.rejects(
+  saveDiary({ ...diary, date: '2026-10-17', tomorrowTip: 42 }),
+  /내용을 확인/,
+);
+await assert.rejects(saveDiary({ ...diary, content: '  ' }), /내용을 확인/);
+
 failWrite = true;
 await assert.rejects(
   saveDiary({ ...diary, date: '2026-10-12' }),

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { DiarySourceRecords } from './diary-generation';
 
 const prefix = '@growtogether/diary/v1/';
 
@@ -8,6 +9,8 @@ export type SavedDiary = {
   emotions: string[];
   growthPoints: string[];
   photoUris: string[];
+  tomorrowTip?: string | null;
+  sourceRecords?: DiarySourceRecords;
 };
 
 export function diaryDateKey(date: Date): string {
@@ -39,6 +42,15 @@ function isSavedDiary(value: unknown): value is SavedDiary {
     parseDiaryDate(diary.date) !== null &&
     typeof diary.content === 'string' &&
     diary.content.trim().length > 0 &&
+    (diary.tomorrowTip === undefined ||
+      diary.tomorrowTip === null ||
+      typeof diary.tomorrowTip === 'string') &&
+    (diary.sourceRecords === undefined ||
+      (diary.sourceRecords !== null &&
+        typeof diary.sourceRecords === 'object' &&
+        stringArray(diary.sourceRecords.activities) &&
+        typeof diary.sourceRecords.note === 'string' &&
+        stringArray(diary.sourceRecords.tags))) &&
     stringArray(diary.emotions) &&
     stringArray(diary.growthPoints) &&
     stringArray(diary.photoUris) &&
