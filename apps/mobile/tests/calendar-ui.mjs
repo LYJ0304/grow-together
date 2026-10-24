@@ -220,7 +220,7 @@ try {
   for (const [label, route] of [
     ['투두', '/todo'],
     ['홈', '/main'],
-    ['질문', '/persona'],
+    ['질문', '/chat'],
     ['마이', '/mypage'],
     ['캘린더', '/calendar'],
   ]) {
