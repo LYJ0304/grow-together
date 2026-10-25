@@ -6,7 +6,9 @@
 4. Keep the AI worker provider- and feature-neutral; it is not a RAG-only component.
 5. Do not prebuild unrequested features, directories, or placeholder classes.
 6. Keep secrets out of source control; document required environment variables in `.env.example`.
-7. Add focused tests for non-trivial behavior.
+7. Use TDD (RED → GREEN → REFACTOR) for behavior changes, including direct
+   implementation requests outside `start`. Add focused tests for non-trivial
+   behavior; follow the [TDD procedure and exceptions](.harness/conventions.md#tdd).
 8. Prefer official documentation and stable releases.
 9. Minimize service-to-service coupling; use `contracts/openapi.yaml` for API contracts.
 10. Preserve module boundaries when extending the system.
@@ -23,10 +25,12 @@ use the repository skill linked below for this workflow.
 | `plan <task>` or `$plan <task>` | [plan](.harness/skills/plan/SKILL.md) | Plan shown in the conversation; no files or implementation by default |
 | `raise` or `$raise` | [raise](.harness/skills/raise/SKILL.md) | GitHub issue from the selected conversation plan and latest corrections |
 | `start 1321` or `$start 1321` | [start](.harness/skills/start/SKILL.md) | Implement issue #1321 in a separate worktree |
+| `$release`, `$release prepare`, `$release publish <PR_NUMBER>`, `$release status` | [release](.harness/skills/release/SKILL.md) | Inspect, prepare or publish approved app releases; never deploy |
 | `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR; preserve the environment until verified merge |
+| `review 1321` or `$review 1321` | [review](.harness/skills/review/SKILL.md) | Review PR correctness, safety, and code quality; publish Korean summary and inline comments |
 
 These are agent requests, not shell commands. `/plan`, `/raise`, `/start 1321`,
-and `/ship` in user messages route to the same skills; they do not register
+`/ship`, and `/review 1321` in user messages route to the same skills; they do not register
 new native slash commands. Select a conversation plan when multiple plans exist.
 
 Use [harness conventions](.harness/conventions.md) for issue/PR formatting,
@@ -40,6 +44,14 @@ Invoke only the requested stages; explicitly combined requests can proceed
 through those stages without asking again. Standalone `plan` does not write
 files or publish. `start` implements and verifies; `ship` commits/pushes/publishes.
 
+`review <PR-number>` independently reviews an open PR and authorizes posting a
+GitHub `COMMENT` review with a Korean summary and inline findings. It assesses
+correctness, safety, and Clean Code with concrete evidence and improvement
+directions. Follow-up can use `ship → review <PR-number> → fixes → ship`;
+ship never runs review automatically. Review does not edit code, approve,
+request changes, merge, or clean up the retained environment. Its skill defines
+snapshot verification, duplicate prevention, and publication failure handling.
+
 - `start` uses the latest remote `develop` for new tasks unless another base
   was requested. Resume existing issue branches/worktrees with their established
   base and PR target, preserving unrelated local work.
@@ -51,6 +63,13 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
   See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
+- `raise` and PR publication through `ship` apply one type label and all relevant
+  domain labels (`mobile`, `api`, `worker`, `harness`, `contracts`). Create only
+  missing required labels; preserve existing label settings and unrelated labels.
+  Follow conventions for classification, repeat runs, and result verification.
+- `start` assigns the issue before implementation, using explicitly requested
+  GitHub login(s) or the authenticated user by default. Preserve existing assignees,
+  add only missing users, and verify assignment; report failures before proceeding.
 - Write issue titles as `<type>(<scope>): <한글 설명>` and issue bodies in Korean.
   Write PR titles as `<type>(<scope>): <English description>` and PR bodies in Korean.
   Keep code, commands, paths, URLs, and identifiers in their original form.
@@ -76,3 +95,17 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
 - Keep task branches for PR follow-up. Never remove the primary, `develop`,
   `main`, or `staging` worktree. Merge, deployment, maintained-branch updates, and branch deletion
   require a separate request.
+
+## Release lifecycle
+
+Use the repository [release skill](.harness/skills/release/SKILL.md) for release
+requests. It is separate from general issue implementation/shipping. Release
+branches start at QA-promoted `main`; Release PRs target `main`, using squash
+when compatible with repository protection. Maintained-branch promotions still
+use merge commits and need separate authorization.
+
+Require separate explicit approval for the version plan before manifest edits,
+for PR merge, and for tag/Release publication. A mode invocation alone is not
+approval. All app tags reference the verified merge SHA. Release execution creates
+no Issues/Project items and never changes deployment environments or workflows.
+GitHub Actions/providers handle deployment; tags do not prove deployment success.

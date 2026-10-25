@@ -46,8 +46,13 @@ branch, including all states, and read the associated PR with `gh pr view`:
 
 1. Read the issue and inspect tracked, staged, and untracked task changes and commits
    against the established base. Do not include another task's staged files.
-2. Run relevant required checks. Fix task failures before publishing; disclose missing
-   prerequisites without claiming a successful ship. Record evidence in the PR body.
+2. Review the handoff's [TDD evidence](../../conventions.md#tdd) and run relevant
+   required checks. Apply that procedure to any new behavior fixes during ship.
+   Fix task failures before publishing; disclose missing prerequisites without
+   claiming a successful ship. Record the observed TDD summary, or the applicable
+   exception and actual validation, alongside final check results in the PR body.
+   Report missing historical evidence explicitly; a passing final suite alone
+   does not establish that RED occurred. Do not recreate failures retroactively.
 3. Stage explicit task paths. Run `git diff --cached --check` and inspect the staged
    diff. Commit in English using `<type>(<scope>): <English description>`, for example
    `docs(harness): defer worktree cleanup until merge`; any commit body is also English.
@@ -62,9 +67,17 @@ branch, including all states, and read the associated PR with `gh pr view`:
    commands, paths, URLs, identifiers, and `Closes #<number>` as written. Record the
    intended merge method and use `Closes` only for completed scope. Verify the
    published title/body language and that the PR head equals the pushed task commit.
+   Apply conventions' type/domain labels on both creation and updates: use the
+   linked issue's classification as a starting point, then reconcile with the
+   final change scope and title type. Create only missing required labels without
+   changing existing label settings. Use repeated `--label` flags on create;
+   on edit, add missing desired labels and remove only obsolete managed labels,
+   preserving unrelated labels. Read back `gh pr view --json labels` to verify
+   the expected set. Report metadata failures rather than claiming ship complete.
    After an uncertain creation response, inspect GitHub before retrying.
 6. Retain the worktree and review/development environment: dependencies, caches,
-   local configuration, and task-owned review servers. Report PR URL, commit/checks,
+   local configuration, and task-owned review servers. Report PR URL, applied
+   labels, any labels created, commit/checks,
    actual branch/path, and `awaiting merge; environment retained`. Publication alone
    must not stop review servers, delete dependencies, or remove a worktree. A short
    test process may end normally; report any intentionally ended test-only services.

@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,11 +9,14 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChatDraft } from '../src/components/auth-provider';
+import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
   {
@@ -37,15 +39,42 @@ const suggestions = [
 
 export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
-  const [draft, setDraft] = useState('');
+  const input = useRef<TextInput>(null);
+  const { width } = useWindowDimensions();
+  const { draft, setDraft } = useChatDraft();
+  const keyboard = useChatKeyboard();
+  const [notice, setNotice] = useState('');
+  const [inputHeight, setInputHeight] = useState(48);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const field = input.current as unknown as HTMLTextAreaElement | null;
+    if (!field) return;
+    const previous = field.style.height;
+    field.style.height = 'auto';
+    const height = Math.max(48, Math.min(144, field.scrollHeight));
+    field.style.height = previous;
+    setInputHeight(height);
+  }, [draft, width]);
 
   const send = () => {
     if (!draft.trim()) return;
-    Alert.alert('상담 기능 준비 중', 'AI 상담 연결은 아직 준비 중이에요.');
+    setNotice('AI 상담 연결은 아직 준비 중이에요.');
+    input.current?.focus();
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[
+        styles.container,
+        keyboard.viewport && {
+          flex: 0,
+          height: keyboard.viewport.height,
+          transform: [{ translateY: keyboard.viewport.offsetTop }],
+        },
+      ]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -57,16 +86,12 @@ export default function CounselorChatScreen() {
             <Text accessibilityRole="header" style={styles.personaName}>
               차분한 상담선생님
             </Text>
-            <Text style={styles.online}>
-              <Text style={styles.onlineDot}>●</Text> Online
-            </Text>
+            <Text style={styles.connectionStatus}>상담 연결 준비 중</Text>
           </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="상담 설정"
-            onPress={() =>
-              Alert.alert('상담 설정', '설정 기능은 준비 중이에요.')
-            }
+            onPress={() => setNotice('설정 기능은 준비 중이에요.')}
             style={({ pressed }) => [
               styles.settingsButton,
               pressed && styles.pressed,
@@ -93,7 +118,10 @@ export default function CounselorChatScreen() {
                 key={item.question}
                 accessibilityRole="button"
                 accessibilityLabel={`질문 입력: ${item.question}`}
-                onPress={() => setDraft(item.question)}
+                onPress={() => {
+                  setDraft(item.question);
+                  input.current?.focus();
+                }}
                 style={({ pressed }) => [
                   styles.suggestion,
                   pressed && styles.pressed,
@@ -109,43 +137,90 @@ export default function CounselorChatScreen() {
           </View>
         </ScrollView>
 
+        {notice !== '' && (
+          <View accessibilityRole="alert" style={styles.notice}>
+            <Text style={styles.noticeText}>{notice}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="안내 닫기"
+              onPress={() => {
+                setNotice('');
+                input.current?.focus();
+              }}
+              style={styles.dismissNotice}
+            >
+              <Text accessible={false}>×</Text>
+            </Pressable>
+          </View>
+        )}
         <View style={styles.composer}>
           <TextInput
+            ref={input}
             accessibilityLabel="상담 질문 입력"
             placeholder="궁금한 점을 뭐든지 물어보세요"
             placeholderTextColor="#A0A3B1"
             value={draft}
             onChangeText={setDraft}
+            multiline
+            numberOfLines={1}
+            blurOnSubmit={false}
+            submitBehavior="newline"
+            onContentSizeChange={(event) => {
+              if (Platform.OS !== 'web') {
+                setInputHeight(
+                  Math.max(
+                    48,
+                    Math.min(144, event.nativeEvent.contentSize.height),
+                  ),
+                );
+              }
+            }}
+            onKeyPress={(event) => {
+              if (
+                Platform.OS !== 'web' ||
+                !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+              )
+                return;
+              const key = event.nativeEvent as unknown as KeyboardEvent;
+              if (
+                key.key === 'Enter' &&
+                !key.shiftKey &&
+                !key.isComposing &&
+                key.keyCode !== 229
+              ) {
+                event.preventDefault();
+                send();
+              }
+            }}
             onSubmitEditing={send}
-            returnKeyType="send"
-            style={styles.input}
+            style={[styles.input, { height: inputHeight }]}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="음성 입력"
-            onPress={() =>
-              Alert.alert('음성 입력', '음성 입력 기능은 준비 중이에요.')
-            }
-            hitSlop={6}
-          >
-            <Text style={styles.micIcon}>♩</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
             accessibilityLabel="질문 보내기"
-            onPress={send}
+            accessibilityState={{ disabled: !draft.trim() }}
+            disabled={!draft.trim()}
+            onPress={() => {
+              send();
+              input.current?.focus();
+            }}
             style={({ pressed }) => [
               styles.sendButton,
+              !draft.trim() && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
             <Text style={styles.sendIcon}>➤</Text>
           </Pressable>
         </View>
-        <BottomNavigation
-          active="질문"
-          onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        />
+        {!keyboard.visible && (
+          <BottomNavigation
+            active="질문"
+            onReselect={() =>
+              scroll.current?.scrollTo({ y: 0, animated: true })
+            }
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -178,8 +253,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#D26A5C',
   },
-  online: { fontFamily: 'Jua', fontSize: 12, lineHeight: 16, color: '#487B61' },
-  onlineDot: { color: '#65A87B', fontSize: 10 },
+  connectionStatus: {
+    fontFamily: 'Jua',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#777574',
+  },
   settingsButton: {
     width: 44,
     height: 44,
@@ -231,33 +310,51 @@ const styles = StyleSheet.create({
   suggestionArrow: { marginTop: -10, fontSize: 19, color: '#8C837D' },
   composer: {
     minHeight: 56,
-    marginHorizontal: 30,
+    marginHorizontal: 12,
     marginTop: 10,
     marginBottom: 10,
-    paddingLeft: 22,
-    paddingRight: 14,
+    paddingLeft: 16,
+    paddingRight: 6,
     borderRadius: 30,
     backgroundColor: '#FFFFFF',
     boxShadow: '0px 5px 18px rgba(84, 87, 92, 0.16)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   input: {
     flex: 1,
     minWidth: 0,
     paddingVertical: 12,
     fontFamily: 'Jua',
-    fontSize: 13,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlignVertical: 'top',
     color: '#4F4F4F',
   },
-  micIcon: { fontSize: 20, color: '#A0A3B1' },
+  notice: {
+    marginHorizontal: 12,
+    paddingLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDEDE6',
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  noticeText: { flex: 1, fontSize: 14, lineHeight: 20, color: '#4F4F4F' },
+  dismissNotice: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendButton: {
-    width: 28,
-    height: 32,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendIcon: { fontSize: 23, color: '#D26A5C' },
+  disabled: { opacity: 0.35 },
   pressed: { opacity: 0.75 },
 });

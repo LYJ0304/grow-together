@@ -17,6 +17,16 @@ verification and `awaiting merge; environment retained` with the actual branch/p
 A later ship invocation or separately requested merge verifies the completed merge
 before safe cleanup; it reports removal or the reason for retaining the environment.
 
+`review <PR-number>` is an independent stage after publication: open PR →
+correctness, safety, and code quality review → Korean GitHub `COMMENT` summary
+and inline findings, with the reviewed SHA and verification limits. Use
+`ship → review <PR-number> → fixes → ship` for follow-up; ship does not invoke
+review automatically. Invoking review authorizes comment publication, not code
+edits, approval, REQUEST_CHANGES, merge, or environment cleanup. The
+[review skill](skills/review/SKILL.md) owns snapshot checks, finding quality,
+deduplication, and failure handling. Its handoff reports PR/review links, reviewed
+SHA, findings, actual checks and limits, and publication status.
+
 Only perform requested stages. Explicitly combined requests authorize that
 sequence without another confirmation; standalone stages stop at their own
 boundary. Existing issues can go directly to start. If a new session lacks a
@@ -42,8 +52,7 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
   `type(scope)` identifiers, and `Closes #<number>` unchanged. Apply these language
   rules to creation and updates, and verify the published title/body.
 - Issues: purpose, current state, scope, implementation steps, completion criteria,
-  unresolved decisions, and relevant links. Use existing labels: `enhancement` for
-  features, `bug` for fixes, `documentation` for docs. Do not create labels silently.
+  unresolved decisions, and relevant links. Apply the type and domain labels below.
 - PRs: concrete problem and resulting behavior, verification, remaining limits,
   and `Closes #<number>` only when the PR completes the issue.
 - Branch: `<type>/issue-<number>-<slug>`; use a short lowercase hyphenated slug.
@@ -57,6 +66,74 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
   branch from the primary checkout, but never delete the primary worktree.
 - Write GitHub bodies to temporary files and use `--body-file`. Stage named task
   files rather than `git add .`. Never stage `.env`, secrets, or editor settings.
+
+## Issue and PR labels
+
+`raise` and the publishing path of `ship` apply one type label and all relevant
+domain labels. Keep type separate from domain; a mobile feature gets
+`enhancement` and `mobile`. Determine domains from the plan/requirements and final
+change scope, not only the title scope (`auth` can affect both API and mobile).
+
+| Title type | Type label |
+| --- | --- |
+| `feat` | `enhancement` |
+| `fix` | `bug` |
+| `docs` | `documentation` |
+| `chore` | `chore` |
+
+| Domain label | Relevant scope |
+| --- | --- |
+| `mobile` | `apps/mobile/` and mobile behavior |
+| `api` | `apps/api/` and API behavior |
+| `worker` | `apps/ai-worker/` and AI worker behavior |
+| `harness` | `.harness/`, `.agents/skills/`, and workflow rules in `AGENTS.md` |
+| `contracts` | `contracts/` and shared API contracts |
+
+Apply every relevant domain for cross-module work. Do not invent a domain for
+work outside this table or label all domains for a generic root file change.
+PRs start with the linked issue's type/domain classification, then reconcile it
+with the final change scope and title type. Do not copy unrelated issue labels.
+
+Before creation/update, list repository labels with
+`gh label list --repo <owner/repo> --limit 1000 --json name,color,description`.
+Create only missing labels needed by this task from the tables above, using
+`gh label create <name> --repo <owner/repo> --description <description> --color <hex>`.
+Use `a2eeef` for type labels and `c5def5` for domains when creating them; describe
+their type or domain meaning. This workflow authorizes these missing-label
+creations without another confirmation. Report created labels in the handoff.
+Never use `--force` or change an existing label's color/description. Do not create
+the whole catalog preemptively. If concurrent creation reports an existing label,
+re-list to confirm it exists before continuing; do not blindly retry.
+If label lookup/creation fails, report the operation and cause before proceeding
+with dependent issue/PR creation or update.
+
+On create, pass repeated `--label <name>` flags to `gh issue create` or
+`gh pr create`. On update, read current labels first and use `--add-label` only
+for missing desired labels and `--remove-label` only for obsolete type/domain
+labels from these tables. Preserve all labels outside the tables. Re-running
+with the same scope must make no label changes. Verify the resulting label set
+with `gh issue view <number> --repo <owner/repo> --json labels` or the equivalent
+`gh pr view` command and report failures rather than
+claiming metadata is complete. An uncertain response requires a fresh lookup
+before retrying. Never bulk-relabel other issues/PRs; merged-PR cleanup does not
+create or change labels.
+
+## Start assignees
+
+After validating the open issue and resolving the task branch/checkout and any
+existing PR state, assign the issue before implementation, including on resume.
+Read existing assignees with
+`gh issue view <number> --repo <owner/repo> --json assignees`.
+Use explicitly requested GitHub login(s), or resolve the authenticated user with
+`gh api user --jq .login` when none were specified. Add only missing users with
+`gh issue edit <number> --repo <owner/repo> --add-assignee <login>`; never remove
+existing assignees. Re-read assignees to verify every requested login is present,
+and return the verified assignees in the start handoff. Repeated start must not
+reassign existing users. A lookup, permission, or assignment failure stops before
+implementation: preserve local work and report the operation and cause. After an
+uncertain edit response, re-read before retrying. Do not substitute another user
+or change credentials. This issue assignment is part of `start` authorization;
+it does not authorize comments or messages to the assignees.
 
 ## Branches and merge policy
 
@@ -92,6 +169,59 @@ the production baseline. Deployment requires its own configuration and request.
   synchronization, and do not perform back-merges without a separate request.
 - Record the PR target and intended merge method in the start handoff and PR
   body. A policy in a PR body documents intent; it does not enforce GitHub rules.
+
+## TDD
+
+Apply this procedure to behavior changes in all implementation work, including
+requests outside `start` and fixes made during review or `ship`. Keep each cycle
+focused on one small observable behavior and use the existing test tools.
+
+1. **RED:** Before changing implementation, write a focused test for the expected
+   behavior or a regression test that reproduces the bug. Run it and confirm it
+   fails because the behavior is missing or incorrect. Check the failure reason;
+   missing dependencies, unavailable services, or test setup errors do not count
+   as RED. If the test already passes, investigate the behavior and test before
+   changing implementation.
+2. **GREEN:** Make the smallest maintainable implementation that passes the test.
+   Run it and the relevant existing tests. Do not weaken assertions or remove
+   coverage to make an implementation defect pass.
+3. **REFACTOR:** With tests passing, improve structure only where needed while
+   preserving behavior and module boundaries, then rerun the relevant tests.
+   If no improvement is needed, state that briefly. A new behavior starts a new
+   RED cycle; do not add speculative features during refactoring.
+
+Repeat for the next behavior, then run the required checks for the changed area
+under Verification. Cycle checks complement those final checks. Continue through
+cycles without asking for approval at each phase; existing stage boundaries and
+explicit approval requirements still apply.
+
+### Applicability and exceptions
+
+- Features and bug fixes follow the full cycle above.
+- For refactoring that preserves behavior, first run the relevant existing tests.
+  If coverage is insufficient, add and run tests that capture current behavior
+  before refactoring. These may pass immediately; do not manufacture a failure
+  for unchanged behavior. Rerun them after refactoring.
+- Documentation, formatting, and version-value-only changes use relevant
+  validation instead of a forced RED cycle. State the reason TDD does not apply.
+  A mixed task still uses TDD for its behavior changes.
+- If an environment problem prevents execution, report the failed command,
+  prerequisite, and unverified scope. It is neither RED evidence nor completed
+  verification; resolve it before claiming the affected work complete.
+
+### Evidence and handoff
+
+Keep a concise summary in the implementation handoff and PR verification:
+representative tests and commands, the observed RED failure reason, GREEN results,
+and refactoring plus rerun results (or why no refactoring was needed). For
+behavior-preserving refactoring, report before/after results; for excluded work,
+report the reason and actual validation. Preserve failed or unrun checks as such.
+
+On resumed work, distinguish observed results from missing historical evidence.
+Do not infer RED from a passing final suite or alter completed implementation to
+recreate a failure. Report unavailable evidence honestly and apply TDD to new
+behavior changes. No separate log file, status database, per-phase commit, or new
+skill is required; existing conversation handoffs and PR bodies carry the summary.
 
 ## Verification
 
@@ -136,10 +266,28 @@ secret values or silently copy them between worktrees.
 ## Skill discovery
 
 `.agents/skills/<name>` is a relative symlink to `.harness/skills/<name>`.
-Use `$plan`, `$raise`, `$start 1321`, and `$ship`, or select them with `/skills`.
+Use `$plan`, `$raise`, `$start 1321`, `$ship`, `$review 1321`, and `$release`, or select them with `/skills`.
 If the current session has not refreshed its skills, start a new session from
 this checkout. AGENTS.md also routes plain-text requests to the canonical files.
 On platforms that do not restore Git symlinks, enable symlink support or read
 the canonical SKILL.md through AGENTS.md; do not maintain duplicate copies.
 
 Source: [OpenAI skill discovery documentation](https://learn.chatgpt.com/docs/build-skills).
+
+## App release exception
+
+The [release skill](skills/release/SKILL.md) prepares version-only branches from
+already QA-promoted `main` and creates Release PRs targeting `main`. Use squash
+when compatible with protection; this exception does not change promotion merge
+commits or the default `develop` target for ordinary skill implementation tasks.
+
+Plan approval precedes manifest changes. Merge and publication need separate
+explicit approval of the exact PR/head or merge SHA and version mapping. Require
+protected main and passing required CI; absence is a configuration prerequisite,
+not successful CI. Release PR records bind base/head, manifests, notes, validation
+and approval provenance. Do not use general ship cleanup to imply release
+publication, deployment, version back-merges or branch deletion authorization.
+
+Production should eventually deploy only approved per-app tags; activating or
+changing deployment workflows/provider integrations requires a separate concrete
+proposal and explicit approval. Installation adds no active deployment workflow.
