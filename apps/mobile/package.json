@@ -25,7 +25,8 @@
     "test:main:ui": "node tests/main-ui.mjs",
     "test:diary-generation": "node tests/diary-generation.mjs",
     "test:diary:ui": "node tests/diary-result.mjs",
-    "test:chat:ui": "node tests/chat-ui.mjs"
+    "test:chat:ui": "node tests/chat-ui.mjs",
+    "test:chat:status": "node tests/chat-status.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

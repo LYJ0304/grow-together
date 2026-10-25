@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -37,11 +36,14 @@ const suggestions = [
 
 export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
+  const input = useRef<TextInput>(null);
   const [draft, setDraft] = useState('');
+  const [notice, setNotice] = useState('');
 
   const send = () => {
     if (!draft.trim()) return;
-    Alert.alert('상담 기능 준비 중', 'AI 상담 연결은 아직 준비 중이에요.');
+    setNotice('AI 상담 연결은 아직 준비 중이에요.');
+    input.current?.focus();
   };
 
   return (
@@ -57,16 +59,12 @@ export default function CounselorChatScreen() {
             <Text accessibilityRole="header" style={styles.personaName}>
               차분한 상담선생님
             </Text>
-            <Text style={styles.online}>
-              <Text style={styles.onlineDot}>●</Text> Online
-            </Text>
+            <Text style={styles.connectionStatus}>상담 연결 준비 중</Text>
           </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="상담 설정"
-            onPress={() =>
-              Alert.alert('상담 설정', '설정 기능은 준비 중이에요.')
-            }
+            onPress={() => setNotice('설정 기능은 준비 중이에요.')}
             style={({ pressed }) => [
               styles.settingsButton,
               pressed && styles.pressed,
@@ -109,27 +107,36 @@ export default function CounselorChatScreen() {
           </View>
         </ScrollView>
 
+        {notice !== '' && (
+          <View accessibilityRole="alert" style={styles.notice}>
+            <Text style={styles.noticeText}>{notice}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="안내 닫기"
+              onPress={() => {
+                setNotice('');
+                input.current?.focus();
+              }}
+              style={styles.dismissNotice}
+            >
+              <Text accessible={false}>×</Text>
+            </Pressable>
+          </View>
+        )}
         <View style={styles.composer}>
           <TextInput
+            ref={input}
             accessibilityLabel="상담 질문 입력"
             placeholder="궁금한 점을 뭐든지 물어보세요"
             placeholderTextColor="#A0A3B1"
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={send}
+            blurOnSubmit={false}
+            submitBehavior="submit"
             returnKeyType="send"
             style={styles.input}
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="음성 입력"
-            onPress={() =>
-              Alert.alert('음성 입력', '음성 입력 기능은 준비 중이에요.')
-            }
-            hitSlop={6}
-          >
-            <Text style={styles.micIcon}>♩</Text>
-          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="질문 보내기"
@@ -178,8 +185,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#D26A5C',
   },
-  online: { fontFamily: 'Jua', fontSize: 12, lineHeight: 16, color: '#487B61' },
-  onlineDot: { color: '#65A87B', fontSize: 10 },
+  connectionStatus: {
+    fontFamily: 'Jua',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#777574',
+  },
   settingsButton: {
     width: 44,
     height: 44,
@@ -251,7 +262,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#4F4F4F',
   },
-  micIcon: { fontSize: 20, color: '#A0A3B1' },
+  notice: {
+    marginHorizontal: 12,
+    paddingLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDEDE6',
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  noticeText: { flex: 1, fontSize: 14, lineHeight: 20, color: '#4F4F4F' },
+  dismissNotice: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendButton: {
     width: 28,
     height: 32,
