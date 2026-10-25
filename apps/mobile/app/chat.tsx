@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
   {
@@ -38,6 +39,7 @@ const suggestions = [
 export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
+  const keyboard = useChatKeyboard();
 
   const send = () => {
     if (!draft.trim()) return;
@@ -45,7 +47,17 @@ export default function CounselorChatScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[
+        styles.container,
+        keyboard.viewport && {
+          flex: 0,
+          height: keyboard.viewport.height,
+          transform: [{ translateY: keyboard.viewport.offsetTop }],
+        },
+      ]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -142,10 +154,14 @@ export default function CounselorChatScreen() {
             <Text style={styles.sendIcon}>➤</Text>
           </Pressable>
         </View>
-        <BottomNavigation
-          active="질문"
-          onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        />
+        {!keyboard.visible && (
+          <BottomNavigation
+            active="질문"
+            onReselect={() =>
+              scroll.current?.scrollTo({ y: 0, animated: true })
+            }
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
