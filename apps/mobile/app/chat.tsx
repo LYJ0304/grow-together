@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChatDraft } from '../src/components/auth-provider';
 import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
@@ -41,7 +42,7 @@ export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const input = useRef<TextInput>(null);
   const { width } = useWindowDimensions();
-  const [draft, setDraft] = useState('');
+  const { draft, setDraft } = useChatDraft();
   const keyboard = useChatKeyboard();
   const [inputHeight, setInputHeight] = useState(48);
 
