@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChatDraft } from '../src/components/auth-provider';
 
 const suggestions = [
   {
@@ -37,7 +38,7 @@ const suggestions = [
 
 export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
-  const [draft, setDraft] = useState('');
+  const { draft, setDraft } = useChatDraft();
 
   const send = () => {
     if (!draft.trim()) return;
