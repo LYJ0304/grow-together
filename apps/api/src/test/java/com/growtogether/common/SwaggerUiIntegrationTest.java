@@ -12,35 +12,20 @@ import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.SecureRandom;
-import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:swagger-ui;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@ActiveProfiles("test")
+@SpringBootTest
 @AutoConfigureMockMvc
 class SwaggerUiIntegrationTest {
-    private static final String JWT_SECRET = Base64.getEncoder()
-            .encodeToString(new SecureRandom().generateSeed(32));
     @Autowired private MockMvc mvc;
-
-    @DynamicPropertySource
-    static void jwtSecret(DynamicPropertyRegistry registry) {
-        registry.add("app.jwt.secret", () -> JWT_SECRET);
-    }
 
     @Test
     void anonymouslyLoadsSwaggerUiAndItsAssets() throws Exception {
@@ -64,6 +49,7 @@ class SwaggerUiIntegrationTest {
     }
 
     @Test
+    @Transactional
     void loginTokenAuthorizesApiCallsWhileAnonymousRequestsRemainBlocked() throws Exception {
         String credentials = """
                 {"email":"swagger@example.com","password":"swagger-test-password"}

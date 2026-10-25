@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         "spring.jpa.hibernate.ddl-auto=validate"
 })
 @Testcontainers(disabledWithoutDocker = true)
-class PostgresDiaryApiTest extends DiaryApiTest {
+class PostgresDiaryApiTest extends DiaryIntegrationTest {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
