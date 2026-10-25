@@ -26,6 +26,7 @@
     "test:diary-generation": "node tests/diary-generation.mjs",
     "test:diary:ui": "node tests/diary-result.mjs",
     "test:chat:ui": "node tests/chat-ui.mjs",
+    "test:chat:keyboard": "node tests/chat-keyboard.mjs",
     "test:chat:composer": "node tests/chat-composer.mjs"
   },
   "dependencies": {
