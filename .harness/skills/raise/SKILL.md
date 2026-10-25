@@ -40,21 +40,28 @@ Do not create or modify a plan file or require one for registration.
    criteria, verification, and unresolved decisions. Write the title as
    `<type>(<scope>): <한글 설명>` and the body in Korean; retain code/command/path
    identifiers as written. Example: `docs(harness): 병합 후 정리 규칙 개선`.
-   Check this language/format on both creation and updates. Apply conventions and
-   existing labels. A blocking unresolved decision remains visible in the issue.
+   Check this language/format on both creation and updates. Follow conventions'
+   type/domain label tables: select one type and all relevant domains from the
+   plan, and create only missing required labels while preserving existing label
+   settings. A blocking unresolved decision remains visible in the issue.
 4. Write the exact body to a temporary transport file outside the repository
    (for example a `.txt` file). This is not a plan artifact. Create with `gh issue create
-   --repo <owner/repo> --title <title> --label <existing-label> --body-file <file>`,
-   or update the associated issue with `gh issue edit`.
+   --repo <owner/repo> --title <title> --label <type-label> --label <domain-label>
+   --body-file <file>` (repeat domain flags for cross-module work; omit when no
+   listed domain applies). For an existing issue, use `gh issue edit` with only
+   missing desired labels added and obsolete managed labels removed; preserve
+   unrelated labels. Follow conventions for idempotency and uncertain responses.
 5. Verify the returned issue via `gh issue view`, including its conventional
-   title with a Korean description and Korean body. Return its number and URL in
+   title with a Korean description, Korean body, and expected type/domain labels
+   (`--json number,title,body,url,labels`). Return its number and URL in
    the conversation; no plan file or backlink update is needed.
 
 A request to `raise` authorizes publishing the selected plan; do not ask for
 the same authorization again. If the API response is uncertain, inspect GitHub
 before retrying creation. Preserve the conversation plan on failure and report the operation.
 
-Return the issue number/link, whether it was created or updated, and remaining
-decisions. The issue becomes the persisted requirements that `start <number>`
-reads, so a later session does not need the original planning conversation.
+Return the issue number/link, whether it was created or updated, applied labels,
+any labels created, and remaining decisions. The issue becomes the persisted
+requirements that `start <number>` reads, so a later session does not need the
+original planning conversation.
 Standalone `raise` does not change product code, commit, or start implementation.

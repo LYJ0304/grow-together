@@ -62,9 +62,17 @@ branch, including all states, and read the associated PR with `gh pr view`:
    commands, paths, URLs, identifiers, and `Closes #<number>` as written. Record the
    intended merge method and use `Closes` only for completed scope. Verify the
    published title/body language and that the PR head equals the pushed task commit.
+   Apply conventions' type/domain labels on both creation and updates: use the
+   linked issue's classification as a starting point, then reconcile with the
+   final change scope and title type. Create only missing required labels without
+   changing existing label settings. Use repeated `--label` flags on create;
+   on edit, add missing desired labels and remove only obsolete managed labels,
+   preserving unrelated labels. Read back `gh pr view --json labels` to verify
+   the expected set. Report metadata failures rather than claiming ship complete.
    After an uncertain creation response, inspect GitHub before retrying.
 6. Retain the worktree and review/development environment: dependencies, caches,
-   local configuration, and task-owned review servers. Report PR URL, commit/checks,
+   local configuration, and task-owned review servers. Report PR URL, applied
+   labels, any labels created, commit/checks,
    actual branch/path, and `awaiting merge; environment retained`. Publication alone
    must not stop review servers, delete dependencies, or remove a worktree. A short
    test process may end normally; report any intentionally ended test-only services.

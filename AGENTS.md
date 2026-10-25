@@ -52,6 +52,13 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
   See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
+- `raise` and PR publication through `ship` apply one type label and all relevant
+  domain labels (`mobile`, `api`, `worker`, `harness`, `contracts`). Create only
+  missing required labels; preserve existing label settings and unrelated labels.
+  Follow conventions for classification, repeat runs, and result verification.
+- `start` assigns the issue before implementation, using explicitly requested
+  GitHub login(s) or the authenticated user by default. Preserve existing assignees,
+  add only missing users, and verify assignment; report failures before proceeding.
 - Write issue titles as `<type>(<scope>): <한글 설명>` and issue bodies in Korean.
   Write PR titles as `<type>(<scope>): <English description>` and PR bodies in Korean.
   Keep code, commands, paths, URLs, and identifiers in their original form.

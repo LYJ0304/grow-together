@@ -54,18 +54,6 @@ function AuthenticatedStack() {
   const hasAccess = status === 'authenticated' || status === 'preview';
   return (
     <View style={styles.root}>
-      {status === 'preview' ? (
-        <View style={styles.preview}>
-          <Text>미리보기 · 서버 API를 이용할 수 없어요.</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void client.logout()}
-            style={styles.button}
-          >
-            <Text>미리보기 종료</Text>
-          </Pressable>
-        </View>
-      ) : null}
       <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
         <Stack.Protected guard={!hasAccess}>
           <Stack.Screen name="login" />
@@ -117,9 +105,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF9F9',
   },
   button: { minHeight: 44, padding: 12, justifyContent: 'center' },
-  preview: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    backgroundColor: '#FDEDE6',
-  },
 });
