@@ -6,7 +6,9 @@
 4. Keep the AI worker provider- and feature-neutral; it is not a RAG-only component.
 5. Do not prebuild unrequested features, directories, or placeholder classes.
 6. Keep secrets out of source control; document required environment variables in `.env.example`.
-7. Add focused tests for non-trivial behavior.
+7. Use TDD (RED → GREEN → REFACTOR) for behavior changes, including direct
+   implementation requests outside `start`. Add focused tests for non-trivial
+   behavior; follow the [TDD procedure and exceptions](.harness/conventions.md#tdd).
 8. Prefer official documentation and stable releases.
 9. Minimize service-to-service coupling; use `contracts/openapi.yaml` for API contracts.
 10. Preserve module boundaries when extending the system.

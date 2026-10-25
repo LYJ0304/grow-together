@@ -68,16 +68,22 @@ in the final handoff so ship describes the actual change, not a superseded plan.
    its AGENTS.md and issue-specific code before editing. Set up only dependencies
    needed for this task, from its own lockfiles and service `.env.example` files.
    Do not share mutable dependency directories or copy credentials silently.
-5. Implement the issue's completion criteria and focused tests. Reflect user
-   steering in the final scope. Track unresolved external prerequisites rather
-   than reporting partial work as complete.
+5. Implement the issue's completion criteria using conventions'
+   [TDD procedure](../../conventions.md#tdd): run each focused test and confirm the
+   intended RED failure before implementation, reach GREEN, then REFACTOR as
+   needed and rerun relevant tests. Follow its separate guidance for
+   behavior-preserving refactoring, excluded changes, and resumed work with
+   missing historical evidence. Run the changed area's required final checks.
+   Reflect user steering in the final scope. Track unresolved external
+   prerequisites rather than reporting partial work as complete.
 
 Use the issue and the branch/worktree naming convention as the handoff to ship;
 no separate status database is needed. Return repository, issue number/URL, base,
 PR target, intended merge method, branch, actual checkout path and whether it is
 primary or a linked worktree, verified issue assignees, changes, executed
-checks/results, and remaining limitations. Preserve existing local task changes when resuming and include
-their context in the handoff.
+checks/results, and remaining limitations. Include the TDD evidence summary from
+conventions, or the applicable exception and actual validation. Preserve existing
+local task changes when resuming and include their context in the handoff.
 
 If the user moves the work to another checkout mid-task, refresh this handoff
 with the new location instead of letting ship infer it from the original path.

@@ -23,6 +23,12 @@ do not require a new confirmation for actions already requested.
 
 Read root AGENTS.md and [conventions](../../conventions.md). Inspect the relevant
 code, callers, tests, and API contracts before proposing changes.
+For behavior changes, identify the observable behavior to test, the existing test
+entry points/commands, and how a focused RED → GREEN → REFACTOR cycle will verify
+it, following conventions' [TDD procedure](../../conventions.md#tdd). For
+behavior-preserving refactoring or excluded work, identify the applicable
+verification and reason instead. Planning describes tests; it does not run an
+implementation cycle or change files.
 
 Present the plan directly to the user: purpose, current state, included/excluded
 scope, implementation steps, completion criteria, verification, and unresolved
