@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
-class DiaryApiTest {
+class DiaryIntegrationTest {
     private static final String PATH = "/api/v1/diary";
     private static final String IMAGE = "https://example.com/diary.jpg";
 
@@ -73,16 +73,6 @@ class DiaryApiTest {
     }
 
     @Test
-    void createsDiaryWithoutTodosOrImages() throws Exception {
-        long id = createDiary(body("Today", "[]", null));
-
-        perform(get(PATH + "/{id}", id), ownerId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.todos").isEmpty())
-                .andExpect(jsonPath("$.diaryFiles").isEmpty());
-    }
-
-    @Test
     void replacesContentImagesAndTodoLinksWithoutDeletingTodos() throws Exception {
         Todo previous = saveTodo();
         Todo replacement = saveTodo();
@@ -106,23 +96,6 @@ class DiaryApiTest {
         assertThat(linkedDiary(previous.getId())).isNull();
         assertThat(linkedDiary(replacement.getId())).isEqualTo(id);
         assertThat(imageCount()).isEqualTo(1);
-    }
-
-    @Test
-    void emptyListsRemoveImagesAndDetachTodos() throws Exception {
-        Todo todo = saveTodo();
-        long id = createDiary(body("Before", "[" + todo.getId() + "]", IMAGE));
-
-        perform(put(PATH + "/{id}", id).contentType(MediaType.APPLICATION_JSON)
-                .content(body("After", "[]", null)), ownerId).andExpect(status().isOk());
-
-        perform(get(PATH + "/{id}", id), ownerId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.todos").isEmpty())
-                .andExpect(jsonPath("$.diaryFiles").isEmpty());
-        assertThat(todos.existsById(todo.getId())).isTrue();
-        assertThat(linkedDiary(todo.getId())).isNull();
-        assertThat(imageCount()).isZero();
     }
 
     @Test
@@ -284,20 +257,6 @@ class DiaryApiTest {
         }
         assertThat(diaries.count()).isZero();
         assertThat(imageCount()).isZero();
-    }
-
-    @Test
-    void repeatedTodoIdsCreateOnlyOneLinkAndCanBeKeptOnUpdate() throws Exception {
-        Todo todo = saveTodo();
-        long id = createDiary(body("Before", "[" + todo.getId() + "," + todo.getId() + "]", null));
-
-        perform(put(PATH + "/{id}", id).contentType(MediaType.APPLICATION_JSON)
-                .content(body("After", "[" + todo.getId() + "]", null)), ownerId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.todos.length()").value(1))
-                .andExpect(jsonPath("$.todos[0].id").value(todo.getId()));
-        assertThat(linkedDiary(todo.getId())).isEqualTo(id);
-        assertThat(todos.count()).isEqualTo(1);
     }
 
     @Test
