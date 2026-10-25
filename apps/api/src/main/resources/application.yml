@@ -23,3 +23,9 @@ app:
     secret: ${JWT_SECRET:}
     access-token-seconds: ${JWT_ACCESS_TOKEN_SECONDS:900}
     refresh-session-seconds: ${JWT_REFRESH_SESSION_SECONDS:1209600}
+ai:
+  worker:
+    baseurl: ${AI_WORKER_BASE_URL}
+    api-key: ${AI_WORKER_API_KEY}
+    connect-timeout: 5s
+    response-timeout: 120s
