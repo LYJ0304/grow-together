@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,11 +9,14 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChatDraft } from '../src/components/auth-provider';
+import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
   {
@@ -37,8 +40,22 @@ const suggestions = [
 export default function CounselorChatScreen() {
   const scroll = useRef<ScrollView>(null);
   const input = useRef<TextInput>(null);
-  const [draft, setDraft] = useState('');
+  const { width } = useWindowDimensions();
+  const { draft, setDraft } = useChatDraft();
+  const keyboard = useChatKeyboard();
   const [notice, setNotice] = useState('');
+  const [inputHeight, setInputHeight] = useState(48);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const field = input.current as unknown as HTMLTextAreaElement | null;
+    if (!field) return;
+    const previous = field.style.height;
+    field.style.height = 'auto';
+    const height = Math.max(48, Math.min(144, field.scrollHeight));
+    field.style.height = previous;
+    setInputHeight(height);
+  }, [draft, width]);
 
   const send = () => {
     if (!draft.trim()) return;
@@ -47,7 +64,17 @@ export default function CounselorChatScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[
+        styles.container,
+        keyboard.viewport && {
+          flex: 0,
+          height: keyboard.viewport.height,
+          transform: [{ translateY: keyboard.viewport.offsetTop }],
+        },
+      ]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -91,7 +118,10 @@ export default function CounselorChatScreen() {
                 key={item.question}
                 accessibilityRole="button"
                 accessibilityLabel={`질문 입력: ${item.question}`}
-                onPress={() => setDraft(item.question)}
+                onPress={() => {
+                  setDraft(item.question);
+                  input.current?.focus();
+                }}
                 style={({ pressed }) => [
                   styles.suggestion,
                   pressed && styles.pressed,
@@ -131,28 +161,66 @@ export default function CounselorChatScreen() {
             placeholderTextColor="#A0A3B1"
             value={draft}
             onChangeText={setDraft}
-            onSubmitEditing={send}
+            multiline
+            numberOfLines={1}
             blurOnSubmit={false}
-            submitBehavior="submit"
-            returnKeyType="send"
-            style={styles.input}
+            submitBehavior="newline"
+            onContentSizeChange={(event) => {
+              if (Platform.OS !== 'web') {
+                setInputHeight(
+                  Math.max(
+                    48,
+                    Math.min(144, event.nativeEvent.contentSize.height),
+                  ),
+                );
+              }
+            }}
+            onKeyPress={(event) => {
+              if (
+                Platform.OS !== 'web' ||
+                !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+              )
+                return;
+              const key = event.nativeEvent as unknown as KeyboardEvent;
+              if (
+                key.key === 'Enter' &&
+                !key.shiftKey &&
+                !key.isComposing &&
+                key.keyCode !== 229
+              ) {
+                event.preventDefault();
+                send();
+              }
+            }}
+            onSubmitEditing={send}
+            style={[styles.input, { height: inputHeight }]}
           />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="질문 보내기"
-            onPress={send}
+            accessibilityState={{ disabled: !draft.trim() }}
+            disabled={!draft.trim()}
+            onPress={() => {
+              send();
+              input.current?.focus();
+            }}
             style={({ pressed }) => [
               styles.sendButton,
+              !draft.trim() && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
             <Text style={styles.sendIcon}>➤</Text>
           </Pressable>
         </View>
-        <BottomNavigation
-          active="질문"
-          onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        />
+        {!keyboard.visible && (
+          <BottomNavigation
+            active="질문"
+            onReselect={() =>
+              scroll.current?.scrollTo({ y: 0, animated: true })
+            }
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -242,24 +310,26 @@ const styles = StyleSheet.create({
   suggestionArrow: { marginTop: -10, fontSize: 19, color: '#8C837D' },
   composer: {
     minHeight: 56,
-    marginHorizontal: 30,
+    marginHorizontal: 12,
     marginTop: 10,
     marginBottom: 10,
-    paddingLeft: 22,
-    paddingRight: 14,
+    paddingLeft: 16,
+    paddingRight: 6,
     borderRadius: 30,
     backgroundColor: '#FFFFFF',
     boxShadow: '0px 5px 18px rgba(84, 87, 92, 0.16)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   input: {
     flex: 1,
     minWidth: 0,
     paddingVertical: 12,
     fontFamily: 'Jua',
-    fontSize: 13,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlignVertical: 'top',
     color: '#4F4F4F',
   },
   notice: {
@@ -279,11 +349,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButton: {
-    width: 28,
-    height: 32,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendIcon: { fontSize: 23, color: '#D26A5C' },
+  disabled: { opacity: 0.35 },
   pressed: { opacity: 0.75 },
 });
