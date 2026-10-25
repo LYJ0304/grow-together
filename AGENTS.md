@@ -23,6 +23,7 @@ use the repository skill linked below for this workflow.
 | `plan <task>` or `$plan <task>` | [plan](.harness/skills/plan/SKILL.md) | Plan shown in the conversation; no files or implementation by default |
 | `raise` or `$raise` | [raise](.harness/skills/raise/SKILL.md) | GitHub issue from the selected conversation plan and latest corrections |
 | `start 1321` or `$start 1321` | [start](.harness/skills/start/SKILL.md) | Implement issue #1321 in a separate worktree |
+| `$release`, `$release prepare`, `$release publish <PR_NUMBER>`, `$release status` | [release](.harness/skills/release/SKILL.md) | Inspect, prepare or publish approved app releases; never deploy |
 | `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR; preserve the environment until verified merge |
 
 These are agent requests, not shell commands. `/plan`, `/raise`, `/start 1321`,
@@ -76,3 +77,17 @@ files or publish. `start` implements and verifies; `ship` commits/pushes/publish
 - Keep task branches for PR follow-up. Never remove the primary, `develop`,
   `main`, or `staging` worktree. Merge, deployment, maintained-branch updates, and branch deletion
   require a separate request.
+
+## Release lifecycle
+
+Use the repository [release skill](.harness/skills/release/SKILL.md) for release
+requests. It is separate from general issue implementation/shipping. Release
+branches start at QA-promoted `main`; Release PRs target `main`, using squash
+when compatible with repository protection. Maintained-branch promotions still
+use merge commits and need separate authorization.
+
+Require separate explicit approval for the version plan before manifest edits,
+for PR merge, and for tag/Release publication. A mode invocation alone is not
+approval. All app tags reference the verified merge SHA. Release execution creates
+no Issues/Project items and never changes deployment environments or workflows.
+GitHub Actions/providers handle deployment; tags do not prove deployment success.
