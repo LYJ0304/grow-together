@@ -15,7 +15,7 @@ CHECK = ROOT / '.harness/skills/ship/scripts/check_merge.py'
 
 class SkillFiles(unittest.TestCase):
     def test_discovery_frontmatter_and_links(self):
-        for name in ('plan', 'raise', 'start', 'ship'):
+        for name in ('plan', 'raise', 'start', 'ship', 'release'):
             with self.subTest(skill=name):
                 canonical = ROOT / '.harness/skills' / name / 'SKILL.md'
                 discovered = ROOT / '.agents/skills' / name
@@ -26,9 +26,10 @@ class SkillFiles(unittest.TestCase):
                 self.assertIn(f'name: {name}\n', frontmatter)
                 self.assertRegex(frontmatter, r'\ndescription: \S')
                 self.assertEqual(canonical.read_bytes(), (discovered / 'SKILL.md').read_bytes())
-                for link in re.findall(r'\]\(([^)]+)\)', source):
-                    if '://' not in link:
-                        self.assertTrue((canonical.parent / link.split('#')[0]).exists(), link)
+                for document in canonical.parent.rglob('*.md'):
+                    for link in re.findall(r'\]\(([^)]+)\)', document.read_text()):
+                        if '://' not in link:
+                            self.assertTrue((document.parent / link.split('#')[0]).exists(), link)
 
 
 class MergeEvidence(unittest.TestCase):

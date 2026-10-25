@@ -203,10 +203,28 @@ secret values or silently copy them between worktrees.
 ## Skill discovery
 
 `.agents/skills/<name>` is a relative symlink to `.harness/skills/<name>`.
-Use `$plan`, `$raise`, `$start 1321`, and `$ship`, or select them with `/skills`.
+Use `$plan`, `$raise`, `$start 1321`, `$ship`, and `$release`, or select them with `/skills`.
 If the current session has not refreshed its skills, start a new session from
 this checkout. AGENTS.md also routes plain-text requests to the canonical files.
 On platforms that do not restore Git symlinks, enable symlink support or read
 the canonical SKILL.md through AGENTS.md; do not maintain duplicate copies.
 
 Source: [OpenAI skill discovery documentation](https://learn.chatgpt.com/docs/build-skills).
+
+## App release exception
+
+The [release skill](skills/release/SKILL.md) prepares version-only branches from
+already QA-promoted `main` and creates Release PRs targeting `main`. Use squash
+when compatible with protection; this exception does not change promotion merge
+commits or the default `develop` target for ordinary skill implementation tasks.
+
+Plan approval precedes manifest changes. Merge and publication need separate
+explicit approval of the exact PR/head or merge SHA and version mapping. Require
+protected main and passing required CI; absence is a configuration prerequisite,
+not successful CI. Release PR records bind base/head, manifests, notes, validation
+and approval provenance. Do not use general ship cleanup to imply release
+publication, deployment, version back-merges or branch deletion authorization.
+
+Production should eventually deploy only approved per-app tags; activating or
+changing deployment workflows/provider integrations requires a separate concrete
+proposal and explicit approval. Installation adds no active deployment workflow.
