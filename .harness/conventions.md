@@ -17,6 +17,16 @@ verification and `awaiting merge; environment retained` with the actual branch/p
 A later ship invocation or separately requested merge verifies the completed merge
 before safe cleanup; it reports removal or the reason for retaining the environment.
 
+`review <PR-number>` is an independent stage after publication: open PR →
+correctness, safety, and code quality review → Korean GitHub `COMMENT` summary
+and inline findings, with the reviewed SHA and verification limits. Use
+`ship → review <PR-number> → fixes → ship` for follow-up; ship does not invoke
+review automatically. Invoking review authorizes comment publication, not code
+edits, approval, REQUEST_CHANGES, merge, or environment cleanup. The
+[review skill](skills/review/SKILL.md) owns snapshot checks, finding quality,
+deduplication, and failure handling. Its handoff reports PR/review links, reviewed
+SHA, findings, actual checks and limits, and publication status.
+
 Only perform requested stages. Explicitly combined requests authorize that
 sequence without another confirmation; standalone stages stop at their own
 boundary. Existing issues can go directly to start. If a new session lacks a
@@ -256,7 +266,7 @@ secret values or silently copy them between worktrees.
 ## Skill discovery
 
 `.agents/skills/<name>` is a relative symlink to `.harness/skills/<name>`.
-Use `$plan`, `$raise`, `$start 1321`, `$ship`, and `$release`, or select them with `/skills`.
+Use `$plan`, `$raise`, `$start 1321`, `$ship`, `$review 1321`, and `$release`, or select them with `/skills`.
 If the current session has not refreshed its skills, start a new session from
 this checkout. AGENTS.md also routes plain-text requests to the canonical files.
 On platforms that do not restore Git symlinks, enable symlink support or read
