@@ -15,10 +15,8 @@ import com.growtogether.todo.Todo;
 import com.growtogether.todo.TodoRepository;
 import com.growtogether.user.User;
 import com.jayway.jsonpath.JsonPath;
-import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,31 +24,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:diary-api;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@ActiveProfiles("test")
+@SpringBootTest
 @AutoConfigureMockMvc
 class DiaryApiTest {
     private static final String PATH = "/api/v1/diary";
     private static final String IMAGE = "https://example.com/diary.jpg";
-    private static final String JWT_SECRET = Base64.getEncoder()
-            .encodeToString(new SecureRandom().generateSeed(32));
-
-    @DynamicPropertySource
-    static void jwtSecret(DynamicPropertyRegistry registry) {
-        registry.add("app.jwt.secret", () -> JWT_SECRET);
-    }
 
     @Autowired private MockMvc mvc;
     @Autowired private DiaryRepository diaries;

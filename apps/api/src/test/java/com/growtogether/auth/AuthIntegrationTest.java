@@ -17,8 +17,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -37,6 +35,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -47,12 +46,16 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
+@ActiveProfiles("test")
+@SpringBootTest(properties = {
+        "spring.datasource.driver-class-name=org.postgresql.Driver",
+        "spring.flyway.enabled=true",
+        "spring.jpa.hibernate.ddl-auto=validate"
+})
 @AutoConfigureMockMvc
 @Testcontainers(disabledWithoutDocker = true)
 @Import({AuthIntegrationTest.TestClockConfig.class, AuthIntegrationTest.ProtectedController.class})
 class AuthIntegrationTest {
-    private static final String JWT_SECRET = Base64.getEncoder().encodeToString(new SecureRandom().generateSeed(32));
     private static final String EMAIL = "tester@example.com";
     private static final String PASSWORD = "test-password-123";
     private static final Instant START = Instant.parse("2026-10-09T00:00:00Z");
@@ -60,7 +63,6 @@ class AuthIntegrationTest {
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
-        registry.add("app.jwt.secret", () -> JWT_SECRET);
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
