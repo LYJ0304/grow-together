@@ -160,6 +160,59 @@ the production baseline. Deployment requires its own configuration and request.
 - Record the PR target and intended merge method in the start handoff and PR
   body. A policy in a PR body documents intent; it does not enforce GitHub rules.
 
+## TDD
+
+Apply this procedure to behavior changes in all implementation work, including
+requests outside `start` and fixes made during review or `ship`. Keep each cycle
+focused on one small observable behavior and use the existing test tools.
+
+1. **RED:** Before changing implementation, write a focused test for the expected
+   behavior or a regression test that reproduces the bug. Run it and confirm it
+   fails because the behavior is missing or incorrect. Check the failure reason;
+   missing dependencies, unavailable services, or test setup errors do not count
+   as RED. If the test already passes, investigate the behavior and test before
+   changing implementation.
+2. **GREEN:** Make the smallest maintainable implementation that passes the test.
+   Run it and the relevant existing tests. Do not weaken assertions or remove
+   coverage to make an implementation defect pass.
+3. **REFACTOR:** With tests passing, improve structure only where needed while
+   preserving behavior and module boundaries, then rerun the relevant tests.
+   If no improvement is needed, state that briefly. A new behavior starts a new
+   RED cycle; do not add speculative features during refactoring.
+
+Repeat for the next behavior, then run the required checks for the changed area
+under Verification. Cycle checks complement those final checks. Continue through
+cycles without asking for approval at each phase; existing stage boundaries and
+explicit approval requirements still apply.
+
+### Applicability and exceptions
+
+- Features and bug fixes follow the full cycle above.
+- For refactoring that preserves behavior, first run the relevant existing tests.
+  If coverage is insufficient, add and run tests that capture current behavior
+  before refactoring. These may pass immediately; do not manufacture a failure
+  for unchanged behavior. Rerun them after refactoring.
+- Documentation, formatting, and version-value-only changes use relevant
+  validation instead of a forced RED cycle. State the reason TDD does not apply.
+  A mixed task still uses TDD for its behavior changes.
+- If an environment problem prevents execution, report the failed command,
+  prerequisite, and unverified scope. It is neither RED evidence nor completed
+  verification; resolve it before claiming the affected work complete.
+
+### Evidence and handoff
+
+Keep a concise summary in the implementation handoff and PR verification:
+representative tests and commands, the observed RED failure reason, GREEN results,
+and refactoring plus rerun results (or why no refactoring was needed). For
+behavior-preserving refactoring, report before/after results; for excluded work,
+report the reason and actual validation. Preserve failed or unrun checks as such.
+
+On resumed work, distinguish observed results from missing historical evidence.
+Do not infer RED from a passing final suite or alter completed implementation to
+recreate a failure. Report unavailable evidence honestly and apply TDD to new
+behavior changes. No separate log file, status database, per-phase commit, or new
+skill is required; existing conversation handoffs and PR bodies carry the summary.
+
 ## Verification
 
 Run checks relevant to the actual change, from the task worktree:

@@ -46,8 +46,13 @@ branch, including all states, and read the associated PR with `gh pr view`:
 
 1. Read the issue and inspect tracked, staged, and untracked task changes and commits
    against the established base. Do not include another task's staged files.
-2. Run relevant required checks. Fix task failures before publishing; disclose missing
-   prerequisites without claiming a successful ship. Record evidence in the PR body.
+2. Review the handoff's [TDD evidence](../../conventions.md#tdd) and run relevant
+   required checks. Apply that procedure to any new behavior fixes during ship.
+   Fix task failures before publishing; disclose missing prerequisites without
+   claiming a successful ship. Record the observed TDD summary, or the applicable
+   exception and actual validation, alongside final check results in the PR body.
+   Report missing historical evidence explicitly; a passing final suite alone
+   does not establish that RED occurred. Do not recreate failures retroactively.
 3. Stage explicit task paths. Run `git diff --cached --check` and inspect the staged
    diff. Commit in English using `<type>(<scope>): <English description>`, for example
    `docs(harness): defer worktree cleanup until merge`; any commit body is also English.
