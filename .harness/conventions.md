@@ -42,8 +42,7 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
   `type(scope)` identifiers, and `Closes #<number>` unchanged. Apply these language
   rules to creation and updates, and verify the published title/body.
 - Issues: purpose, current state, scope, implementation steps, completion criteria,
-  unresolved decisions, and relevant links. Use existing labels: `enhancement` for
-  features, `bug` for fixes, `documentation` for docs. Do not create labels silently.
+  unresolved decisions, and relevant links. Apply the type and domain labels below.
 - PRs: concrete problem and resulting behavior, verification, remaining limits,
   and `Closes #<number>` only when the PR completes the issue.
 - Branch: `<type>/issue-<number>-<slug>`; use a short lowercase hyphenated slug.
@@ -57,6 +56,74 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
   branch from the primary checkout, but never delete the primary worktree.
 - Write GitHub bodies to temporary files and use `--body-file`. Stage named task
   files rather than `git add .`. Never stage `.env`, secrets, or editor settings.
+
+## Issue and PR labels
+
+`raise` and the publishing path of `ship` apply one type label and all relevant
+domain labels. Keep type separate from domain; a mobile feature gets
+`enhancement` and `mobile`. Determine domains from the plan/requirements and final
+change scope, not only the title scope (`auth` can affect both API and mobile).
+
+| Title type | Type label |
+| --- | --- |
+| `feat` | `enhancement` |
+| `fix` | `bug` |
+| `docs` | `documentation` |
+| `chore` | `chore` |
+
+| Domain label | Relevant scope |
+| --- | --- |
+| `mobile` | `apps/mobile/` and mobile behavior |
+| `api` | `apps/api/` and API behavior |
+| `worker` | `apps/ai-worker/` and AI worker behavior |
+| `harness` | `.harness/`, `.agents/skills/`, and workflow rules in `AGENTS.md` |
+| `contracts` | `contracts/` and shared API contracts |
+
+Apply every relevant domain for cross-module work. Do not invent a domain for
+work outside this table or label all domains for a generic root file change.
+PRs start with the linked issue's type/domain classification, then reconcile it
+with the final change scope and title type. Do not copy unrelated issue labels.
+
+Before creation/update, list repository labels with
+`gh label list --repo <owner/repo> --limit 1000 --json name,color,description`.
+Create only missing labels needed by this task from the tables above, using
+`gh label create <name> --repo <owner/repo> --description <description> --color <hex>`.
+Use `a2eeef` for type labels and `c5def5` for domains when creating them; describe
+their type or domain meaning. This workflow authorizes these missing-label
+creations without another confirmation. Report created labels in the handoff.
+Never use `--force` or change an existing label's color/description. Do not create
+the whole catalog preemptively. If concurrent creation reports an existing label,
+re-list to confirm it exists before continuing; do not blindly retry.
+If label lookup/creation fails, report the operation and cause before proceeding
+with dependent issue/PR creation or update.
+
+On create, pass repeated `--label <name>` flags to `gh issue create` or
+`gh pr create`. On update, read current labels first and use `--add-label` only
+for missing desired labels and `--remove-label` only for obsolete type/domain
+labels from these tables. Preserve all labels outside the tables. Re-running
+with the same scope must make no label changes. Verify the resulting label set
+with `gh issue view <number> --repo <owner/repo> --json labels` or the equivalent
+`gh pr view` command and report failures rather than
+claiming metadata is complete. An uncertain response requires a fresh lookup
+before retrying. Never bulk-relabel other issues/PRs; merged-PR cleanup does not
+create or change labels.
+
+## Start assignees
+
+After validating the open issue and resolving the task branch/checkout and any
+existing PR state, assign the issue before implementation, including on resume.
+Read existing assignees with
+`gh issue view <number> --repo <owner/repo> --json assignees`.
+Use explicitly requested GitHub login(s), or resolve the authenticated user with
+`gh api user --jq .login` when none were specified. Add only missing users with
+`gh issue edit <number> --repo <owner/repo> --add-assignee <login>`; never remove
+existing assignees. Re-read assignees to verify every requested login is present,
+and return the verified assignees in the start handoff. Repeated start must not
+reassign existing users. A lookup, permission, or assignment failure stops before
+implementation: preserve local work and report the operation and cause. After an
+uncertain edit response, re-read before retrying. Do not substitute another user
+or change credentials. This issue assignment is part of `start` authorization;
+it does not authorize comments or messages to the assignees.
 
 ## Branches and merge policy
 
