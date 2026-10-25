@@ -82,10 +82,26 @@ try {
   if (previewEnabled) {
     await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
     await page.waitForURL('**/main');
-    await page.getByText('미리보기 · 서버 API를 이용할 수 없어요.').waitFor();
+    await page.getByTestId('main-screen').waitFor();
+    assert.equal(
+      await page.getByText('미리보기 · 서버 API를 이용할 수 없어요.').count(),
+      0,
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: '미리보기 종료', exact: true })
+        .count(),
+      0,
+    );
     assert.equal(
       await page.evaluate((key) => sessionStorage.getItem(key), sessionKey),
       null,
+    );
+    await page.getByRole('tab', { name: '마이', exact: true }).click();
+    await heading('마이페이지').waitFor();
+    assert.equal(
+      await page.getByText('미리보기 · 서버 API를 이용할 수 없어요.').count(),
+      0,
     );
     await page
       .getByRole('button', { name: '미리보기 종료', exact: true })
