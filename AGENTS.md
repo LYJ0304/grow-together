@@ -27,9 +27,10 @@ use the repository skill linked below for this workflow.
 | `start 1321` or `$start 1321` | [start](.harness/skills/start/SKILL.md) | Implement issue #1321 in a separate worktree |
 | `$release`, `$release prepare`, `$release publish <PR_NUMBER>`, `$release status` | [release](.harness/skills/release/SKILL.md) | Inspect, prepare or publish approved app releases; never deploy |
 | `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR; preserve the environment until verified merge |
+| `review 1321` or `$review 1321` | [review](.harness/skills/review/SKILL.md) | Review PR correctness, safety, and code quality; publish Korean summary and inline comments |
 
 These are agent requests, not shell commands. `/plan`, `/raise`, `/start 1321`,
-and `/ship` in user messages route to the same skills; they do not register
+`/ship`, and `/review 1321` in user messages route to the same skills; they do not register
 new native slash commands. Select a conversation plan when multiple plans exist.
 
 Use [harness conventions](.harness/conventions.md) for issue/PR formatting,
@@ -42,6 +43,14 @@ merge/cleanup results on a later invocation. No local plan file is required.
 Invoke only the requested stages; explicitly combined requests can proceed
 through those stages without asking again. Standalone `plan` does not write
 files or publish. `start` implements and verifies; `ship` commits/pushes/publishes.
+
+`review <PR-number>` independently reviews an open PR and authorizes posting a
+GitHub `COMMENT` review with a Korean summary and inline findings. It assesses
+correctness, safety, and Clean Code with concrete evidence and improvement
+directions. Follow-up can use `ship → review <PR-number> → fixes → ship`;
+ship never runs review automatically. Review does not edit code, approve,
+request changes, merge, or clean up the retained environment. Its skill defines
+snapshot verification, duplicate prevention, and publication failure handling.
 
 - `start` uses the latest remote `develop` for new tasks unless another base
   was requested. Resume existing issue branches/worktrees with their established

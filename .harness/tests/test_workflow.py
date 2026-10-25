@@ -15,7 +15,7 @@ CHECK = ROOT / '.harness/skills/ship/scripts/check_merge.py'
 
 class SkillFiles(unittest.TestCase):
     def test_discovery_frontmatter_and_links(self):
-        for name in ('plan', 'raise', 'start', 'ship', 'release'):
+        for name in ('plan', 'raise', 'start', 'ship', 'release', 'review'):
             with self.subTest(skill=name):
                 canonical = ROOT / '.harness/skills' / name / 'SKILL.md'
                 discovered = ROOT / '.agents/skills' / name
