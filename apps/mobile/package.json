@@ -28,7 +28,8 @@
     "test:chat:ui": "node tests/chat-ui.mjs",
     "test:chat:keyboard": "node tests/chat-keyboard.mjs",
     "test:chat:composer": "node tests/chat-composer.mjs",
-    "test:chat:draft": "node tests/chat-draft.mjs"
+    "test:chat:draft": "node tests/chat-draft.mjs",
+    "test:chat:status": "node tests/chat-status.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
