@@ -25,7 +25,7 @@ app:
     refresh-session-seconds: ${JWT_REFRESH_SESSION_SECONDS:1209600}
 ai:
   worker:
-    baseurl: ${AI_WORKER_BASE_URL}
-    api-key: ${AI_WORKER_API_KEY}
-    connect-timeout: 5s
-    response-timeout: 120s
+    baseurl: ${AI_WORKER_BASE_URL:http://localhost:8000}
+    api-key: ${AI_WORKER_API_KEY:}
+    connect-timeout: ${AI_WORKER_CONNECT_TIMEOUT:5s}
+    response-timeout: ${AI_WORKER_RESPONSE_TIMEOUT:120s}
