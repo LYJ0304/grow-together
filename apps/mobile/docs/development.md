@@ -43,3 +43,5 @@ npm run lint
 
 See [launch drawing assets and verification](launch-logo.md) for logo generation,
 rendering decisions, and browser checks.
+
+See [AI counseling chat](ai-chat.md) for AG-UI transport, storage scope and checks.

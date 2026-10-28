@@ -5,6 +5,9 @@ const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/chat-threads', (route) =>
+    route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }),
+  );
   await page.addInitScript(() => {
     const original = window.fetch.bind(window);
     window.fetch = (input, init) => {
@@ -52,8 +55,8 @@ try {
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   assert.equal(
     await input.inputValue(),
-    '우리 아이 질문 초안',
-    'Unsent draft survives preparation notice',
+    '',
+    'Accepted question moves from draft to the conversation',
   );
   await tabs.getByRole('tab', { name: '마이', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
@@ -69,6 +72,11 @@ try {
     await input.inputValue(),
     '',
     'Another account never receives the old draft',
+  );
+  assert.equal(
+    await page.getByText('우리 아이 질문 초안', { exact: true }).count(),
+    0,
+    'Another account never receives the old conversation',
   );
   await input.fill('다른 사용자의 초안');
   await page.getByRole('tab', { name: '마이', exact: true }).click();

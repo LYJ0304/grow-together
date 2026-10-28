@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
                         .requestMatchers(HttpMethod.POST, AUTH_ENDPOINTS.toArray(String[]::new)).permitAll()
                         .requestMatchers("/api/health", "/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**",

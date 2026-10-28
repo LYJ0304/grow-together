@@ -15,7 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
-import { useChatDraft } from '../src/components/auth-provider';
+import {
+  useAuth,
+  useChat,
+  useChatDraft,
+} from '../src/components/auth-provider';
 import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
@@ -43,6 +47,17 @@ export default function CounselorChatScreen() {
   const { width } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
   const keyboard = useChatKeyboard();
+  const { status: authStatus } = useAuth();
+  const chat = useChat();
+  const busy = chat.status === 'connecting' || chat.status === 'streaming';
+  const statusText = {
+    idle: '상담을 시작해보세요',
+    connecting: '답변을 요청하고 있어요',
+    streaming: '답변을 작성하고 있어요',
+    complete: '답변 완료',
+    error: '응답 실패',
+    stopped: '응답 중단',
+  }[chat.status];
   const [notice, setNotice] = useState('');
   const [inputHeight, setInputHeight] = useState(48);
 
@@ -58,8 +73,19 @@ export default function CounselorChatScreen() {
   }, [draft, width]);
 
   const send = () => {
-    if (!draft.trim()) return;
-    setNotice('AI 상담 연결은 아직 준비 중이에요.');
+    if (!draft.trim() || busy) return;
+    if (authStatus !== 'authenticated') {
+      setNotice('상담을 시작하려면 로그인해주세요.');
+      return;
+    }
+    const text = draft.trim();
+    if (text.length > 4000) {
+      setNotice('질문은 4,000자 이내로 입력해주세요.');
+      return;
+    }
+    void chat.client.send(text);
+    if (chat.client.getSnapshot().status === 'connecting') setDraft('');
+    setNotice('');
     input.current?.focus();
   };
 
@@ -86,7 +112,12 @@ export default function CounselorChatScreen() {
             <Text accessibilityRole="header" style={styles.personaName}>
               차분한 상담선생님
             </Text>
-            <Text style={styles.connectionStatus}>상담 연결 준비 중</Text>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={styles.connectionStatus}
+            >
+              {statusText}
+            </Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -106,36 +137,93 @@ export default function CounselorChatScreen() {
           </Pressable>
         </View>
 
+        {chat.messages.length > 0 && !busy && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => chat.client.clear()}
+            style={styles.newChat}
+          >
+            <Text>새 상담</Text>
+          </Pressable>
+        )}
         <ScrollView
           ref={scroll}
+          onContentSizeChange={() =>
+            scroll.current?.scrollToEnd({ animated: true })
+          }
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.intro}>이 시기에는 이런 질문이 많아요</Text>
-          <View style={styles.suggestions}>
-            {suggestions.map((item) => (
-              <Pressable
-                key={item.question}
-                accessibilityRole="button"
-                accessibilityLabel={`질문 입력: ${item.question}`}
-                onPress={() => {
-                  setDraft(item.question);
-                  input.current?.focus();
-                }}
-                style={({ pressed }) => [
-                  styles.suggestion,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.suggestionCopy}>
-                  <Text style={styles.question}>“{item.question}”</Text>
-                  <Text style={styles.preview}>{item.preview}</Text>
-                </View>
-                <Text style={styles.suggestionArrow}>↗</Text>
-              </Pressable>
-            ))}
-          </View>
+          {chat.messages.length === 0 && (
+            <>
+              <Text style={styles.intro}>이 시기에는 이런 질문이 많아요</Text>
+              <View style={styles.suggestions}>
+                {suggestions.map((item) => (
+                  <Pressable
+                    key={item.question}
+                    accessibilityRole="button"
+                    accessibilityLabel={`질문 입력: ${item.question}`}
+                    onPress={() => {
+                      setDraft(item.question);
+                      input.current?.focus();
+                    }}
+                    style={({ pressed }) => [
+                      styles.suggestion,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.suggestionCopy}>
+                      <Text style={styles.question}>“{item.question}”</Text>
+                      <Text style={styles.preview}>{item.preview}</Text>
+                    </View>
+                    <Text style={styles.suggestionArrow}>↗</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+          {chat.messages.map((message, index) => (
+            <View
+              key={`${message.id}-${index}`}
+              style={[
+                styles.bubble,
+                message.role === 'user'
+                  ? styles.userBubble
+                  : styles.assistantBubble,
+              ]}
+            >
+              <Text style={styles.messageRole}>
+                {message.role === 'user' ? '나' : '상담선생님'}
+              </Text>
+              <Text selectable style={styles.messageText}>
+                {typeof message.content === 'string' ? message.content : ''}
+              </Text>
+            </View>
+          ))}
         </ScrollView>
+        {chat.notice !== '' && (
+          <Text accessibilityRole="alert" style={styles.chatNotice}>
+            {chat.notice}
+          </Text>
+        )}
+        {busy && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={chat.client.stop}
+            style={styles.newChat}
+          >
+            <Text>응답 중단</Text>
+          </Pressable>
+        )}
+        {!busy && chat.retryText !== '' && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void chat.client.retry()}
+            style={styles.newChat}
+          >
+            <Text>다시 시도</Text>
+          </Pressable>
+        )}
 
         {notice !== '' && (
           <View accessibilityRole="alert" style={styles.notice}>
@@ -198,15 +286,15 @@ export default function CounselorChatScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="질문 보내기"
-            accessibilityState={{ disabled: !draft.trim() }}
-            disabled={!draft.trim()}
+            accessibilityState={{ disabled: !draft.trim() || busy }}
+            disabled={!draft.trim() || busy}
             onPress={() => {
               send();
               input.current?.focus();
             }}
             style={({ pressed }) => [
               styles.sendButton,
-              !draft.trim() && styles.disabled,
+              (!draft.trim() || busy) && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
@@ -227,6 +315,18 @@ export default function CounselorChatScreen() {
 }
 
 const styles = StyleSheet.create({
+  newChat: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  chatNotice: { paddingHorizontal: 24, paddingVertical: 8, color: '#4F4F4F' },
+  bubble: { padding: 16, borderRadius: 18, maxWidth: '92%', marginBottom: 14 },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: '#FDEDE6' },
+  assistantBubble: { alignSelf: 'flex-start', backgroundColor: '#FFFFFF' },
+  messageRole: { fontSize: 12, color: '#777574', marginBottom: 6 },
+  messageText: { fontSize: 16, lineHeight: 24, color: '#4F4F4F' },
   container: { flex: 1, backgroundColor: '#FAF9F9' },
   keyboard: { flex: 1, minHeight: 0 },
   header: {

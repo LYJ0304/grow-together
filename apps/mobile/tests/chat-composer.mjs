@@ -6,6 +6,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   page.setDefaultNavigationTimeout(300000);
   await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/chat-threads', (route) =>
+    route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }),
+  );
   await page.goto(`${process.env.CHAT_URL ?? 'http://localhost:8101'}/chat`);
   const input = page.getByRole('textbox', {
     name: '상담 질문 입력',
@@ -48,7 +51,8 @@ try {
   );
   assert.ok((await input.boundingBox()).height > short);
   await input.press('Enter');
-  assert.equal(await input.inputValue(), '첫 줄\n둘째 줄');
+  assert.equal(await input.inputValue(), '');
+  await page.getByText('응답 실패', { exact: true }).waitFor();
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   const composed = await input.evaluate((el) => {
     const event = new KeyboardEvent('keydown', {

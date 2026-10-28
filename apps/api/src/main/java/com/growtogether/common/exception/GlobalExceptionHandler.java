@@ -2,6 +2,7 @@ package com.growtogether.common.exception;
 
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -15,6 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.web.context.request.async.AsyncRequestNotUsableException.class)
+    void handleDisconnectedClient() {
+        // The stream is already closed; writing another response would fail again.
+    }
+
     @ExceptionHandler(AuthException.class)
     ResponseEntity<Map<String, String>> handleAuth(AuthException exception) {
         return ResponseEntity.status(exception.getStatus())
@@ -24,7 +30,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<Map<String, String>> handleInvalidRequest(Exception exception) {
-        return ResponseEntity.badRequest().body(Map.of("code", "INVALID_REQUEST", "message", "Invalid request fields or JSON"));
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(Map.of("code", "INVALID_REQUEST", "message", "Invalid request fields or JSON"));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
@@ -36,7 +42,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException exception) {
         String code = HttpStatus.valueOf(exception.getStatusCode().value()).name();
-        return ResponseEntity.status(exception.getStatusCode())
+        return ResponseEntity.status(exception.getStatusCode()).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("code", code, "message",
                         exception.getReason() == null ? code : exception.getReason()));
     }

@@ -17,6 +17,9 @@ springdoc:
     url: /openapi.yaml
     disable-swagger-default-url: true
 app:
+  worker:
+    url: ${AI_WORKER_URL:http://localhost:8000}
+    token: ${WORKER_TOKEN:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8082,http://localhost:19006}
   jwt:

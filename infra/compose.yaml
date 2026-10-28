@@ -25,6 +25,7 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
       POSTGRES_USER: ${POSTGRES_USER:-growtogether}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
+      AI_WORKER_URL: http://ai-worker:8000
     ports: ["8080:8080"]
     depends_on:
       postgres:
@@ -39,6 +40,7 @@ services:
     build: ../apps/ai-worker
     profiles: ["worker"]
     env_file: ../apps/ai-worker/.env
+    command: ["uv", "run", "--no-sync", "uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000"]
 
 volumes:
   postgres-data:

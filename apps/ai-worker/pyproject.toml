@@ -3,10 +3,20 @@ name = "growtogether-ai-worker"
 version = "0.1.0"
 description = "Independent execution worker for GrowTogether AI workloads."
 requires-python = ">=3.12"
-dependencies = ["pydantic-settings>=2.12,<3"]
+dependencies = [
+    "ag-ui-protocol==1.0.0",
+    "fastapi>=0.162.0,<1",
+    "openai>=3.40.0,<4",
+    "pydantic-settings>=2.12,<3",
+    "uvicorn>=0.54.0,<1",
+]
 
 [dependency-groups]
-dev = ["pytest>=9.0,<10", "ruff>=0.14,<1"]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0,<10",
+    "ruff>=0.14,<1",
+]
 
 [tool.ruff]
 line-length = 100

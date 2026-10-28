@@ -1,5 +1,6 @@
 import { ApiError, messages } from '../../api/errors';
 import { http } from '../../api/http';
+import { env } from '../../../config/env';
 import { authApi } from './api';
 import { parseTokens, type Tokens, type TokenStorage } from './tokens';
 
@@ -177,19 +178,53 @@ export class AuthSession {
     return promise;
   }
 
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return this.withAuth(path, (token) => {
+      const headers = new Headers(init.headers);
+      if (init.body) headers.set('Content-Type', 'application/json');
+      headers.set('Authorization', `Bearer ${token}`);
+      return http<T>(path, { ...init, headers });
+    });
+  }
+
+  stream(
+    path: string,
+    init: RequestInit,
+    fetcher: typeof fetch,
+  ): Promise<Response> {
+    return this.withAuth(path, async (token) => {
+      const headers = new Headers(init.headers);
+      headers.set('Content-Type', 'application/json');
+      headers.set('Accept', 'text/event-stream');
+      headers.set('Authorization', `Bearer ${token}`);
+      const response = await fetcher(`${env.apiBaseUrl}${path}`, {
+        ...init,
+        headers,
+      });
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new ApiError(
+          response.status,
+          'HTTP_ERROR',
+          response.status === 401
+            ? messages.UNAUTHORIZED
+            : '상담 서버 연결을 확인해주세요.',
+        );
+      }
+      return response;
+    });
+  }
+
+  private async withAuth<T>(
+    path: string,
+    invoke: (token: string) => Promise<T>,
+  ): Promise<T> {
     if (!path.startsWith('/api/') || path.startsWith('/api/v1/auth/'))
       throw new Error('인증 요청은 전용 메서드를 사용해 주세요.');
     const epoch = this.epoch;
     const accessToken = this.tokens?.accessToken;
     if (this.session.status !== 'authenticated' || !accessToken)
       throw new ApiError(401, 'UNAUTHORIZED', messages.UNAUTHORIZED);
-    const invoke = (token: string) => {
-      const headers = new Headers(init.headers);
-      if (init.body) headers.set('Content-Type', 'application/json');
-      headers.set('Authorization', `Bearer ${token}`);
-      return http<T>(path, { ...init, headers });
-    };
     try {
       const result = await invoke(accessToken);
       this.checkEpoch(epoch);

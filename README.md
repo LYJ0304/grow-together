@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | `apps/mobile` | Expo 55 · React Native · TypeScript | `8081` (Expo 기본값) | 모바일·웹 클라이언트 |
 | `apps/api` | Spring Boot 4 · Java 21 | `8080` | 인증, 도메인 API, 데이터 저장 |
-| `apps/ai-worker` | Python 3.12 · uv | — | 독립적인 AI 작업 실행; 현재는 예제 작업만 제공 |
+| `apps/ai-worker` | Python 3.12 · uv | `8000` (내부 HTTP) | 독립적인 AI 작업 실행과 내부 AG-UI 스트리밍 |
 
 ## Getting started
 
@@ -50,10 +50,10 @@ API는 `http://localhost:8080`, Swagger UI는 `http://localhost:8080/swagger-ui.
 
 ```text
 Mobile / Web → API → PostgreSQL
-AI worker    (독립 실행, 선택 사항)
+API → AI worker → 모델 제공자 (상담 기능, 선택 사항)
 ```
 
-기본 Compose는 PostgreSQL과 API를 실행합니다. DB 마이그레이션은 API 시작 시 Flyway가 처리합니다. AI worker는 별도 `worker` 프로필로 실행하며 현재 API와 직접 연결되어 있지 않습니다. 자세한 실행 방법은 [로컬 개발 가이드](infra/docs/local-development.md)를 참고합니다.
+기본 Compose는 PostgreSQL과 API를 실행합니다. DB 마이그레이션은 API 시작 시 Flyway가 처리합니다. AI worker는 별도 `worker` 프로필로 실행하며 상담 기능 사용 시 API가 내부 AG-UI 스트리밍을 호출합니다. 자세한 실행 방법은 [로컬 개발 가이드](infra/docs/local-development.md)를 참고합니다.
 
 ## Environment variables
 
@@ -64,7 +64,7 @@ AI worker    (독립 실행, 선택 사항)
 | [infra/.env.example](infra/.env.example) | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose의 PostgreSQL 설정 |
 | [apps/mobile/.env.example](apps/mobile/.env.example) | `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS` | API 주소와 UI 미리보기 설정; 공개 값만 사용 |
 | [apps/api/.env.example](apps/api/.env.example) | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` | DB 연결, JWT 서명, 브라우저 접근 설정 |
-| [apps/ai-worker/.env.example](apps/ai-worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL` | 작업 실행 로그 설정 |
+| [apps/ai-worker/.env.example](apps/ai-worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL`, `WORKER_TOKEN`, `MODEL_BASE_URL`, `MODEL_API_KEY`, `MODEL_NAME` | 로그·내부 인증·모델 연결 설정 |
 
 Compose는 `infra/.env`의 DB 설정을 API에 전달합니다. API를 호스트에서 직접 실행할 때는 환경변수를 별도로 로드해야 합니다. 절차는 [API 개발 가이드](apps/api/docs/development.md)에 있습니다.
 
@@ -73,7 +73,7 @@ Compose는 `infra/.env`의 DB 설정을 API에 전달합니다. API를 호스트
 | 실행 위치 | 명령어 | 용도 |
 | --- | --- | --- |
 | 저장소 루트 | `docker compose --env-file infra/.env -f infra/compose.yaml up --build` | DB·API 실행 |
-| 저장소 루트 | `docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run --rm ai-worker` | AI 예제 작업 실행 |
+| 저장소 루트 | `docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run --rm ai-worker uv run --no-sync python -m app.main` | AI 예제 작업 실행 |
 | `apps/mobile` | `npm start` / `npm run web` | Expo / 웹 클라이언트 실행 |
 | `apps/mobile` | `npm run typecheck` / `npm run lint` | 타입·린트 검사 |
 | `apps/mobile` | `npm run test:auth` | 인증 세션 테스트 |

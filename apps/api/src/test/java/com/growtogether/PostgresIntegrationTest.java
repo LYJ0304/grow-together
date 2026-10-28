@@ -35,6 +35,7 @@ import java.sql.DriverManager;
 })
 @Testcontainers(disabledWithoutDocker = true)
 class PostgresIntegrationTest {
+    @Autowired private com.growtogether.agent.ChatThreadRepository chatThreads;
     @Autowired private TodoRepository todoRepository;
     @Autowired private EntityManager entityManager;
     @Autowired private AuthRepository users;
@@ -49,6 +50,16 @@ class PostgresIntegrationTest {
     }
 
     @Test void contextLoadsWithPostgres() { }
+
+    @Test
+    @Transactional
+    void chatThreadOwnershipUsesMigratedSchema() {
+        Long owner = users.saveAndFlush(new User("Chat owner", "chat-owner@example.com", "test-hash")).getId();
+        var thread = chatThreads.saveAndFlush(new com.growtogether.agent.ChatThread(owner));
+        entityManager.clear();
+        assertThat(chatThreads.existsByIdAndUserId(thread.getId(), owner)).isTrue();
+        assertThat(chatThreads.existsByIdAndUserId(thread.getId(), Long.MAX_VALUE)).isFalse();
+    }
 
     @Test
     void migratesLinkedOwnersAndPreservesUnownedLegacyTodos() throws Exception {

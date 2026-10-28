@@ -254,6 +254,73 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+  /api/v1/chat-threads:
+    post:
+      operationId: createChatThread
+      summary: Create an owned counseling thread
+      description: Only ownership is persisted. Messages remain in the authenticated client session.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Thread created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [threadId]
+                properties:
+                  threadId: { type: string, format: uuid }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/chat-threads/{threadId}/runs:
+    post:
+      operationId: runCounselor
+      summary: Stream an AG-UI counseling run
+      description: >-
+        AG-UI 1.0 text-only RunAgentInput. The thread must belong to the authenticated
+        user and match threadId in the body. The final message must be a user message.
+        Clients supply a new runId on every attempt; retrying does not resume a stream.
+        HTTP 200 alone is not success: RUN_ERROR is failure, and a response closing
+        without RUN_FINISHED or RUN_ERROR is truncated. Disconnect cancels upstream
+        work once detected (heartbeat every 5 seconds). A run is limited to 125 seconds.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentRunInput' }
+      responses:
+        '200':
+          description: >-
+            SSE frames use data containing one JSON AG-UI event. Comments are keep-alives.
+            Event order is RUN_STARTED, TEXT_MESSAGE_START, TEXT_MESSAGE_CONTENT (repeated),
+            TEXT_MESSAGE_END, RUN_FINISHED; failures terminate with RUN_ERROR instead.
+            Worker connection/configuration failures after headers also use RUN_ERROR.
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store } }
+            X-Accel-Buffering: { schema: { type: string, const: 'no' } }
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: AG-UI 1.0 JSON events encoded as SSE; not one JSON document.
+              example: "data: {\"type\":\"RUN_STARTED\",\"threadId\":\"thread-1\",\"runId\":\"run-1\",\"protocolVersion\":\"1.0\"}\n\n"
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Thread does not exist or belongs to another user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Worker authentication is not configured
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   securitySchemes:
     bearerAuth:
@@ -265,6 +332,29 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    AgentRunInput:
+      type: object
+      required: [threadId, runId, messages]
+      properties:
+        threadId: { type: string, format: uuid, maxLength: 64 }
+        runId: { type: string, minLength: 1, maxLength: 64, pattern: '\S' }
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            type: object
+            required: [id, role, content]
+            properties:
+              id: { type: string, minLength: 1, maxLength: 64, pattern: '\S' }
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string, minLength: 1, maxLength: 4000, pattern: '\S' }
+        state: { type: object, maxProperties: 0 }
+        tools: { type: array, maxItems: 0, items: {} }
+        context: { type: array, maxItems: 0, items: {} }
+        resume: { type: array, maxItems: 0, items: {} }
+        forwardedProps: { type: [object, 'null'], maxProperties: 0 }
+        protocolVersion: { type: string, description: Optional client version declaration }
     DiaryRequest:
       type: object
       required: [todoIds, diaryFiles]
@@ -359,7 +449,7 @@ components:
       properties:
         code:
           type: string
-          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
+          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR, SERVICE_UNAVAILABLE]
         message: { type: string }
   responses:
     Diary:

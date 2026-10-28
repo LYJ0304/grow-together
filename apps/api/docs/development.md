@@ -63,3 +63,23 @@ requires authorization again under the default settings.
 
 For Render deployment and staging verification, see the
 [staging deployment guide](staging/Development.md).
+
+## AG-UI counseling
+
+`POST /api/v1/chat-threads` creates an owned thread. The authenticated
+`POST /api/v1/chat-threads/{threadId}/runs` accepts the text-only AG-UI subset in
+`contracts/openapi.yaml`. It checks ownership before contacting the private
+worker and relays SSE without collecting the whole response. Other users see
+404. Only ownership is stored; message history remains in the client session.
+These endpoints are separate from any ongoing `/api/v1/chats` CRUD work.
+
+Set `AI_WORKER_URL` and `WORKER_TOKEN` in the API environment. The token must match
+the worker configuration. The worker URL is server configuration, never supplied
+by the browser. Use a private network and keep worker/model secrets out of the
+client. See [worker setup](../../ai-worker/docs/development.md).
+
+Connect timeout is 5s, idle timeout 35s, run budget 125s, and MVC timeout 130s.
+SSE comments every 5s let a silent run detect browser disconnection and cancel
+upstream work. Worker failures after response headers become `RUN_ERROR`;
+clients must not infer success from HTTP 200 or an abruptly closed body. A reverse
+proxy must forward streaming data without buffering and allow these durations.
