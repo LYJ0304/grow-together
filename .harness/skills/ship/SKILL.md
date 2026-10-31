@@ -46,6 +46,10 @@ branch, including all states, and read the associated PR with `gh pr view`:
 
 1. Read the issue and inspect tracked, staged, and untracked task changes and commits
    against the established base. Do not include another task's staged files.
+   Assess OpenAPI impact across the complete PR change and local task files.
+   When affected or uncertain, use the shared [contract sync procedure](../../references/openapi.md)
+   to fix and validate omissions before staging. Record changes/checks or a
+   no-impact reason in the PR; include contract edits in task paths and labels.
 2. Review the handoff's [TDD evidence](../../conventions.md#tdd) and run relevant
    required checks. Apply that procedure to any new behavior fixes during ship.
    Fix task failures before publishing; disclose missing prerequisites without

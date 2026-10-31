@@ -74,6 +74,9 @@ in the final handoff so ship describes the actual change, not a superseded plan.
    needed and rerun relevant tests. Follow its separate guidance for
    behavior-preserving refactoring, excluded changes, and resumed work with
    missing historical evidence. Run the changed area's required final checks.
+   For external API contract changes or uncertain impact, follow the shared
+   [contract sync procedure](../../references/openapi.md) during implementation;
+   include the OpenAPI changes/checks or no-impact reason in the handoff.
    Reflect user steering in the final scope. Track unresolved external
    prerequisites rather than reporting partial work as complete.
 

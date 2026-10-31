@@ -17,6 +17,7 @@ paths:
                 properties:
                   status: { type: string, example: UP }
                   service: { type: string, example: growtogether-api }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/auth/signup:
     post:
       operationId: signup
@@ -45,6 +46,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/auth/login:
     post:
       operationId: login
@@ -60,6 +63,8 @@ paths:
         '200': { $ref: '#/components/responses/Tokens' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/auth/refresh:
     post:
       operationId: refresh
@@ -79,6 +84,8 @@ paths:
         '200': { $ref: '#/components/responses/Tokens' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/auth/logout:
     post:
       operationId: logout
@@ -95,8 +102,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/TokenRequest' }
       responses:
-        '204': { description: Session revoked or already absent }
+        '204':
+          description: Session revoked or already absent
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store } }
         '400': { $ref: '#/components/responses/InvalidRequest' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/todos:
     post:
       operationId: createTodo
@@ -120,16 +132,8 @@ paths:
                   message: { type: string, example: Todo created Successful }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '415':
-          description: Unsupported request content type
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          description: Unexpected server error
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
     get:
       operationId: getTodos
       summary: List the authenticated user's todos for a date in scheduled time order
@@ -149,6 +153,7 @@ paths:
                 items: { $ref: '#/components/schemas/TodoResponse' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/todos/{id}:
     parameters:
       - name: id
@@ -164,6 +169,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
     put:
       operationId: updateTodo
       summary: Replace all editable fields of a todo owned by the authenticated user
@@ -178,6 +184,8 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
     delete:
       operationId: deleteTodo
       summary: Delete a todo owned by the authenticated user
@@ -187,6 +195,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/diary:
     post:
       operationId: createDiary
@@ -208,6 +217,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
         '409': { $ref: '#/components/responses/TodoAlreadyLinked' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/diary/{id}:
     parameters:
       - name: id
@@ -223,6 +234,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
     put:
       operationId: updateDiary
       summary: Replace diary content, todo links, and image URLs
@@ -244,6 +256,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
         '409': { $ref: '#/components/responses/TodoAlreadyLinked' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
     delete:
       operationId: deleteDiary
       summary: Delete an owned diary and its image records, preserving todos
@@ -254,6 +268,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
 components:
   securitySchemes:
     bearerAuth:
@@ -303,7 +318,7 @@ components:
       required: [planName, scheduledDate, scheduledTime]
       properties:
         planName: { type: string, minLength: 1, maxLength: 80, pattern: '\S' }
-        content: { type: [string, 'null'] }
+        content: { type: [string, 'null'], maxLength: 255 }
         scheduledDate: { type: string, format: date }
         scheduledTime: { type: string, example: '09:00:00', description: Local time without a time zone }
     TodoResponse:
@@ -311,8 +326,8 @@ components:
       required: [id, planName, scheduledDate, scheduledTime]
       properties:
         id: { type: integer, format: int64 }
-        planName: { type: string }
-        content: { type: [string, 'null'] }
+        planName: { type: string, maxLength: 80 }
+        content: { type: [string, 'null'], maxLength: 255 }
         scheduledDate: { type: string, format: date }
         scheduledTime: { type: string, example: '09:00:00', description: Local time without a time zone }
     SignUpRequest:
@@ -320,26 +335,28 @@ components:
       required: [name, email, password]
       properties:
         name: { type: string, minLength: 1, maxLength: 50, pattern: '\S' }
-        email: { type: string, format: email, maxLength: 254 }
+        email: { type: string, format: email, minLength: 1, maxLength: 254, pattern: '\S' }
         password:
           type: string
           format: password
           writeOnly: true
           minLength: 8
           maxLength: 72
-          description: Also limited to 72 UTF-8 bytes; whitespace is not trimmed.
+          pattern: '\S'
+          description: Must contain a non-whitespace character; also limited to 72 UTF-8 bytes. Whitespace is not trimmed.
     LoginRequest:
       type: object
       required: [email, password]
       properties:
-        email: { type: string, format: email, maxLength: 254 }
+        email: { type: string, format: email, minLength: 1, maxLength: 254, pattern: '\S' }
         password:
           type: string
           format: password
           writeOnly: true
           minLength: 8
           maxLength: 72
-          description: Also limited to 72 UTF-8 bytes; whitespace is not trimmed.
+          pattern: '\S'
+          description: Must contain a non-whitespace character; also limited to 72 UTF-8 bytes. Whitespace is not trimmed.
     TokenRequest:
       type: object
       required: [refreshToken]
@@ -402,6 +419,16 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
       description: Invalid credentials, expired/revoked token, or refresh-token reuse
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnsupportedMediaType:
+      description: Unsupported request content type
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Unexpected server error
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
