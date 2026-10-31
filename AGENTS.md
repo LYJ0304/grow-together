@@ -11,6 +11,8 @@
    behavior; follow the [TDD procedure and exceptions](.harness/conventions.md#tdd).
 8. Prefer official documentation and stable releases.
 9. Minimize service-to-service coupling; use `contracts/openapi.yaml` for API contracts.
+   Update it alongside external API behavior changes; when affected or uncertain,
+   follow the [contract sync procedure](.harness/references/openapi.md).
 10. Preserve module boundaries when extending the system.
 
 ## Harness workflow
