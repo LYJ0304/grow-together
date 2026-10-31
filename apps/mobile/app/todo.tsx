@@ -1,7 +1,9 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,123 +17,16 @@ import {
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { AddPlanModal } from '../src/components/add-plan-modal';
-
-const tasks = [
-  {
-    time: '07:00',
-    icon: '◷',
-    title: '기상 & 기저귀 갈기',
-    description: '아이가 깨어요\n기저귀를 갈아주세요.',
-    tag: '# 기본적인 시작 루틴',
-    period: 'past',
-  },
-  {
-    time: '07:30',
-    icon: '♨',
-    title: '아침 이유식',
-    description: '아침 식사 시간이에요. 새로운\n재료는 하루 한 번만 시도해요.',
-    tag: '# 식습관 안정화',
-    period: 'past',
-  },
-  {
-    time: '09:00',
-    icon: '♧',
-    title: '놀이 & 탐색',
-    description: '탐색 놀이 시간이에요.\n블록놀이 추천해요!',
-    tag: '# 발달 자극',
-    period: 'past',
-  },
-  {
-    time: '10:00',
-    icon: 'z',
-    title: '낮잠 (1~1.5시간)',
-    description: '편안한 환경에서 충분히\n휴식할 수 있도록 도와주세요.',
-    tag: '# 충분한 휴식',
-    period: 'past',
-  },
-  {
-    time: '12:00',
-    icon: '♨',
-    title: '점심 이유식',
-    description: '점심 시간이 왔어요.\n새로운 식감 시도도 좋아요.',
-    tag: '# 성장/영양',
-    period: 'past',
-  },
-  {
-    time: '12:30',
-    icon: '♧',
-    title: '산책/외부 활동',
-    description: '햇빛을 쬐면 비타민D\n합성에 좋아요.',
-    tag: '# 발달 자극',
-    period: 'past',
-  },
-  {
-    time: '14:00',
-    icon: '▤',
-    title: '책 읽기 & 놀이',
-    description: '짧은 그림책을 같이 읽어 주세요\n언어 발달에 좋아요.',
-    tag: '# 언어 발달',
-    period: 'past',
-  },
-  {
-    time: '15:00',
-    icon: 'z',
-    title: '낮잠 (1시간)',
-    description: '점심 시간이 왔어요.\n새로운 식감 시도도 좋아요.',
-    tag: '# 피로회복',
-    period: 'current',
-  },
-  {
-    time: '17:30',
-    icon: '♧',
-    title: '산책/외부활동',
-    description: '밤잠 잘 잘 수 있도록\n산책을 해요.',
-    tag: '# 발달 자극',
-    period: 'future',
-  },
-  {
-    time: '18:00',
-    icon: '♨',
-    title: '저녁 이유식',
-    description: '저녁 식사 시간이에요. 단백질 식품\n을 포함해보세요.',
-    tag: '# 성장/영양',
-    period: 'future',
-  },
-  {
-    time: '18:30',
-    icon: '♧',
-    title: '목욕 & 양치놀이',
-    description: '저녁 활동을 마무리하며\n목욕해 주세요.',
-    tag: '# 면역/위생 습관',
-    period: 'future',
-  },
-  {
-    time: '19:30',
-    icon: '▤',
-    title: '책 읽기 & 차분한 놀이',
-    description: '짧은 그림책을 읽어주며\n차분히 마무리해요.',
-    tag: '# 언어 발달  # 정서 안정',
-    period: 'future',
-  },
-  {
-    time: '20:00',
-    icon: '▱',
-    title: '취침 준비',
-    description: '잠자기 전 차분한 분위기를\n만들어주세요.',
-    tag: '# 수면유도',
-    period: 'future',
-  },
-  {
-    time: '21:00',
-    icon: 'z',
-    title: '취침',
-    description: '오늘 하루가 끝났어요.\n아기를 재워주세요.',
-    tag: '# 마무리',
-    period: 'future',
-  },
-] as const;
+import { useAuth } from '../src/components/auth-provider';
+import { ApiError } from '../src/lib/api/errors';
+import { createTodoApi } from '../src/lib/features/todo/todoApi';
+import type { TodoRequest, TodoResponse } from '../src/lib/features/todo/types';
 
 const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 function getWeek(date: Date) {
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -152,26 +47,81 @@ export default function TodoScreen() {
   });
   const [view, setView] = useState<'시간' | '할 일'>('시간');
   const [notice, setNotice] = useState('');
-  const [addingPlan, setAddingPlan] = useState(false);
-  // shortcut: plans live in screen state for this UI; add persistence when plan storage is requested.
-  const [addedPlans, setAddedPlans] = useState<
-    {
-      id: number;
-      date: number;
-      title: string;
-      time: string;
-      description: string;
-      icon: string;
-      tag: string;
-      period: 'future';
-    }[]
-  >([]);
-  const nextPlanId = useRef(0);
+  const [form, setForm] = useState<{ date: Date; todo?: TodoResponse } | null>(
+    null,
+  );
+  const [managedTodo, setManagedTodo] = useState<TodoResponse | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const deleting = useRef(false);
+  const { client, status } = useAuth();
+  const api = createTodoApi(client);
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: TodoRequest }) => {
+      if (id === undefined) await api.createTodo(input);
+      else await api.updateTodo(id, input);
+    },
+    retry: false,
+    onSuccess: (_result, { input }) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['todos', input.scheduledDate],
+      });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (todo: TodoResponse) => api.deleteTodo(todo.id),
+    retry: false,
+    onSuccess: (_result, todo) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['todos', todo.scheduledDate],
+      });
+    },
+  });
+  const closeMenu = () => {
+    if (deleting.current) return;
+    setManagedTodo(null);
+    setConfirmDelete(false);
+    setDeleteError('');
+  };
+  const deleteTodo = async () => {
+    if (!managedTodo || deleting.current) return;
+    deleting.current = true;
+    setDeleteError('');
+    try {
+      await remove.mutateAsync(managedTodo);
+      setManagedTodo(null);
+      setConfirmDelete(false);
+      setNotice('계획을 삭제했어요.');
+    } catch (error) {
+      setDeleteError(
+        error instanceof ApiError && (error.status === 0 || error.status >= 500)
+          ? '삭제 여부를 확인하지 못했어요. 창을 닫고 목록 새로고침으로 결과를 확인해 주세요.'
+          : error instanceof Error
+            ? error.message
+            : '삭제하지 못했어요. 다시 시도해 주세요.',
+      );
+    } finally {
+      deleting.current = false;
+    }
+  };
+  const dateKey = localDateKey(selectedDate);
+  const todos = useQuery({
+    queryKey: ['todos', dateKey],
+    queryFn: () => api.getTodos(dateKey),
+    enabled: status === 'authenticated',
+    retry: false,
+  });
   const week = getWeek(selectedDate);
-  const visibleTasks = [
-    ...tasks.map((task) => ({ ...task, id: task.time })),
-    ...addedPlans.filter((plan) => plan.date === selectedDate.getTime()),
-  ].sort((a, b) => a.time.localeCompare(b.time));
+  const visibleTasks = (todos.data ?? [])
+    .map((todo) => ({
+      todo,
+      id: todo.id,
+      title: todo.planName,
+      description: todo.content ?? '',
+      time: todo.scheduledTime.slice(0, 5),
+    }))
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
@@ -203,9 +153,10 @@ export default function TodoScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
+              disabled={status !== 'authenticated'}
               onPress={() => {
                 setNotice('');
-                setAddingPlan(true);
+                setForm({ date: selectedDate });
               }}
               style={({ pressed }) => [
                 styles.addButton,
@@ -286,6 +237,39 @@ export default function TodoScreen() {
           </View>
 
           <View style={styles.timeline}>
+            {status === 'preview' ? (
+              <Text>미리보기에서는 서버 일정을 이용할 수 없어요.</Text>
+            ) : (
+              <>
+                {todos.isPending ? <Text>일정을 불러오고 있어요.</Text> : null}
+                {todos.isError ? (
+                  <>
+                    <Text accessibilityRole="alert">
+                      일정을 불러오지 못했어요.
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      style={styles.listAction}
+                      onPress={() => void todos.refetch()}
+                    >
+                      <Text>다시 시도</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+                {!todos.isPending &&
+                !todos.isError &&
+                visibleTasks.length === 0 ? (
+                  <Text>등록된 일정이 없어요.</Text>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.listAction}
+                  onPress={() => void todos.refetch()}
+                >
+                  <Text>목록 새로고침</Text>
+                </Pressable>
+              </>
+            )}
             {visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskRow}>
                 {view === '시간' ? (
@@ -296,52 +280,36 @@ export default function TodoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`${task.time} ${task.title}`}
-                  onPress={() =>
-                    setNotice(`${task.title} 상세 화면은 준비 중입니다.`)
-                  }
+                  onPress={() => setManagedTodo(task.todo)}
                   style={({ pressed }) => [
                     styles.taskCard,
-                    styles[task.period],
+                    styles.future,
                     pressed && styles.pressed,
                   ]}
                 >
                   <View style={styles.taskIcon}>
-                    <Text
-                      style={[
-                        styles.taskIconText,
-                        styles[`${task.period}Text`],
-                      ]}
-                    >
-                      {task.icon}
+                    <Text style={[styles.taskIconText, styles.futureText]}>
+                      ▤
                     </Text>
                   </View>
                   <View style={styles.taskCopy}>
                     <Text
                       numberOfLines={1}
-                      style={[styles.taskTitle, styles[`${task.period}Text`]]}
+                      style={[styles.taskTitle, styles.futureText]}
                     >
                       {task.title}
                     </Text>
-                    <Text
-                      style={[
-                        styles.taskDescription,
-                        styles[`${task.period}Text`],
-                      ]}
-                    >
+                    <Text style={[styles.taskDescription, styles.futureText]}>
                       {task.description}
-                    </Text>
-                    <Text
-                      style={[styles.taskTag, styles[`${task.period}Text`]]}
-                    >
-                      {task.tag}
                     </Text>
                   </View>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${task.title} 메뉴`}
-                    onPress={() =>
-                      setNotice(`${task.title} 메뉴는 준비 중입니다.`)
-                    }
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      setManagedTodo(task.todo);
+                    }}
                     hitSlop={8}
                   >
                     <Text style={styles.more}>⋮</Text>
@@ -383,25 +351,93 @@ export default function TodoScreen() {
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
         onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
-      {addingPlan ? (
+      {managedTodo ? (
+        <Modal transparent animationType="fade" onRequestClose={closeMenu}>
+          <View style={styles.menuOverlay}>
+            <View style={styles.menuSheet} accessibilityViewIsModal>
+              <Text accessibilityRole="header" style={styles.menuTitle}>
+                {confirmDelete ? '계획을 삭제할까요?' : managedTodo.planName}
+              </Text>
+              {deleteError ? (
+                <Text accessibilityRole="alert" style={styles.notice}>
+                  {deleteError}
+                </Text>
+              ) : null}
+              {confirmDelete ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={remove.isPending}
+                  accessibilityState={{
+                    disabled: remove.isPending,
+                    busy: remove.isPending,
+                  }}
+                  onPress={() => void deleteTodo()}
+                  style={styles.menuAction}
+                >
+                  <Text>{remove.isPending ? '삭제 중…' : '삭제하기'}</Text>
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setForm({
+                        date: new Date(`${managedTodo.scheduledDate}T00:00:00`),
+                        todo: managedTodo,
+                      });
+                      closeMenu();
+                    }}
+                    style={styles.menuAction}
+                  >
+                    <Text>수정</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setConfirmDelete(true)}
+                    style={styles.menuAction}
+                  >
+                    <Text>삭제</Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                disabled={remove.isPending}
+                onPress={closeMenu}
+                style={styles.menuAction}
+              >
+                <Text>취소</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+      {form ? (
         <AddPlanModal
-          date={selectedDate}
-          onClose={() => setAddingPlan(false)}
-          onAdd={(plan) => {
-            const id = nextPlanId.current++;
-            setAddedPlans((current) => [
-              ...current,
-              {
-                ...plan,
-                id,
-                date: selectedDate.getTime(),
-                icon: '▤',
-                tag: '# 나의 계획',
-                period: 'future',
+          date={form.date}
+          onClose={() => setForm(null)}
+          initialValues={
+            form.todo
+              ? {
+                  title: form.todo.planName,
+                  time: form.todo.scheduledTime.slice(0, 5),
+                  description: form.todo.content ?? '',
+                }
+              : undefined
+          }
+          onAdd={async (plan) => {
+            const date = form.date;
+            await save.mutateAsync({
+              id: form.todo?.id,
+              input: {
+                planName: plan.title,
+                content: plan.description,
+                scheduledDate: form.todo?.scheduledDate ?? localDateKey(date),
+                scheduledTime: `${plan.time}:00`,
               },
-            ]);
-            setAddingPlan(false);
-            setNotice('계획을 추가했어요.');
+            });
+            setForm(null);
+            setNotice(form.todo ? '계획을 수정했어요.' : '계획을 추가했어요.');
           }}
         />
       ) : null}
@@ -410,6 +446,22 @@ export default function TodoScreen() {
 }
 
 const styles = StyleSheet.create({
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  menuSheet: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  menuTitle: { fontFamily: 'Jua', fontSize: 20, color: '#4F4F4F' },
+  menuAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scheduleContent: { flex: 1 },
   content: { paddingBottom: 88 },
@@ -539,8 +591,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
   },
-  past: { backgroundColor: '#FDEDE6', opacity: 0.58 },
-  current: { backgroundColor: '#FDEDE6' },
   future: { backgroundColor: '#F6F6F5' },
   taskIcon: { width: 20, alignItems: 'center' },
   taskIconText: { fontSize: 19, color: '#D26A5C' },
@@ -557,15 +607,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: '#88889D',
   },
-  taskTag: {
-    marginTop: 2,
-    fontFamily: 'Jua',
-    fontSize: 10,
-    lineHeight: 13,
-    color: '#88889D',
-  },
-  pastText: { color: '#D26A5C' },
-  currentText: { color: '#D26A5C' },
   futureText: { color: '#88889D' },
   more: { marginTop: -3, color: '#88889D', fontSize: 19, lineHeight: 20 },
   notice: {
@@ -575,5 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#D26A5C',
   },
+  listAction: { minHeight: 44, justifyContent: 'center' },
   pressed: { opacity: 0.75 },
 });

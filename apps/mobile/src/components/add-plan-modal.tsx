@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { ApiError } from '../lib/api/errors';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -18,17 +19,25 @@ export function AddPlanModal({
   date,
   onClose,
   onAdd,
+  initialValues,
 }: {
   date: Date;
   onClose: () => void;
-  onAdd: (plan: PlanInput) => void;
+  onAdd: (plan: PlanInput) => void | Promise<void>;
+  initialValues?: PlanInput;
 }) {
-  const [title, setTitle] = useState('');
-  const [time, setTime] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(initialValues?.title ?? '');
+  const [time, setTime] = useState(initialValues?.time ?? '');
+  const [description, setDescription] = useState(
+    initialValues?.description ?? '',
+  );
   const [error, setError] = useState('');
 
-  const submit = () => {
+  const [pending, setPending] = useState(false);
+  const submitting = useRef(false);
+
+  const submit = async () => {
+    if (submitting.current) return;
     if (!title.trim()) {
       setError('계획명을 입력해 주세요.');
       return;
@@ -37,15 +46,41 @@ export function AddPlanModal({
       setError('시간을 09:30처럼 입력해 주세요. (00:00~23:59)');
       return;
     }
-    onAdd({
-      title: title.trim(),
-      time: time.trim(),
-      description: description.trim(),
-    });
+    if (title.trim().length > 80 || description.trim().length > 255) {
+      setError('계획명은 80자, 메모는 255자 이내로 입력해 주세요.');
+      return;
+    }
+    submitting.current = true;
+    setPending(true);
+    setError('');
+    try {
+      await onAdd({
+        title: title.trim(),
+        time: time.trim(),
+        description: description.trim(),
+      });
+    } catch (error) {
+      setError(
+        error instanceof ApiError && (error.status === 0 || error.status >= 500)
+          ? '저장 여부를 확인하지 못했어요. 창을 닫고 목록 새로고침으로 결과를 확인한 뒤 다시 시도해 주세요.'
+          : error instanceof Error
+            ? error.message
+            : '저장하지 못했어요. 다시 시도해 주세요.',
+      );
+    } finally {
+      submitting.current = false;
+      setPending(false);
+    }
   };
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        if (!submitting.current) onClose();
+      }}
+    >
       <SafeAreaView style={styles.overlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -58,12 +93,15 @@ export function AddPlanModal({
             >
               <View style={styles.header}>
                 <Text accessibilityRole="header" style={styles.heading}>
-                  계획 추가
+                  {initialValues ? '계획 수정' : '계획 추가'}
                 </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="계획 추가 닫기"
+                  accessibilityLabel={
+                    initialValues ? '계획 수정 닫기' : '계획 추가 닫기'
+                  }
                   hitSlop={8}
+                  disabled={pending}
                   onPress={onClose}
                   style={styles.close}
                 >
@@ -80,6 +118,7 @@ export function AddPlanModal({
                 placeholder="예: 아이와 공원 산책"
                 placeholderTextColor="#88889D"
                 value={title}
+                editable={!pending}
                 onChangeText={setTitle}
                 maxLength={80}
                 style={styles.input}
@@ -90,6 +129,7 @@ export function AddPlanModal({
                 placeholder="09:30"
                 placeholderTextColor="#88889D"
                 value={time}
+                editable={!pending}
                 onChangeText={setTime}
                 maxLength={5}
                 autoCapitalize="none"
@@ -104,9 +144,10 @@ export function AddPlanModal({
                 placeholder="기억하고 싶은 내용을 적어 주세요"
                 placeholderTextColor="#88889D"
                 value={description}
+                editable={!pending}
                 onChangeText={setDescription}
                 multiline
-                maxLength={500}
+                maxLength={255}
                 textAlignVertical="top"
                 style={[styles.input, styles.memo]}
               />
@@ -122,6 +163,7 @@ export function AddPlanModal({
               <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
+                  disabled={pending}
                   onPress={onClose}
                   style={({ pressed }) => [
                     styles.button,
@@ -133,14 +175,22 @@ export function AddPlanModal({
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={submit}
+                  disabled={pending}
+                  accessibilityState={{ disabled: pending, busy: pending }}
+                  onPress={() => void submit()}
                   style={({ pressed }) => [
                     styles.button,
                     styles.submit,
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.submitText}>추가하기</Text>
+                  <Text style={styles.submitText}>
+                    {pending
+                      ? '저장 중…'
+                      : initialValues
+                        ? '수정하기'
+                        : '추가하기'}
+                  </Text>
                 </Pressable>
               </View>
             </ScrollView>
