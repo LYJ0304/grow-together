@@ -12,6 +12,8 @@
     "test:motion": "node tests/launch-transitions.mjs",
     "test:logo": "node tests/launch-logo.mjs",
     "test:diary": "node tests/diary-storage.mjs",
+    "test:diary:api": "node tests/diary-api.mjs",
+    "test:todo:api": "node tests/todo-api.mjs",
     "test:diary-navigation": "node tests/diary-navigation.mjs",
     "test:calendar": "node tests/calendar.mjs",
     "test:calendar:ui": "node tests/calendar-ui.mjs",

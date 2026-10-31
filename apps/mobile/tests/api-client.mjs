@@ -29,7 +29,7 @@ const context = {
   },
 };
 vm.runInNewContext(outputText, context);
-const { client } = context.exports;
+const { client, createClient } = context.exports;
 
 for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
   const send = (headers) =>
@@ -63,6 +63,47 @@ for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
   }
 }
 
+assert.equal(
+  typeof createClient,
+  'function',
+  'Client must support an authenticated request function',
+);
+const calls = [];
+const result = { id: 42 };
+const authenticated = createClient(async (endpoint, options) => {
+  calls.push({ endpoint, ...options });
+  return result;
+});
+for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+  const hasBody = ['post', 'put', 'patch'].includes(method);
+  assert.equal(
+    await authenticated[method](
+      '/api/v1/diary/42',
+      ...(hasBody ? [{ content: 'diary' }] : []),
+    ),
+    result,
+  );
+  const call = calls.at(-1);
+  assert.equal(call.endpoint, '/api/v1/diary/42');
+  assert.equal(call.method, method.toUpperCase());
+  assert.equal(
+    call.body,
+    hasBody ? JSON.stringify({ content: 'diary' }) : undefined,
+  );
+}
+const failure = new Error('Request failed');
+const failing = createClient(async () => {
+  throw failure;
+});
+await assert.rejects(
+  failing.get('/api/v1/diary/42'),
+  (error) => error === failure,
+);
+const lastRequest = request;
+await client.get('/api/health');
+assert.notEqual(request, lastRequest);
+assert.equal(request.endpoint, '/api/health');
+
 console.log(
-  'API client header checks passed (5 methods, all HeadersInit forms)',
+  'API client checks passed (headers, methods, bodies, request injection, errors, public client)',
 );
