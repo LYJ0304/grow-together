@@ -9,10 +9,11 @@ public record TodoResponse(
     String planName,
     String content,
     LocalDate scheduledDate,
-    LocalTime scheduledTime
+    LocalTime scheduledTime,
+    boolean completed
 ) {
     public static TodoResponse from(Todo todo) {
         return new TodoResponse(todo.getId(), todo.getPlanName(), todo.getContent(),
-                todo.getScheduledDate(), todo.getScheduledTime());
+                todo.getScheduledDate(), todo.getScheduledTime(), todo.isCompleted());
     }
 }

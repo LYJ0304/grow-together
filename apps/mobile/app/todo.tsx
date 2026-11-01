@@ -54,16 +54,30 @@ export default function TodoScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const deleting = useRef(false);
+  const completing = useRef(false);
+  const [completionError, setCompletionError] = useState('');
   const { client, status } = useAuth();
   const api = createTodoApi(client);
   const queryClient = useQueryClient();
   const save = useMutation({
-    mutationFn: async ({ id, input }: { id?: number; input: TodoRequest }) => {
+    mutationFn: async ({
+      id,
+      input,
+    }: {
+      id?: number;
+      input: TodoRequest;
+      previousDate?: string;
+    }) => {
       if (id === undefined) await api.createTodo(input);
       else await api.updateTodo(id, input);
     },
     retry: false,
-    onSuccess: (_result, { input }) => {
+    onSuccess: (_result, { input, previousDate }) => {
+      if (previousDate && previousDate !== input.scheduledDate) {
+        void queryClient.invalidateQueries({
+          queryKey: ['todos', previousDate],
+        });
+      }
       void queryClient.invalidateQueries({
         queryKey: ['todos', input.scheduledDate],
       });
@@ -78,6 +92,29 @@ export default function TodoScreen() {
       });
     },
   });
+  const completion = useMutation({
+    mutationFn: (todo: TodoResponse) =>
+      api.setCompletion(todo.id, !todo.completed),
+    retry: false,
+    onSuccess: (_result, todo) =>
+      queryClient.invalidateQueries({
+        queryKey: ['todos', todo.scheduledDate],
+      }),
+  });
+  const toggleCompletion = async (todo: TodoResponse) => {
+    if (completing.current) return;
+    completing.current = true;
+    setCompletionError('');
+    try {
+      await completion.mutateAsync(todo);
+    } catch {
+      setCompletionError(
+        '완료 상태를 저장하지 못했어요. 목록 새로고침으로 상태를 확인한 뒤 다시 시도해 주세요.',
+      );
+    } finally {
+      completing.current = false;
+    }
+  };
   const closeMenu = () => {
     if (deleting.current) return;
     setManagedTodo(null);
@@ -270,6 +307,11 @@ export default function TodoScreen() {
                 </Pressable>
               </>
             )}
+            {completionError ? (
+              <Text accessibilityRole="alert" style={styles.notice}>
+                {completionError}
+              </Text>
+            ) : null}
             {visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskRow}>
                 {view === '시간' ? (
@@ -314,6 +356,24 @@ export default function TodoScreen() {
                   >
                     <Text style={styles.more}>⋮</Text>
                   </Pressable>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  aria-checked={task.todo.completed}
+                  aria-busy={completion.isPending}
+                  accessibilityLabel={`${task.title} ${task.todo.completed ? '완료 취소' : '완료'}`}
+                  accessibilityState={{
+                    checked: task.todo.completed,
+                    disabled: completion.isPending,
+                    busy: completion.isPending,
+                  }}
+                  disabled={completion.isPending}
+                  onPress={() => void toggleCompletion(task.todo)}
+                  style={styles.completionButton}
+                >
+                  <Text style={styles.completionMark}>
+                    {task.todo.completed ? '☑' : '☐'}
+                  </Text>
                 </Pressable>
               </View>
             ))}
@@ -429,6 +489,7 @@ export default function TodoScreen() {
             const date = form.date;
             await save.mutateAsync({
               id: form.todo?.id,
+              previousDate: form.todo?.scheduledDate,
               input: {
                 planName: plan.title,
                 content: plan.description,
@@ -565,6 +626,13 @@ const styles = StyleSheet.create({
     borderLeftColor: '#FAF9F9',
     marginLeft: 82,
   },
+  completionButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionMark: { fontSize: 24, color: '#B25447' },
   taskRow: {
     minHeight: 121,
     flexDirection: 'row',
@@ -594,7 +662,7 @@ const styles = StyleSheet.create({
   future: { backgroundColor: '#F6F6F5' },
   taskIcon: { width: 20, alignItems: 'center' },
   taskIconText: { fontSize: 19, color: '#D26A5C' },
-  taskCopy: { flex: 1, gap: 5 },
+  taskCopy: { flex: 1, minWidth: 0, gap: 5 },
   taskTitle: {
     fontFamily: 'Jua',
     fontSize: 15,

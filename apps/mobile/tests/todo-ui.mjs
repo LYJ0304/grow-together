@@ -27,6 +27,7 @@ const records = [
     content: null,
     scheduledDate: '2026-10-31',
     scheduledTime: '08:00:00',
+    completed: false,
   },
   {
     id: 43,
@@ -34,6 +35,7 @@ const records = [
     content: '유모차',
     scheduledDate: '2026-10-31',
     scheduledTime: '10:00:00',
+    completed: false,
   },
 ];
 let nextId = 44;
@@ -85,6 +87,7 @@ await page.route('**/api/v1/todos**', async (route) => {
                 content: '',
                 scheduledDate: '2026-10-31',
                 scheduledTime: '12:00:00',
+                completed: false,
               },
             ]
           : records.filter(
@@ -99,7 +102,8 @@ await page.route('**/api/v1/todos**', async (route) => {
   if (writeFailure)
     return route.fulfill({ status: 400, json: { code: 'INVALID_REQUEST' } });
   const id = Number(target.pathname.split('/').at(-1));
-  if (method === 'POST') records.push({ id: nextId++, ...input });
+  if (method === 'POST')
+    records.push({ id: nextId++, completed: false, ...input });
   if (method === 'PUT')
     Object.assign(
       records.find((todo) => todo.id === id),

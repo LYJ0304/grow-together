@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.growtogether.todo.dto.TodoRequest;
+import com.growtogether.todo.dto.TodoCompletionRequest;
 import com.growtogether.todo.dto.TodoResponse;
 
 import jakarta.validation.Valid;
@@ -55,6 +56,13 @@ public class TodoController {
     public ResponseEntity<TodoResponse> updateTodo(
             @AuthenticationPrincipal Jwt jwt, @PathVariable Long id, @Valid @RequestBody TodoRequest request) {
         return ResponseEntity.ok(todoService.updateTodo(Long.valueOf(jwt.getSubject()), id, request));
+    }
+
+    @PutMapping("/{id}/completion")
+    public ResponseEntity<TodoResponse> setCompletion(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+            @RequestBody TodoCompletionRequest request) {
+        return ResponseEntity.ok(todoService.setCompletion(Long.valueOf(jwt.getSubject()), id, request.completed()));
     }
 
     @DeleteMapping("/{id}")

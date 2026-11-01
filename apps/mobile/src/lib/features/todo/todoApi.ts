@@ -19,6 +19,11 @@ export function createTodoApi(session: Pick<AuthSession, 'request'>) {
     async updateTodo(id: number, input: TodoRequest): Promise<TodoResponse> {
       return client.put<TodoResponse>(`/api/v1/todos/${id}`, input);
     },
+    async setCompletion(id: number, completed: boolean): Promise<TodoResponse> {
+      return client.put<TodoResponse>(`/api/v1/todos/${id}/completion`, {
+        completed,
+      });
+    },
     async deleteTodo(id: number): Promise<void> {
       return client.delete<void>(`/api/v1/todos/${id}`);
     },

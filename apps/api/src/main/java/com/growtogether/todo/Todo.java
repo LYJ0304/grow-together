@@ -52,6 +52,9 @@ public class Todo {
     @Column(name = "scheduled_time", nullable = false)
     private LocalTime scheduledTime;
 
+    @Column(nullable = false)
+    private boolean completed;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diary_id")
     private Diary diary;
@@ -69,6 +72,10 @@ public class Todo {
         this.content = content;
         this.scheduledDate = scheduledDate;
         this.scheduledTime = scheduledTime;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
     }
 
     public void setDiary(Diary diary) {
