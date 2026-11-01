@@ -58,7 +58,7 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
 - Branch: `<type>/issue-<number>-<slug>`; use a short lowercase hyphenated slug.
   Worktree: a sibling of the primary worktree named `<repo>-issue-<number>`.
   Find the primary worktree with `git worktree list --porcelain`.
-- Default base and PR target for new general tasks: remote `develop`. Fetch
+- Default base and PR target for new general tasks: remote `main`. Fetch
   before creating a task branch. Never reset or switch the user's current branch merely to prepare a separate task worktree.
   If the user explicitly requests a task branch in the current checkout instead,
   honor it after inspecting local work. Refresh the start handoff when work moves.
@@ -137,38 +137,41 @@ it does not authorize comments or messages to the assignees.
 
 ## Branches and merge policy
 
-`develop` integrates development, `staging` validates releases, and `main` is
-the production baseline. Deployment requires its own configuration and request.
+`main` is the only long-lived development integration branch. `staging` and
+`production` are deployment environments, not branches. Use temporary task and
+release branches; a single long-lived branch does not prohibit separate worktrees.
 
 | PR flow | Merge method |
 | --- | --- |
-| Feature, fix, chore, docs, and other task branches → `develop` | Squash merge |
-| `develop` → `staging` | Merge commit |
-| `staging` → `main` | Merge commit |
+| Feature, fix, chore, docs, and other task branches → `main` | Squash merge |
+| Version-only Release PR → `main` | Squash when repository protection permits |
 
-- Start new general tasks from the latest remote `develop` and create their PRs
-  against `develop`. An explicitly requested base/PR target takes precedence.
-  Resume existing tasks with their established base and PR target; do not rebase
-  or retarget them solely because the default changed. If Git state, an existing
-  PR, and the handoff conflict, resolve the intended target before publishing.
-- `develop`, `staging`, and `main` are maintained branches, never task branches.
-  Do not edit or publish them through start/ship or remove their worktrees.
-  Keep the primary worktree and task branches under the existing cleanup rules.
-- Ship creates/updates a PR; it does not merge it. Merge, promotion, deployment,
-  and branch deletion require separate user requests. When a merge is requested,
-  inspect the PR's actual head/base and apply the table using
-  `gh pr merge <number> --repo <owner/repo>` with `--squash` for task integration
-  or `--merge` for promotions.
-  Verify the result; do not silently fall back to a different method if blocked.
-  After an explicitly requested merge completes, follow the ship skill's merge
-  verification and cleanup procedure. Queueing a merge is not completion.
-- Task PRs with an explicitly requested exceptional target (for example a hotfix
-  to `main`) still use squash unless the user specifies otherwise. Synchronizing
-  maintained branches, including hotfix back-merges to `staging` and `develop`,
-  uses merge commits to preserve ancestry. Never squash/rebase maintained-branch
-  synchronization, and do not perform back-merges without a separate request.
-- Record the PR target and intended merge method in the start handoff and PR
-  body. A policy in a PR body documents intent; it does not enforce GitHub rules.
+- Start new general tasks from the latest remote `main` and explicitly target
+  `main`. Honor an explicitly requested base/target. Resume existing tasks with
+  their established base and target; a changed default does not authorize rebase
+  or retargeting. If an old base was deleted, inspect current GitHub evidence and
+  user instructions to resolve the target; do not recreate it or silently switch.
+- `main` is never a task branch. Do not edit/push it through start/ship or remove
+  its worktree. Preserve the primary checkout and existing local work under the
+  cleanup rules; this policy does not authorize bulk deletion.
+- Ship publishes a PR, not a merge. Merge, deployment, maintained-branch updates
+  and branch deletion require separate requests. When merging is authorized,
+  inspect the actual head/base and use
+  `gh pr merge <number> --repo <owner/repo> --squash` for task integration. Do not change methods silently if blocked.
+  Verify the result, then follow ship's merge-evidence and safe-cleanup procedure.
+  Queueing is not completion. Explicit exceptional targets keep their agreed
+  method; do not invent promotion/back-merge steps for deleted branches.
+- Record the target/method in the task handoff and PR body. These describe intent,
+  not enforcement by GitHub protection.
+- Staging validates a selected commit from `main`. Production targets an approved
+  independent app tag (`mobile/vX.Y.Z`, `api/vX.Y.Z`, `worker/vX.Y.Z`) at the exact
+  tested release SHA, not current main HEAD. Main merges are not official releases.
+  Version-only release changes create a new candidate: verify the final merge SHA
+  in staging before tag publication. Follow the release skill's approval gates.
+- API/worker production should reuse the image digest verified in staging; mobile
+  records the exact build/artifact and environment configuration. Provider
+  connections, CI/CD and promotion of artifacts need separately authorized setup.
+  Never infer deployed state from tags, an environment name, or this document.
 
 ## TDD
 
@@ -274,19 +277,20 @@ the canonical SKILL.md through AGENTS.md; do not maintain duplicate copies.
 
 Source: [OpenAI skill discovery documentation](https://learn.chatgpt.com/docs/build-skills).
 
-## App release exception
+## App release lifecycle
 
 The [release skill](skills/release/SKILL.md) prepares version-only branches from
-already QA-promoted `main` and creates Release PRs targeting `main`. Use squash
-when compatible with protection; this exception does not change promotion merge
-commits or the default `develop` target for ordinary skill implementation tasks.
+a staging-verified, pinned `main` commit and creates Release PRs targeting `main`.
+Use squash when compatible with protection; ordinary task PRs also target `main`. Staging
+QA is environment/commit evidence, not maintained-branch promotion. The final
+release merge needs its own staging verification before publication.
 
 Plan approval precedes manifest changes. Merge and publication need separate
 explicit approval of the exact PR/head or merge SHA and version mapping. Require
 protected main and passing required CI; absence is a configuration prerequisite,
 not successful CI. Release PR records bind base/head, manifests, notes, validation
 and approval provenance. Do not use general ship cleanup to imply release
-publication, deployment, version back-merges or branch deletion authorization.
+publication, deployment, branch synchronization or branch deletion authorization.
 
 Production should eventually deploy only approved per-app tags; activating or
 changing deployment workflows/provider integrations requires a separate concrete

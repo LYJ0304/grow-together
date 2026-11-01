@@ -5,7 +5,27 @@ updates versions. Require a positive PR number and authenticated GitHub access.
 
 ## Preflight
 
-Refresh `main`, PR head and tags without force. Run:
+Refresh `main`, PR head and tags without force. Inspect the merged PR and its
+existing record before any QA update. The final merge SHA must be verified in
+the staging environment for every selected app. Base QA, an identical tree, CI,
+a health endpoint alone, or evidence for latest main is insufficient.
+
+If `qa.release` is null, obtain actual successful QA evidence and set only that
+field to `{"sha": "<exact merge SHA>", "apps": ["api"], "result": "passed",
+"evidence": "<staging results and evidence reference>"}` with all selected apps.
+Preserve every other record field and original plan/merge approval provenance;
+inspect the before/after record against those approvals. Updating the PR body
+as part of this invoked skill is authorized, deploying the candidate is not.
+Do not create the field from assumptions or infer QA success from a PR merge.
+
+The QA addition changes the plan digest: complete it before requesting a new
+publication approval, and bind that approval to the full updated record/digest.
+If evidence is missing, report the exact SHA/apps needed and stop. Once any
+release tag exists, freeze the record; recovery must use its original QA/digest.
+Do not edit conflicting QA to make existing tags pass. Legacy v1 records require
+explicit recovery planning; never auto-convert published records.
+
+Run:
 
 ```bash
 python3 .harness/skills/release/scripts/release-plan.py verify --repo OWNER/REPO --pr 123 --phase publish
@@ -14,7 +34,8 @@ python3 .harness/skills/release/scripts/release-plan.py verify --repo OWNER/REPO
 The helper retrieves the PR record and checks MERGED into main, final head,
 commit ancestry, exact merged tree and parent against approved base/head,
 version-only delta, unchanged excluded versions, stable SemVer targets,
-previous tags, live remote main/tag identity, CI and protected main. A release
+previous tags, live remote main/tag identity, CI, protected main and structured
+base/final staging QA SHA/app coverage and passed results. A release
 merged on top of an advanced unapproved base is stale even if conflict-free.
 It never targets current main in place of the PR's merge SHA. Missing refs or
 lookup errors are blockers, not evidence of absence. Fetch specific old PR head
@@ -35,8 +56,8 @@ block publication. Never replace or delete tags to make verification pass.
 ## New publication approval
 
 Present PR URL/number, plan digest, exact merge SHA, all application/version/tag
-pairs, per-app release notes, actual checks and compatibility/rollout concerns,
-plus precisely which remote operations remain. Explain that approved tags may
+pairs, per-app release notes, final staging QA, actual checks and compatibility/
+rollout concerns, plus precisely which remote operations remain. Explain that approved tags may
 trigger provider deployments; no deployment success is promised. Ask for explicit
 publication approval using the current runtime or conversation. End the turn if
 no human answer is available. Prepare approval, merge approval, a command argument,
@@ -105,7 +126,7 @@ new approval for remaining remote mutations. Preserve annotations/commit identit
 | All Releases match | Successful no-op; report existing URLs, no remote mutation |
 | Tag at wrong SHA, wrong annotation, wrong Release notes or draft | Stop with conflict details; never overwrite, force push, move, delete or silently edit |
 
-The digest covers the whole PR record, including final head, notes and validation.
+The digest covers the whole PR record, including final head, notes, base/final staging QA and validation.
 Editing the record after tags exist changes the digest and blocks recovery; restore
 its original approved content from trusted provenance, never retag. An unavailable
 GitHub API/authentication check is not a missing Release. Stop rather than creating

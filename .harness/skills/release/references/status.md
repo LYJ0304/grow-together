@@ -27,6 +27,7 @@ cleanliness or install dependencies merely to report status.
 | --- | --- |
 | Prepared | OPEN Release PR with consistent version record/head; CI may still be pending |
 | Merged | MERGED into main with verified merge parent/tree and manifests |
+| QA verified | Staging evidence for the exact final merge SHA and all selected apps |
 | Tagged | Exact annotated remote tag and peeled merge commit verified |
 | Published | Matching non-draft GitHub Release exists for that verified tag |
 | Deployed | App/environment/exact SHA matched to authoritative successful deployment record |
@@ -35,7 +36,11 @@ These are separate facts; e.g. Tagged with GitHub Release missing is partial
 publication, and Published with deployment unknown is not a failed publication.
 A mismatched tag/manifest/PR is an inconsistency, not a later lifecycle state.
 Show the baseline/tag SHA, current main versions and current checkout versions
-separately. Version changes on develop are not inherently production drift.
+separately. Main is the development integration branch; its version changes are
+not inherently production drift. Production state comes from app tags and actual
+deployment records. Show base QA and final-merge QA separately; report missing or
+mismatched SHA/app evidence as a publication blocker. Legacy v1 records are
+incompatible with v2 verification, not silently migrated or treated as unpublished.
 
 5. Follow [deployment evidence](deployment.md) before showing Deployed. A GitHub
    environment named `Production` is insufficient. Missing auth/API access means

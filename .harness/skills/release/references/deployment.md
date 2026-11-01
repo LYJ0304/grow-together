@@ -17,12 +17,32 @@
   verified. See [staging guide](../../../../apps/api/docs/staging/Development.md).
   Worker production host and native mobile publication are not established.
 
-## Proposed target (documentation only)
+## Current branch policy (2026-11-01)
 
-`develop → staging` (QA/staging) → `main` (stable baseline) → approved app tag →
-GitHub Actions → provider production deployment. Merging main is not the official
-release event. Preserve existing staging behavior. Keep release publication and
-actual deployment state distinct.
+The repository default and only long-lived branch is `main`; `develop` and
+`staging` branches were deleted. Temporary task/release branches remain valid.
+Staging and production are deployment environments. Historical observations above
+do not establish current provider settings; the user manages the Vercel branch
+connection separately. No workflow, protection or provider integration is enabled
+by documenting this policy.
+
+## Target deployment flow (separate setup required)
+
+Task PR → main → staging environment QA → version-only Release PR into main →
+final merge SHA staging QA → approved app tag → approved production deployment.
+Merging main is not an official release or permission to deploy production.
+Do not create a staging/production branch or require a branch-promotion PR.
+Keep release publication and actual deployment state distinct.
+
+Staging should deploy a pinned main SHA after required CI succeeds; initially use
+manual selection as described in the staging guide. Record the exact SHA and
+app-specific results, even when main advances during QA. Version changes need
+fresh final-merge QA. Later automation must preserve that identity.
+For API/worker, build an image for that candidate once and promote its verified
+immutable digest to production. For mobile, identify the exact web/native build
+and environment configuration; testing a staging build does not prove a separate
+production-configured build is identical. Document the provider-specific checks
+before activation. This is a target, not an installed pipeline.
 
 After a separate explicit approval, add one real workflow per established target.
 Each subscribes **only** to its own tag prefix, for example the API workflow:
@@ -38,8 +58,10 @@ The worker workflow uses only `worker/v*`; mobile only `mobile/v*`. Prefix match
 is not SemVer validation. Each workflow must validate the stable version, annotated
 tag, merged Release PR record, main ancestry, manifest and exact tagged SHA before
 build/deploy. Fetch full relevant history/tags and checkout the event's commit,
-never main HEAD. Deploy the artifact built from that SHA. Scope GitHub permissions
-and provider credentials to the app/environment; use existing environment approval
+never main HEAD. Verify final staging QA for that SHA and every selected app.
+Reuse the verified artifact/digest for API/worker rather than rebuilding it for
+production; identify mobile artifacts and configuration explicitly. Scope GitHub
+permissions and provider credentials to the app/environment; use existing environment approval
 rules and serialize production deployments per app without cancelling a deployment
 mid-flight. Prevent older queued tags from rolling production back silently.
 Record app, tag, immutable SHA/artifact, provider deployment identifier and outcome.

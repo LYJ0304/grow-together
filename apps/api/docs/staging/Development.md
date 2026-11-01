@@ -6,12 +6,12 @@
 
 ## 1. 배포할 코드 준비
 
-staging 서비스는 GitHub의 `staging` 브랜치를 배포한다. 로컬 커밋만으로는 Render에 반영되지 않는다.
+staging은 개발 검증용 배포 환경이며 별도 브랜치가 아니다. 서비스는 GitHub의 `main` 브랜치를 배포한다. 로컬 커밋만으로는 Render에 반영되지 않는다.
 
-1. 작업 브랜치를 push하고 `develop` 대상 PR을 만든다.
+1. 작업 브랜치를 push하고 `main` 대상 PR을 만든다.
 2. 검증 후 작업 PR을 squash merge한다.
-3. `develop → staging` 승격 PR은 merge commit으로 병합한다.
-4. Render에서 배포할 `staging` 커밋을 확인한다.
+3. Render에서 배포할 정확한 `main` 커밋 SHA를 확인하고 기록한다.
+4. 수동 배포 시 **Deploy a specific commit**으로 그 SHA를 지정한다. 검증 중 `main`이 전진해도 검증 대상이 바뀌지 않게 한다.
 
 브랜치 병합과 실제 배포는 각각 별도 요청으로 진행한다. 전체 규칙은 [harness conventions](../../../../.harness/conventions.md)을 따른다.
 
@@ -58,7 +58,7 @@ staging에는 폐기 가능한 테스트 데이터를 사용한다. 만료 후 �
 | 항목 | 입력값 |
 | --- | --- |
 | Name | `growtogether-staging-api` 또는 사용 가능한 고유 이름 |
-| Branch | `staging` |
+| Branch | `main` |
 | Language / Runtime | `Docker` |
 | Region | staging DB와 동일 |
 | Root Directory | 비워두기 — 저장소 루트 사용 |
@@ -105,9 +105,9 @@ CORS 값은 API 주소가 아니라 **브라우저에서 API를 호출하는 프
 
 ## 5. 배포 및 검증
 
-1. 배포할 커밋이 원격 `staging`에 반영되었는지 확인한다.
+1. 배포할 커밋이 원격 `main`에 반영되었는지 확인한다.
 2. DB가 준비되었고 API의 환경변수가 저장되었는지 확인한다.
-3. API 서비스의 **Manual Deploy**에서 배포를 시작한다.
+3. API 서비스의 **Manual Deploy → Deploy a specific commit**에서 기록한 SHA를 지정해 배포한다.
 4. 로그에서 Docker 빌드, Flyway 마이그레이션, Spring API 기동 성공을 확인한다.
 5. 실제 서비스 주소로 health를 확인한다.
 

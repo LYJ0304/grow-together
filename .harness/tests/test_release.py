@@ -21,8 +21,13 @@ REAL_GIT = shutil.which('git')
 
 class VersionPolicy(unittest.TestCase):
     def test_duplicate_record_fields_are_rejected(self):
-        body = '<!-- grow-together-release:v1\n{"schema":1,"schema":2}\n-->'
+        body = '<!-- grow-together-release:v2\n{"schema":2,"schema":3}\n-->'
         with self.assertRaisesRegex(ValueError, 'Duplicate'):
+            release.parse_record(body)
+
+    def test_legacy_record_requires_explicit_recovery(self):
+        body = '<!-- grow-together-release:v1\n{"schema":1,"qa":"QA passed"}\n-->'
+        with self.assertRaisesRegex(ValueError, 'legacy records need explicit recovery'):
             release.parse_record(body)
 
     def test_semver_and_stable_release_targets(self):
@@ -67,6 +72,10 @@ class ReleaseDryRun(unittest.TestCase):
         self.git('update-ref', 'refs/remotes/origin/main', self.git('rev-parse', 'main'))
         self.branch['commit']['sha'] = self.git('rev-parse', 'main')
 
+    def qa(self, sha, apps=None):
+        return {'sha': sha, 'apps': apps or list(self.record['apps']),
+                'result': 'passed', 'evidence': 'Staging functional checks passed; fixture log'}
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='growtogether-release-test-')
         self.addCleanup(self.temp.cleanup)
@@ -86,17 +95,17 @@ class ReleaseDryRun(unittest.TestCase):
         self.git('push', self.remote, '--tags')
         self.write('apps/api/service.java', '// backward compatible fix\n')
         self.write('apps/mobile/screen.tsx', '// compatible feature\n')
-        self.base = self.save_commit('changes already QA promoted')
+        self.base = self.save_commit('main candidate verified in staging')
         self.branch = {'protected': True, 'commit': {'sha': self.base}}
         self.sync_main()
         self.git('checkout', '-b', 'release/2026-10-25')
         self.set_versions(api='0.1.1')
         self.head = self.save_commit('chore(release): prepare api 0.1.1')
         self.record = {
-            'schema': 1, 'base': self.base, 'head': self.head,
+            'schema': 2, 'base': self.base, 'head': self.head,
             'apps': {'api': {'previous_tag': 'api/v0.1.0', 'current': '0.1.0', 'version': '0.1.1',
                              'reason': 'Backward-compatible fix', 'notes': 'API fix notes'}},
-            'qa': 'QA promoted staging SHA; PR and verification evidence',
+            'qa': {'base': self.qa(self.base, ['api']), 'release': None},
             'compatibility': 'Backward compatible; no migration',
             'validation': [{'command': './gradlew test', 'result': 'passed', 'evidence': 'fixture log'}],
             'approval': 'Maintainer approved this exact plan in fixture conversation',
@@ -147,7 +156,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
                     'RELEASE_TEST_REMOTE': str(self.remote), 'RELEASE_TEST_REAL_GIT': REAL_GIT}
 
     def check(self, phase='publish', expected=0, recovery=False):
-        self.pr['body'] = '<!-- grow-together-release:v1\n' + json.dumps(self.record) + '\n-->'
+        self.pr['body'] = '<!-- grow-together-release:v2\n' + json.dumps(self.record) + '\n-->'
         self.fixture.write_text(json.dumps({'pr': self.pr, 'branch': self.branch, 'releases': self.releases}))
         args = [sys.executable, str(SCRIPT), 'verify', '--repo', 'test/releases', '--pr', '123', '--phase', phase]
         if recovery:
@@ -169,6 +178,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.merge = self.save_commit('chore(release): merged Release PR #123')
         self.sync_main()
         self.pr.update(state='MERGED', mergedAt='2026-10-25T12:00:00Z', mergeCommit={'oid': self.merge})
+        self.record['qa']['release'] = self.qa(self.merge)
 
     def annotate(self, app='api', push=False, sha=None, annotation=None, lightweight=False):
         entry = self.record['apps'][app]
@@ -188,6 +198,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.record['head'] = self.pr['headRefOid'] = self.head
         self.record['apps']['mobile'] = {'previous_tag': 'mobile/v1.0.0', 'current': '1.0.0',
                                         'version': '1.1.0', 'reason': 'Compatible feature', 'notes': 'Mobile notes'}
+        self.record['qa']['base'] = self.qa(self.base)
 
     def test_single_app_prepare_and_publish_dry_run(self):
         prepared = self.check(phase='prepare')
@@ -197,6 +208,61 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.assertEqual(published['merge'], self.merge)
         self.assertEqual(published['push_refspecs'], ['refs/tags/api/v0.1.1:refs/tags/api/v0.1.1'])
         self.assertEqual(published['manifests']['worker'], '0.1.0')
+
+    def test_publish_rejects_qa_for_pre_version_base(self):
+        self.merged()
+        self.record['qa']['release'] = self.qa(self.base)
+        self.assertIn('QA', self.check(expected=1)['reason'])
+
+    def test_publish_requires_final_staging_qa(self):
+        self.merged()
+        self.record['qa']['release'] = None
+        self.assertIn('QA', self.check(expected=1)['reason'])
+
+    def test_publish_rejects_pr_head_qa_despite_identical_tree(self):
+        self.merged()
+        self.assertEqual(self.git('rev-parse', f'{self.head}^{{tree}}'),
+                         self.git('rev-parse', f'{self.merge}^{{tree}}'))
+        self.record['qa']['release'] = self.qa(self.head)
+        self.assertIn('QA', self.check(expected=1)['reason'])
+
+    def test_publish_rejects_qa_for_latest_main(self):
+        self.merged()
+        self.write('README.md', 'Unrelated later main commit\n')
+        later = self.save_commit('main advances during QA')
+        self.sync_main()
+        self.record['qa']['release'] = self.qa(later)
+        self.assertIn('QA', self.check(expected=1)['reason'])
+
+    def test_prepare_requires_base_qa_without_final_qa(self):
+        self.record['qa']['base'] = self.qa(self.initial)
+        self.assertIn('QA', self.check(phase='prepare', expected=1)['reason'])
+        self.record['qa']['base'] = self.qa(self.base)
+        self.record['qa']['release'] = self.qa(self.head)
+        self.assertIn('QA', self.check(phase='prepare', expected=1)['reason'])
+
+    def test_qa_requires_all_selected_apps_and_passed_evidence(self):
+        self.add_mobile()
+        self.merged()
+        valid = copy.deepcopy(self.record['qa'])
+        for field, value in [('apps', ['api']), ('apps', ['api', 'api']),
+                             ('apps', ['api', 'mobile', 'worker']), ('apps', 'api'),
+                             ('apps', [['api']]), ('sha', 'main'),
+                             ('result', 'failed'), ('result', 'skipped'), ('evidence', ' ')]:
+            with self.subTest(field=field, value=value):
+                self.record['qa'] = copy.deepcopy(valid)
+                self.record['qa']['release'][field] = value
+                self.assertIn('QA', self.check(expected=1)['reason'])
+
+    def test_legacy_unstructured_qa_is_rejected(self):
+        self.record['qa'] = 'QA passed on an unspecified commit'
+        self.assertIn('QA', self.check(phase='prepare', expected=1)['reason'])
+
+    def test_qa_changes_after_tagging_block_recovery(self):
+        self.merged()
+        self.annotate(push=True)
+        self.record['qa']['release']['evidence'] = 'Changed staging results'
+        self.assertIn('conflicts', self.check(recovery=True, expected=1)['reason'])
 
     def test_multi_app_same_merge_sha(self):
         self.add_mobile()
@@ -320,9 +386,9 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.assertIn('targeting main', self.check(phase='prepare', expected=1)['reason'])
 
     def test_forged_or_unknown_record(self):
-        self.record['schema'] = 2
+        self.record['schema'] = 99
         self.assertIn('schema', self.check(phase='prepare', expected=1)['reason'])
-        self.record['schema'] = 1
+        self.record['schema'] = 2
         self.record['apps']['imaginary'] = copy.deepcopy(self.record['apps']['api'])
         self.assertIn('known application', self.check(phase='prepare', expected=1)['reason'])
 
@@ -367,6 +433,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.set_versions()
         self.head = self.save_commit('initial stable release')
         self.record['head'] = self.pr['headRefOid'] = self.head
+        self.record['qa']['base'] = self.qa(self.base)
         self.check(phase='prepare')
 
     def test_approved_merge_allows_later_main_without_retagging(self):
@@ -417,6 +484,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.record.update(base=self.base, head=self.head)
         self.record['apps']['api'].update(previous_tag=None, current='0.0.1-SNAPSHOT', version='0.0.1')
         self.pr.update(headRefOid=self.head, headRefName='release/2026-10-25-2')
+        self.record['qa']['base'] = self.qa(self.base)
         self.check(phase='prepare')
 
     def test_worker_release_checks_local_lock_entry(self):
@@ -431,6 +499,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.record['apps'] = {'worker': {'previous_tag': 'worker/v0.1.0', 'current': '0.1.0',
                                          'version': '0.1.1', 'reason': 'Worker fix', 'notes': 'Worker notes'}}
         self.pr.update(headRefOid=self.head, headRefName='release/2026-10-25-2')
+        self.record['qa']['base'] = self.qa(self.base)
         self.check(phase='prepare')
         self.write('apps/ai-worker/uv.lock', 'version = 1\n[[package]]\nname = "worker"\n'
                    'version = "0.1.0"\nsource = {virtual = "."}\n')
