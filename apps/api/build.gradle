@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+	implementation 'software.amazon.awssdk:s3:2.57.8'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testCompileOnly 'org.projectlombok:lombok'

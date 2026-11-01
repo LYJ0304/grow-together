@@ -269,6 +269,201 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/files/presigned-url:
+    post:
+      operationId: initiateFileUpload
+      summary: Create a private file upload
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '503':
+          description: Storage disabled or provider temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      description: Upload JPEG/PNG/WebP up to 5MiB. PUT the raw body to uploadUrl using
+        every returned header. Do not send the API bearer token to storage. Original
+        filename extension must match contentType; path separators and control characters
+        are forbidden. A new server-generated key is used for each request.
+  /api/v1/files/{id}/complete:
+    post:
+      operationId: completeFileUpload
+      summary: Verify object metadata and mark READY
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          description: File absent or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Storage disabled or provider temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Object missing, metadata mismatch, expired upload or invalid
+            file state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Owner only. HEAD size and Content-Type must match. READY completion
+        is idempotent. Missing object stays PENDING; mismatch becomes FAILED. PENDING
+        expires after 24 hours. This does not inspect file bytes.
+  /api/v1/files/{id}:
+    get:
+      operationId: getFileMetadata
+      summary: Read owned file metadata
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileMetadataResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          description: File absent or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: deleteFile
+      summary: Delete owned file
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Success
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          description: File absent or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Storage disabled or provider temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Marks DELETING before attempting storage deletion; failures retain
+        state for retry. A tombstone is retained until the issued upload URL expires,
+        then cleanup retries deletion. Download URLs already issued remain usable until
+        expiry or object deletion.
+  /api/v1/files/{id}/download-url:
+    get:
+      operationId: getFileDownloadUrl
+      summary: Create a short-lived download URL for an owned READY file
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadUrlResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          description: File absent or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Storage disabled or provider temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Object missing, metadata mismatch, expired upload or invalid
+            file state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
 components:
   securitySchemes:
     bearerAuth:
@@ -280,6 +475,99 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    UploadUrlRequest:
+      type: object
+      required:
+      - originalName
+      - contentType
+      - size
+      properties:
+        originalName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        contentType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+          - image/webp
+        size:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+    UploadUrlResponse:
+      type: object
+      required:
+      - id
+      - uploadUrl
+      - expiresAt
+      - headers
+      properties:
+        id:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: 'All headers required by the signed PUT, including Content-Type,
+            Content-Length and If-None-Match: *.'
+    DownloadUrlResponse:
+      type: object
+      required:
+      - downloadUrl
+      - expiresAt
+      properties:
+        downloadUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    FileMetadataResponse:
+      type: object
+      required:
+      - id
+      - originalName
+      - contentType
+      - size
+      - status
+      - createdAt
+      - uploadedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        originalName:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+          - PENDING
+          - READY
+          - FAILED
+          - DELETING
+        createdAt:
+          type: string
+          format: date-time
+        uploadedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
     DiaryRequest:
       type: object
       required: [todoIds, diaryFiles]
