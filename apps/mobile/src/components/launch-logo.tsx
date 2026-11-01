@@ -7,10 +7,11 @@ export type LaunchLogoProps = {
   onStart: () => void;
 };
 
+// Expo Image renders the same vector statically on native; no path animation dependency.
 export default function LaunchLogo(_props: LaunchLogoProps) {
   return (
     <Image
-      source={require('../../assets/images/grow-together-logo.png')}
+      source={require('../../assets/images/brand/emblem.svg')}
       style={StyleSheet.absoluteFill}
       contentFit="contain"
       accessible={false}

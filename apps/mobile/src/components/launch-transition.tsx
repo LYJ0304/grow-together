@@ -328,8 +328,5 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
     color: '#D26A5C',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.08)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
 });

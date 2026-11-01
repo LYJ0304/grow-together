@@ -61,8 +61,6 @@ export default function HomeScreen() {
                 onStart={startLogo}
               />
             </View>
-          </View>
-          <View style={styles.footer}>
             <Text
               ref={motion.titleRef}
               onLayout={motion.onTitleLayout}
@@ -72,6 +70,8 @@ export default function HomeScreen() {
             >
               같이 키우기
             </Text>
+          </View>
+          <View style={styles.footer}>
             <Text accessibilityLabel="Version 1.0" style={styles.version}>
               Version<Text style={styles.versionNumber}> 1.0</Text>
             </Text>
@@ -104,20 +104,18 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     flex: 1,
-    minHeight: 253,
+    minHeight: 280,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 84,
-    paddingBottom: 24,
+    paddingBottom: 48,
+    gap: 26,
   },
   logo: {
-    width: 145,
-    height: 145,
-    transform: [{ translateX: -2 }],
+    width: 224,
+    height: 166.4,
   },
   footer: {
     alignItems: 'center',
-    gap: 24,
   },
   title: {
     fontFamily: 'Jua',
@@ -126,9 +124,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
     color: '#D26A5C',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.08)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   version: {
     fontFamily: 'Jua',

@@ -1,41 +1,23 @@
-.launch-logo {
+.launch-logo,
+.launch-logo svg {
+  display: block;
   width: 100%;
   height: 100%;
-  position: relative;
-}
-.launch-logo-original {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-.launch-logo-canvas {
-  position: absolute;
-}
-.launch-logo-preload {
-  display: none;
-}
-.launch-logo[data-rendering='original'] .launch-logo-original {
-  display: block;
-}
-.launch-logo[data-rendering='original'] .launch-logo-canvas {
-  display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
+  .launch-logo[data-drawing='pending'] path {
+    opacity: 0;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .launch-logo[data-drawing='running'] path {
+    stroke-dasharray: 1;
+  }
   [data-testid='launch-intro-pending'] [data-testid='launch-title'] {
     opacity: 0;
   }
   [data-testid='launch-intro-playing'] [data-testid='launch-title'] {
-    animation: launch-title-appear 450ms ease-in-out 300ms both;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .launch-logo-original {
-    display: block;
-  }
-  .launch-logo-canvas {
-    display: none;
+    animation: launch-title-appear 400ms ease-out 1600ms both;
   }
 }
 @keyframes launch-title-appear {
@@ -45,8 +27,4 @@
   to {
     opacity: 1;
   }
-}
-
-.launch-logo[data-drawing='pending'] .launch-logo-canvas {
-  background: #faf9f9;
 }

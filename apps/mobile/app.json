@@ -8,13 +8,12 @@
     "scheme": "growtogether",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FAF9F9",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -24,7 +23,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      ["expo-router", { "root": "./app" }],
+      [
+        "expo-router",
+        {
+          "root": "./app"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -37,10 +41,9 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FAF9F9",
-          "android": {
-            "image": "./assets/images/grow-together-logo.png",
-            "imageWidth": 145
-          }
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 224,
+          "resizeMode": "contain"
         }
       ],
       "expo-secure-store"

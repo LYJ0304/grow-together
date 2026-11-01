@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="500 232 560 416" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path id="enclosing-curve" d="M942 369 C906 292 817 250 751 256 C644 260 544 345 532 448 C517 530 556 598 607 619 C653 639 697 618 751 585" stroke="#D26A5C" stroke-width="8.5"/>
+  <path id="heart" d="M751 585 C808 544 860 493 847 449 C836 402 785 393 751 445 C719 394 669 403 654 442 C631 497 688 550 751 585 C831 638 932 601 947 511" stroke="#D26A5C" stroke-width="12"/>
+  <path id="sprout" d="M947 511 C919 509 902 492 902 465 C927 464 945 484 947 511 C950 485 970 466 994 465 C994 490 977 508 947 511" stroke="#D26A5C" stroke-width="8.5"/>
+  <path id="accent-1" d="M983 416 L989 394" stroke="#D5A064" stroke-width="8"/>
+  <path id="accent-2" d="M1003 428 L1018 413" stroke="#D5A064" stroke-width="8"/>
+  <path id="accent-3" d="M1013 447 L1034 443" stroke="#D5A064" stroke-width="8"/>
+</svg>

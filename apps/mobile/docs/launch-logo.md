@@ -1,85 +1,86 @@
-# Launch drawing assets and verification
+# Brand emblem and launch
 
-The repository has a 1024×1024 PNG, not an original vector logo. The PNG remains
-unchanged and is always the displayed artwork. Generated assets only describe
-where a background-colored cover becomes transparent; they do not replace the
-logo or claim to recover the artist's original vector.
+## Artwork and assets
 
-[`generate-launch-logo.py`](../scripts/generate-launch-logo.py) labels the two ink components, extracts their medial
-axes, recenters thinning against the ink distance field, resolves the small filled
-corner at the heart notch, and traces each stroke. A common linear arc-length
-timeline allocates 2250 ms to drawing plus a 50 ms intentional pen lift. Round
-reveal heads follow those routes. Source-pixel ownership and accumulated coverage
-prevent erasure and include the original faint fringes. The generator asserts the
-input hash, topology, complete coverage, and atlas size.
+`assets/images/brand/logo-reference.png` is the supplied reference (originally
+provided at `assets/images/logo-reference.png`). `brand/emblem.svg` is the single
+authoritative symbol: six explicit Bézier/line paths, no background or lettering.
+The asymmetrical enclosing gesture crosses the heart and continues to the sprout.
+The coral is `#D26A5C`, the small reference-inspired gold accents are `#D5A064`,
+and the launch background is `#FAF9F9`. This is a manual reconstruction, not an
+original artist vector: the reference's textured color and taper are simplified
+to solid rounded strokes (8.5-unit enclosing curve, 12-unit heart).
 
-Masks are prepared offline at 60 Hz in 1×/2× variants. A small WebGL canvas
-interpolates adjacent spatial masks, including on higher refresh rate displays.
-Resources are decoded, alpha-only textures uploaded, and an empty frame prepared
-before the drawing clock starts. No per-frame geometry measurement, image
-processing, CSS mask, or React update is needed. Completion keeps the same canvas
-frame over the same original image. WebGL failure, context loss, skip, and reduced
-motion expose the static original.
+`brand/emblem.json` is generated from the SVG for inline web rendering; do not edit
+it independently. The same generator produces transparent `grow-together-logo.png`
+(shared by welcome and auth) and `splash-icon.png`, opaque 1024px
+`icon.png` (also iOS), transparent Android foreground and black-only monochrome
+assets, and `favicon.png`. Android ink stays inside the central 66/108 safe square.
+The reference PNG is never displayed by the application.
 
-The cover is capped at 2× even on 3× devices; the original PNG remains at native
-density. Selected 2× masks total about 118 KB compressed, uploaded 8-bit alpha data
-is about 3.6 MB, and browser RGBA decoding can use about 14.3 MB. Actual GPU
-allocation depends on the driver and has not been measured. This trades preparation and
-memory for a small per-frame render. Original color is never sampled through
-WebGL, avoiding the edge/color changes observed with pre-resized colored frames.
+## Drawing and lifecycle
 
-## Architecture decision
+Web renders the generated paths directly in an inline SVG. Each path has normalized
+`pathLength=1`. The browser Web Animations API reveals `stroke-dashoffset` linearly,
+in order: enclosing curve → heart → sprout → three gold strokes. Main paths share
+one distance/time ratio. Total duration is 2400ms: 2145ms shared by the main gesture
+and 85ms per accent. Change `main_ms` / `accent_ms` in the generator and regenerate;
+update timeline expectations in tests when deliberately changing total duration.
+There are no canvas textures, masks, frame loops or per-frame React updates.
 
-No original stroke vector was found in the repository or available history.
-The former approximate guides and completion rectangle were removed. CSS bitmap
-masking retained masking costs. Colored logo frames and rendering the original
-through WebGL changed edge/color pixels. Native transform cover sheets avoided
-per-frame JavaScript, but visual tests detected filtering artifacts, early pixels,
-and changes to completed ink, so that candidate was rejected without relaxing the
-checks. The selected GPU cover keeps the original HTML image and interpolates only
-spatial reveal coverage. Linux WebKit timing still varies; actual iPhone smoothness
-is not proven by the desktop diagnostics.
+The SVG remains mounted throughout drawing and completion; removing dash effects
+exposes exactly the same paths. Completion starts the existing 400ms hold and
+`/app-name` title transition. The real Jua title fades in late in the drawing.
+Tap skip marks the intro played, cancels drawing and retains the completed emblem
+while navigating. The provider remembers completion across history return.
+Effects dispose animations, media listeners and the bounded safety timer on unmount.
 
-## Regenerate (offline tools only)
+The initial reduced-motion CSS shows static art before hydration. A live preference
+change completes immediately. Missing/failed animation APIs, an animation rejection,
+or a 3500ms safety timeout also complete to static art, so navigation cannot wait
+indefinitely. The app shell still requires JavaScript.
+
+Native iOS/Android use the authoritative SVG statically with the existing Expo Image component
+and 1000ms automatic navigation. No native animated SVG renderer is installed; the deliberate
+static fallback avoids adding a native dependency just for the intro. It inherently
+respects reduced motion. The existing native transition checks AccessibilityInfo.
+Native icon/splash changes require a new native build; JS/web launch changes appear
+in the next app bundle/web export. Expo Go does not validate production splash.
+
+## Regenerate
 
 From `apps/mobile`:
 
 ```sh
-python3 -m venv /tmp/grow-logo-assets
-/tmp/grow-logo-assets/bin/pip install -r scripts/logo-assets-requirements.txt
-/tmp/grow-logo-assets/bin/python scripts/generate-launch-logo.py
+python3 -m venv /tmp/grow-brand-tools
+/tmp/grow-brand-tools/bin/pip install -r scripts/logo-assets-requirements.txt
+/tmp/grow-brand-tools/bin/python scripts/generate-brand-assets.py
 ```
 
-If the PNG changes, review its stroke topology before updating the pinned source
-hash. The extracted centerline comes from raster pixels; an original brand vector
-remains preferable if one becomes available.
+Review SVG and generated icons together. The script asserts alpha/monochrome
+properties. Python dependencies are offline asset tools, never app dependencies.
 
-## Browser checks
-
-From `apps/mobile`, export and serve with extensionless routes resolving to exported `.html` files:
+## Verify
 
 ```sh
-npx expo export --platform web --output-dir /tmp/grow-logo-web
+npm run test:brand
+npm run typecheck
+npm run lint
+npm run format:check
+EXPO_PUBLIC_API_URL=http://localhost:8080 EXPO_PUBLIC_ENABLE_AUTH_BYPASS=true npx expo export --platform web --clear --output-dir /tmp/grow-brand-web
 npm run test:logo -- http://localhost:8156
+npm run test:motion -- http://localhost:8156 http://localhost:9223
 ```
 
-`LOGO_BROWSER=chrome` or `LOGO_BROWSER=webkit` selects a browser family.
-`CHROME_EXECUTABLE` selects Chrome (default `/usr/bin/google-chrome`). Test-only
-`playwright-core` does not download browsers. Set `WEBKIT_EXECUTABLE` to a compatible
-Playwright WebKit launcher for mobile 2×/3× checks. `LOGO_BASELINE_URL` optionally
-compares frame pacing with a separately served previous export. The existing
-`test:motion` still accepts Chrome's remote-debugging URL as its second argument.
+Serve the export with extensionless routes resolving to `.html`. Logo tests use
+`playwright-core` and `/usr/bin/google-chrome` (`CHROME_EXECUTABLE` overrides it).
+`LOGO_BROWSER=webkit` and `WEBKIT_EXECUTABLE` select an installed Playwright WebKit.
+Tests print a temporary screenshot directory with initial, intermediate, completed
+and reduced-motion viewport captures. They verify the linear timeline, final SVG
+pixels, completion stability, layout, history return, rapid skip, live reduced motion
+and missing-API fallback. Motion tests require Chrome remote debugging at the given
+URL. Desktop browser results do not prove iOS Safari or native device behavior;
+manually check cold/warm starts, background/resume, rotation, VoiceOver/TalkBack,
+production icon masks and native splash on physical devices before release.
 
-Timing diagnostics run without screenshot overhead. A separate controlled-rAF pass
-captures actual browser-composited frames during the first 500 ms, both strokes,
-the pen lift, and completion. Changed pixels must stay near the measured pen route,
-never erase drawing, never stop outside the deliberate lift, and never jump at
-completion. Final screenshots are compared with native rendering of the unchanged
-PNG using a strict edge-rasterization tolerance. Images and JSON go to a printed
-temp path. Tests also exercise reduced motion, live preference changes, tap skip,
-history return, WebGL unavailability, and context loss.
-
-rAF intervals are diagnostics, not proof of GPU presentation or guaranteed 60 fps.
-Linux WebKit is not iOS Safari. Verify cold/warm load, first 500 ms, pen lift,
-completion/400 ms hold, rapid skip, background/resume, rotation, reduced motion,
-and history return on real iPhones against the deployed Vercel build.
+Implementation references: [Web Animations API](https://developer.mozilla.org/en-US/docs/Web/API/Element/animate), [Expo Image formats](https://docs.expo.dev/versions/v55.0.0/sdk/image/), [Expo icons and splash](https://docs.expo.dev/develop/user-interface/splash-screen-and-app-icon/).
