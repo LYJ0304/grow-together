@@ -11,6 +11,7 @@ export type TodoRequest = {
 
 export type TodoResponse = {
   id: number;
+  completed: boolean;
   planName: string;
   content?: string | null;
   scheduledDate: string;

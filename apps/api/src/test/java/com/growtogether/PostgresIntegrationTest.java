@@ -90,6 +90,33 @@ class PostgresIntegrationTest {
     }
 
     @Test
+    void migratesCompletionWithoutLosingLegacyData() throws Exception {
+        String schema = "todo_completion_upgrade";
+        Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .schemas(schema).defaultSchema(schema).target("4").load().migrate();
+        try (Connection connection = DriverManager.getConnection(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            connection.setSchema(schema);
+            JdbcTemplate jdbc = new JdbcTemplate(new SingleConnectionDataSource(connection, true));
+            Long id = jdbc.queryForObject("""
+                    INSERT INTO todo (plan_name, content, scheduled_date, scheduled_time)
+                    VALUES ('Legacy', 'Keep memo', '2026-10-10', '09:00') RETURNING id
+                    """, Long.class);
+            Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(schema).defaultSchema(schema).load().migrate();
+            assertThat(jdbc.queryForObject("SELECT completed FROM todo WHERE id = ?", Boolean.class, id)).isFalse();
+            assertThat(jdbc.queryForObject("SELECT content FROM todo WHERE id = ?", String.class, id)).isEqualTo("Keep memo");
+            Long newId = jdbc.queryForObject("""
+                    INSERT INTO todo (plan_name, scheduled_date, scheduled_time)
+                    VALUES ('New', '2026-10-10', '10:00') RETURNING id
+                    """, Long.class);
+            assertThat(jdbc.queryForObject("SELECT completed FROM todo WHERE id = ?", Boolean.class, newId)).isFalse();
+            assertThatThrownBy(() -> jdbc.update("UPDATE todo SET completed = NULL WHERE id = ?", id))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+    }
+
+    @Test
     @Transactional
     void savesAndReadsTodoUsingMigratedSchema() {
         LocalDate date = LocalDate.of(2026, 10, 10);

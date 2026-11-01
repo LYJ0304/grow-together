@@ -39,6 +39,13 @@ public class TodoService {
     }
 
     @Transactional
+    public TodoResponse setCompletion(Long userId, Long id, boolean completed) {
+        Todo todo = findTodo(userId, id);
+        todo.setCompleted(completed);
+        return TodoResponse.from(todo);
+    }
+
+    @Transactional
     public void deleteTodo(Long userId, Long id) {
         todoRepository.delete(findTodo(userId, id));
     }

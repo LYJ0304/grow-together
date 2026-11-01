@@ -18,8 +18,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-const PROGRESS = 70;
-export function RoutineProgress() {
+export function RoutineProgress({ progress }: { progress: number }) {
+  const circumference = 2 * Math.PI * 90;
+  const ring = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+    <circle cx="100" cy="100" r="90" fill="#FFF9F7" stroke="#F2E7E2" stroke-width="8"/>
+    ${progress > 0 ? `<circle cx="100" cy="100" r="90" stroke="#D26A5C" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(progress / 100) * circumference} ${circumference}" transform="rotate(-90 100 100)"/>` : ''}
+  </svg>`;
   const focused = useIsFocused();
   const [reducedMotion, setReducedMotion] = useState(true);
   const [appActive, setAppActive] = useState(
@@ -86,7 +90,10 @@ export function RoutineProgress() {
         importantForAccessibility="no-hide-descendants"
       >
         <Image
-          source={require('../../assets/images/main/progress-ring.svg')}
+          testID="routine-ring"
+          source={{
+            uri: `data:image/svg+xml;utf8,${encodeURIComponent(ring)}`,
+          }}
           style={styles.ring}
           accessible={false}
         />
@@ -113,19 +120,19 @@ export function RoutineProgress() {
         accessibilityLabel="오늘의 루틴"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={PROGRESS}
-        aria-valuetext={`${PROGRESS}퍼센트`}
+        aria-valuenow={progress}
+        aria-valuetext={`${progress}퍼센트`}
         accessibilityValue={{
           min: 0,
           max: 100,
-          now: PROGRESS,
-          text: `${PROGRESS}퍼센트`,
+          now: progress,
+          text: `${progress}퍼센트`,
         }}
         style={styles.metric}
       >
         <Text style={styles.label}>오늘의 루틴</Text>
         <Text style={styles.value}>
-          {PROGRESS}
+          {progress}
           <Text style={styles.percent}>%</Text>
         </Text>
       </View>

@@ -202,6 +202,51 @@ class TodoApiTest {
         assertThat(repository.findById(todo.getId()).orElseThrow().getPlanName()).isEqualTo("Private");
     }
 
+    @Test
+    void completionPersistsIsIdempotentAndSurvivesEditing() throws Exception {
+        Todo todo = save("Walk", DATE, "09:00");
+        perform(get("/api/v1/todos/{id}", todo.getId()))
+                .andExpect(jsonPath("$.completed").value(false));
+        for (int i = 0; i < 2; i++) {
+            perform(put("/api/v1/todos/{id}/completion", todo.getId())
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(true));
+        }
+        perform(put("/api/v1/todos/{id}", todo.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(true));
+        perform(get("/api/v1/todos").param("date", DATE.toString()))
+                .andExpect(jsonPath("$[0].completed").value(true));
+        perform(put("/api/v1/todos/{id}/completion", todo.getId())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"completed\":false}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(false));
+        perform(get("/api/v1/todos/{id}", todo.getId()))
+                .andExpect(jsonPath("$.completed").value(false));
+    }
+
+    @Test
+    void completionRejectsInvalidInputAndProtectsOwnership() throws Exception {
+        Todo todo = save("Walk", DATE, "09:00");
+        for (String body : new String[]{"{}", "{\"completed\":null}", "{\"completed\":\"true\"}",
+                "{\"completed\":1}", "{\"completed\":[]}"}) {
+            perform(put("/api/v1/todos/{id}/completion", todo.getId())
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(put("/api/v1/todos/{id}/completion", todo.getId())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/todos/{id}/completion", todo.getId())
+                .with(jwt().jwt(token -> token.subject(otherUserId.toString())))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}"))
+                .andExpect(status().isNotFound());
+        perform(put("/api/v1/todos/{id}/completion", Long.MAX_VALUE)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}"))
+                .andExpect(status().isNotFound());
+        perform(get("/api/v1/todos/{id}", todo.getId()))
+                .andExpect(jsonPath("$.completed").value(false));
+    }
+
     private void assertInaccessible(Long id) throws Exception {
         perform(get("/api/v1/todos/{id}", id)).andExpect(status().isNotFound());
         perform(put("/api/v1/todos/{id}", id).contentType(MediaType.APPLICATION_JSON).content(validBody()))

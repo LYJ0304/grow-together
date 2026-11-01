@@ -51,7 +51,7 @@ const input = {
   scheduledDate: '2026-10-31',
   scheduledTime: '09:00:00',
 };
-const todo = { id: 42, ...input };
+const todo = { id: 42, ...input, completed: false };
 const created = { message: 'Todo created Successful' };
 const requests = [];
 let refreshes = 0;
@@ -83,6 +83,10 @@ const { AuthSession } = loadAuthModule({
     });
     if (init.body)
       assert.equal(init.headers.get('Content-Type'), 'application/json');
+    if (url.endsWith('/completion')) {
+      todo.completed = JSON.parse(init.body).completed;
+      return json(todo);
+    }
     if (init.method === 'DELETE') return new Response(null, { status: 204 });
     if (init.method === 'POST') return json(created, 201);
     if (new URL(url).searchParams.has('date')) {
@@ -112,6 +116,14 @@ assert.deepEqual(await api.getTodos('2026-11-01'), []);
 assert.deepEqual(await api.getTodo(42), todo);
 assert.deepEqual(await api.updateTodo(42, input), todo);
 assert.equal(await api.deleteTodo(42), undefined);
+assert.deepEqual(await api.setCompletion(42, true), {
+  ...todo,
+  completed: true,
+});
+assert.deepEqual(await api.setCompletion(42, false), {
+  ...todo,
+  completed: false,
+});
 assert.equal(refreshes, 1);
 assert.deepEqual(requests, [
   { path: '/api/v1/todos', method: 'POST', body: JSON.stringify(input) },
@@ -120,8 +132,22 @@ assert.deepEqual(requests, [
   { path: '/api/v1/todos/42', method: 'GET', body: undefined },
   { path: '/api/v1/todos/42', method: 'PUT', body: JSON.stringify(input) },
   { path: '/api/v1/todos/42', method: 'DELETE', body: undefined },
+  {
+    path: '/api/v1/todos/42/completion',
+    method: 'PUT',
+    body: JSON.stringify({ completed: true }),
+  },
+  {
+    path: '/api/v1/todos/42/completion',
+    method: 'PUT',
+    body: JSON.stringify({ completed: false }),
+  },
 ]);
 failRequest = true;
+await assert.rejects(
+  api.setCompletion(42, true),
+  (error) => error.status === 403,
+);
 await assert.rejects(api.deleteTodo(42), (error) => error.status === 403);
 console.log(
   'Todo API checks passed (CRUD, URLs, authentication, refresh, 204, errors)',

@@ -1,6 +1,6 @@
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { chromium, webkit } from 'playwright-core';
 
 // Run against an Expo web export served at MAIN_URL.
@@ -8,24 +8,27 @@ const url = process.env.MAIN_URL ?? 'http://localhost:8098';
 const artifacts = process.env.ARTIFACT_DIR ?? '/tmp/grow-main-68';
 const engine = process.env.BROWSER === 'webkit' ? webkit : chromium;
 await mkdir(artifacts, { recursive: true });
-const svg = await readFile(
-  new URL('../assets/images/main/progress-ring.svg', import.meta.url),
-  'utf8',
-);
-const [, arc, circumference] = svg.match(
-  /stroke-dasharray="([\d.]+) ([\d.]+)"/,
-);
-assert.ok(Math.abs(Number(arc) / Number(circumference) - 0.7) < 1e-10);
-assert.ok(Math.abs(Number(circumference) - 2 * Math.PI * 90) < 1e-10);
 const browser = await engine.launch({
   executablePath: process.env.BROWSER_EXECUTABLE_PATH,
   headless: true,
+  args: ['--no-sandbox'],
 });
 const page = await browser.newPage({
   viewport: { width: 393, height: 852 },
   reducedMotion: 'no-preference',
 });
 await page.addInitScript(authenticatedSessionFixture);
+await page.route('**/api/v1/todos**', (route) =>
+  route.fulfill({
+    json: Array.from({ length: 10 }, (_, i) => ({
+      id: i + 1,
+      planName: `일정 ${i + 1}`,
+      scheduledDate: '2026-10-31',
+      scheduledTime: '09:00:00',
+      completed: i < 7,
+    })),
+  }),
+);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const progress = page.getByRole('progressbar', { name: '오늘의 루틴' });
@@ -34,6 +37,12 @@ async function open() {
   await page.goto(`${url}/main`);
   await page.getByTestId('main-screen').waitFor();
   await progress.waitFor();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[role="progressbar"]')
+        ?.getAttribute('aria-valuenow') === '70',
+  );
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() =>
     [...document.images].every(

@@ -1,7 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +19,12 @@ import {
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { RoutineProgress } from '../src/components/routine-progress';
+import { useAuth } from '../src/components/auth-provider';
+import { createTodoApi } from '../src/lib/features/todo/todoApi';
+
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 export default function MainScreen() {
   const insets = useSafeAreaInsets();
@@ -26,12 +34,62 @@ export default function MainScreen() {
   const stacked = !hydrated || width < 360 || fontScale > 1.2;
   const scroll = useRef<ScrollView>(null);
   const [notice, setNotice] = useState('');
+  const { client, status } = useAuth();
+  const queryClient = useQueryClient();
+  const [today, setToday] = useState(() => localDateKey(new Date()));
+  const todos = useQuery({
+    queryKey: ['todos', today],
+    queryFn: () => createTodoApi(client).getTodos(today),
+    enabled: status === 'authenticated',
+    retry: false,
+  });
+  useFocusEffect(
+    useCallback(() => {
+      if (status !== 'authenticated') return;
+      let timer: ReturnType<typeof setTimeout>;
+      const refresh = () => {
+        const now = new Date();
+        const date = localDateKey(now);
+        setToday(date);
+        void queryClient.invalidateQueries({ queryKey: ['todos', date] });
+        clearTimeout(timer);
+        const midnight = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + 1,
+        );
+        timer = setTimeout(refresh, midnight.getTime() - now.getTime());
+      };
+      refresh();
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') refresh();
+      });
+      if (Platform.OS === 'web') window.addEventListener('focus', refresh);
+      return () => {
+        clearTimeout(timer);
+        subscription.remove();
+        if (Platform.OS === 'web') window.removeEventListener('focus', refresh);
+      };
+    }, [queryClient, status]),
+  );
+  const schedules = [...(todos.data ?? [])].sort((a, b) =>
+    a.scheduledTime.localeCompare(b.scheduledTime),
+  );
+  const progress =
+    schedules.length === 0
+      ? 0
+      : Math.round(
+          (schedules.filter((todo) => todo.completed).length /
+            schedules.length) *
+            100,
+        );
+  const available = status === 'authenticated' && todos.isSuccess;
 
   useEffect(() => {
     if (notice) scroll.current?.scrollToEnd({ animated: true });
   }, [notice]);
 
-  // shortcut: Figma sample data for UI QA; replace when the API-backed home screen is requested.
+  // shortcut: Child details and AI copy remain Figma samples until their API integration is requested.
   return (
     <SafeAreaView
       testID={hydrated ? 'main-screen' : undefined}
@@ -62,7 +120,18 @@ export default function MainScreen() {
         </View>
 
         <View style={styles.routineCard}>
-          <RoutineProgress />
+          {available ? (
+            <RoutineProgress progress={progress} />
+          ) : (
+            <Text style={styles.tipText}>
+              오늘의 루틴{' '}
+              {status === 'preview'
+                ? '미리보기'
+                : todos.isError
+                  ? '조회 불가'
+                  : '불러오는 중'}
+            </Text>
+          )}
           <View style={styles.tip}>
             <Text style={styles.tipText}>
               오늘은 햇살이 좋아요 ☀️ 15분 산책을 추천해요
@@ -76,24 +145,35 @@ export default function MainScreen() {
               오늘의 일정
             </Text>
             <View style={styles.schedule}>
-              {[
-                ['07:00', '기상'],
-                ['09:30', '산책 ☀️'],
-                ['12:00', '점심'],
-                ['15:00', '낮잠'],
-              ].map(([time, activity]) => (
-                <View key={time} style={styles.scheduleRow}>
-                  <Text
-                    style={[
-                      styles.scheduleTime,
-                      time === '09:30' && styles.accent,
-                    ]}
-                  >
-                    {time}
+              {status === 'preview' ? (
+                <Text>미리보기에서는 서버 일정을 이용할 수 없어요.</Text>
+              ) : todos.isPending ? (
+                <Text>일정을 불러오고 있어요.</Text>
+              ) : todos.isError ? (
+                <>
+                  <Text accessibilityRole="alert">
+                    일정을 불러오지 못했어요.
                   </Text>
-                  <Text style={styles.scheduleText}>{activity}</Text>
-                </View>
-              ))}
+                  <Pressable
+                    accessibilityRole="button"
+                    style={styles.cardButton}
+                    onPress={() => void todos.refetch()}
+                  >
+                    <Text>다시 시도</Text>
+                  </Pressable>
+                </>
+              ) : schedules.length === 0 ? (
+                <Text>등록된 일정이 없어요.</Text>
+              ) : (
+                schedules.slice(0, 4).map((todo) => (
+                  <View key={todo.id} style={styles.scheduleRow}>
+                    <Text style={styles.scheduleTime}>
+                      {todo.scheduledTime.slice(0, 5)}
+                    </Text>
+                    <Text style={styles.scheduleText}>{todo.planName}</Text>
+                  </View>
+                ))
+              )}
             </View>
             <Pressable
               accessibilityRole="button"
@@ -185,7 +265,6 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   day: { fontSize: 23 },
-  accent: { color: '#B25447' },
   routineCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

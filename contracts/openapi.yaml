@@ -172,7 +172,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
     put:
       operationId: updateTodo
-      summary: Replace all editable fields of a todo owned by the authenticated user
+      summary: Replace schedule fields of an owned todo, preserving completion
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -195,6 +195,33 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/todos/{id}/completion:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    put:
+      operationId: setTodoCompletion
+      summary: Set completion of a todo owned by the authenticated user
+      description: Idempotently sets the explicit completion state. New and existing migrated todos default to false.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [completed]
+              properties:
+                completed: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Todo' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TodoNotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/diary:
     post:
@@ -323,8 +350,9 @@ components:
         scheduledTime: { type: string, example: '09:00:00', description: Local time without a time zone }
     TodoResponse:
       type: object
-      required: [id, planName, scheduledDate, scheduledTime]
+      required: [id, planName, scheduledDate, scheduledTime, completed]
       properties:
+        completed: { type: boolean }
         id: { type: integer, format: int64 }
         planName: { type: string, maxLength: 80 }
         content: { type: [string, 'null'], maxLength: 255 }
