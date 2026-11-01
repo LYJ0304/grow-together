@@ -296,6 +296,10 @@ try {
   await evaluate('history.forward()');
   await waitFor('location.pathname === "/welcome"');
   for (const label of ['로그인', '가입하기']) {
+    await waitFor(`
+      [...document.querySelectorAll('[role="button"]')]
+        .some(node => node.getBoundingClientRect().width > 0 && node.textContent.trim() === ${JSON.stringify(label)})
+    `);
     await evaluate(`
       [...document.querySelectorAll('[role="button"]')]
         .find(node => node.getBoundingClientRect().width > 0 && node.textContent.trim() === ${JSON.stringify(label)}).click();
@@ -323,17 +327,18 @@ try {
     `);
     const main = await evaluate(`(() => {
       const character = document.querySelector('[data-testid="routine-character"]');
-      const bounds = character.getBoundingClientRect();
+      const bounds = character?.getBoundingClientRect();
       const home = document.querySelector('[aria-label="홈"]');
-      return { text: document.body.innerText, character: {width: bounds.width, height: bounds.height}, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
+      return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
     assert(main.text.includes('+378일'));
-    assert(main.text.includes('오늘의 루틴') && main.text.includes('70%'));
+    assert(main.text.includes('오늘의 루틴 미리보기'));
+    assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
     assert(main.text.includes('오늘의 일정') && main.text.includes('AI 일기'));
-    assert(main.character.width > 0 && main.character.height > 0);
-    assert(
-      Math.abs(main.character.width / main.character.height - 2 / 3) < 0.001,
-      'Original character proportions must be preserved',
+    assert.equal(
+      main.character,
+      null,
+      'Unauthenticated preview must not display authenticated routine data',
     );
     assert.equal(main.homeSelected, 'true');
     assert(main.navHeight <= 56, 'Navigation row should stay compact');

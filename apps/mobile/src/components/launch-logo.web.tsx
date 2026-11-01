@@ -1,176 +1,130 @@
 import { useEffect, useRef, useState } from 'react';
-import drawing from '../../assets/images/launch-drawing-masks/drawing.json';
-import { createLogoRenderer } from './launch-logo-renderer';
+import emblem from '../../assets/images/brand/emblem.json';
 import type { LaunchLogoProps } from './launch-logo';
 import './launch-logo.css';
 
-const original: {
-  uri: string;
-} = require('../../assets/images/grow-together-logo.png');
-const sheets: { uri: string }[][] = [
-  [
-    require('../../assets/images/launch-drawing-masks/stroke-1-1x.png'),
-    require('../../assets/images/launch-drawing-masks/stroke-1-2x.png'),
-  ],
-  [
-    require('../../assets/images/launch-drawing-masks/stroke-2-1x.png'),
-    require('../../assets/images/launch-drawing-masks/stroke-2-2x.png'),
-  ],
-];
 export default function LaunchLogo({
   played,
   onComplete,
   onStart,
 }: LaunchLogoProps) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const originalImage = useRef<HTMLImageElement>(null);
-  const images = useRef<(HTMLImageElement | null)[]>([]);
-  const [mode, setMode] = useState<'pending' | 'running' | 'done' | 'static'>(
-    played ? 'static' : 'pending',
+  const svg = useRef<SVGSVGElement>(null);
+  const callbacks = useRef({ onComplete, onStart });
+  const [mode, setMode] = useState<'pending' | 'running' | 'done'>(
+    played ? 'done' : 'pending',
   );
-  const showOriginal = mode === 'static' || (played && mode !== 'done');
+
+  // Callback identity changes must not restart a gesture already in progress.
   useEffect(() => {
-    const element = canvas.current!;
-    const lost = (event: Event) => {
-      event.preventDefault();
-      setMode('static');
-    };
-    element.addEventListener('webglcontextlost', lost);
-    return () => element.removeEventListener('webglcontextlost', lost);
-  }, []);
+    callbacks.current = { onComplete, onStart };
+  }, [onComplete, onStart]);
   useEffect(() => {
     if (played) return;
-    let stopped = false,
-      frame = 0,
-      start: number | undefined,
-      last = 0;
-    let renderer: ReturnType<typeof createLogoRenderer> | undefined;
+    const paths = Array.from(svg.current!.querySelectorAll('path'));
+    const animations: Animation[] = [];
+    let stopped = false;
     const finish = (drawn = false) => {
       if (stopped) return;
       stopped = true;
-      cancelAnimationFrame(frame);
-      setMode(drawn ? 'done' : 'static');
-      onComplete(drawn);
+      clearTimeout(watchdog);
+      // Commit the final artwork before dropping animation effects, even on failure.
+      paths.forEach((path) => {
+        path.style.strokeDashoffset = '0';
+        path.style.opacity = '1';
+      });
+      animations.forEach((animation) => animation.cancel());
+      setMode('done');
+      callbacks.current.onComplete(drawn);
     };
-    const resize = () => {
-      try {
-        renderer?.resize();
-        renderer?.draw(last);
-      } catch {
-        finish();
-      }
-    };
-    if (typeof window.matchMedia !== 'function') {
-      finish();
-      return;
-    }
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const watchdog = setTimeout(finish, emblem.durationMs + 1100);
+    let media: MediaQueryList | null = null;
     const reduce = () => {
-      if (media.matches) finish();
+      if (media?.matches) finish();
     };
-    if (media.addEventListener) media.addEventListener('change', reduce);
-    else media.addListener(reduce);
-    window.addEventListener('resize', resize);
-    if (media.matches) finish();
-    else {
-      const elements = [originalImage.current, ...images.current];
+    try {
+      media =
+        typeof window.matchMedia === 'function'
+          ? window.matchMedia('(prefers-reduced-motion: reduce)')
+          : null;
       if (
-        elements.some((image) => !image || typeof image.decode !== 'function')
-      )
+        !media ||
+        media.matches ||
+        paths.some((path) => typeof path.animate !== 'function')
+      ) {
         finish();
-      else
-        Promise.all([
-          ...elements.map((image) => image!.decode()),
-          document.fonts?.ready ?? Promise.resolve(),
-        ]).then(
-          () => {
-            if (stopped) return;
-            try {
-              renderer = createLogoRenderer(
-                canvas.current!,
-                images.current as HTMLImageElement[],
-              );
-              const tick = (timestamp: number) => {
-                if (stopped) return;
-                if (start === undefined) {
-                  start = timestamp;
-                  canvas.current!.dataset.startTime = String(timestamp);
-                  setMode('running');
-                  onStart();
-                }
-                last = Math.min(timestamp - start, drawing.durationMs);
-                try {
-                  renderer!.draw(last);
-                } catch {
-                  finish();
-                  return;
-                }
-                if (last < drawing.durationMs)
-                  frame = requestAnimationFrame(tick);
-                else frame = requestAnimationFrame(() => finish(true));
-              };
-              // Resources and the empty frame are ready before the drawing clock starts.
-              frame = requestAnimationFrame(() => {
-                if (!stopped) frame = requestAnimationFrame(tick);
-              });
-            } catch {
-              finish();
-            }
-          },
+      } else {
+        if (media.addEventListener) media.addEventListener('change', reduce);
+        else media.addListener(reduce);
+        for (const [index, path] of paths.entries()) {
+          const stroke = emblem.strokes[index];
+          animations.push(
+            path.animate(
+              [
+                { strokeDashoffset: 1, opacity: 0, offset: 0 },
+                { strokeDashoffset: 0.99999, opacity: 1, offset: 0.00001 },
+                { strokeDashoffset: 0, opacity: 1, offset: 1 },
+              ],
+              {
+                duration: stroke.durationMs,
+                delay: stroke.delayMs,
+                easing: 'linear',
+                fill: 'both',
+              },
+            ),
+          );
+        }
+        setMode('running');
+        callbacks.current.onStart();
+        Promise.all(animations.map((animation) => animation.finished)).then(
+          () => finish(true),
           () => finish(),
         );
+      }
+    } catch {
+      finish();
     }
     return () => {
       stopped = true;
-      cancelAnimationFrame(frame);
-      renderer?.dispose();
-      window.removeEventListener('resize', resize);
-      if (media.removeEventListener)
+      clearTimeout(watchdog);
+      animations.forEach((animation) => animation.cancel());
+      if (media?.removeEventListener)
         media.removeEventListener('change', reduce);
-      else media.removeListener(reduce);
+      else media?.removeListener?.(reduce);
     };
-  }, [played, onComplete, onStart]);
+  }, [played]);
+
   return (
     <div
       className="launch-logo"
-      data-drawing={played || mode === 'done' ? 'done' : mode}
-      data-rendering={showOriginal ? 'original' : 'webgl'}
+      data-drawing={played ? 'done' : mode}
       aria-hidden="true"
     >
-      <img
-        ref={originalImage}
-        src={original.uri}
-        alt=""
-        className="launch-logo-original"
-      />
-      <canvas
-        ref={canvas}
-        className="launch-logo-canvas"
-        width="145"
-        height="145"
-      />
-      {!showOriginal &&
-        mode !== 'done' &&
-        sheets.map((sources, index) => (
-          <picture key={index} className="launch-logo-preload">
-            <source
-              media="(prefers-reduced-motion: reduce)"
-              srcSet={original.uri}
-            />
-            <source
-              srcSet={sources
-                .map((source, scale) => `${source.uri} ${scale + 1}x`)
-                .join(', ')}
-            />
-            <img
-              ref={(image) => {
-                images.current[index] = image;
-              }}
-              src={sources[0].uri}
-              alt=""
-            />
-          </picture>
+      <svg
+        ref={svg}
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={emblem.viewBox}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {emblem.strokes.map(({ id, d, stroke, strokeWidth }) => (
+          <path
+            key={id}
+            id={id}
+            d={d}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            pathLength="1"
+          />
         ))}
+      </svg>
+      <noscript>
+        <style>
+          {
+            '.launch-logo path{opacity:1!important;stroke-dasharray:none!important}[data-testid=launch-title]{opacity:1!important}'
+          }
+        </style>
+      </noscript>
     </div>
   );
 }
