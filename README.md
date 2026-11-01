@@ -96,6 +96,8 @@ infra/          # 로컬 Compose, PostgreSQL, 실행 가이드
 
 ## Deployment and operations
 
+장기 브랜치는 `main` 하나이며 staging·production은 배포 환경입니다. 작업 PR은 `main`에 통합하고, staging에서 검증한 릴리스 커밋에 앱별 태그(`mobile/v*`, `api/v*`, `worker/v*`)를 발행합니다. 태그 발행과 실제 배포는 별도 단계이며 CI/CD·provider 연결 설정을 대신하지 않습니다.
+
 Render staging 설정과 배포 검증은 [API staging 배포 가이드](apps/api/docs/staging/Development.md)를 따릅니다. 이 문서는 개발 검증용 staging 범위를 다룹니다.
 
 ## Learn more

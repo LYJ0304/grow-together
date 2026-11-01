@@ -23,7 +23,7 @@ VERSION = re.compile(
 )
 SHA = re.compile(r'[0-9a-f]{40}')
 GRADLE_VERSION = re.compile(r"(?m)^version\s*=\s*['\"]([^'\"]+)['\"]\s*$")
-RECORD = re.compile(r'<!-- grow-together-release:v1\s*\n(.*?)\n-->', re.DOTALL)
+RECORD = re.compile(r'<!-- grow-together-release:v2\s*\n(.*?)\n-->', re.DOTALL)
 
 
 def require(condition, message):
@@ -161,14 +161,14 @@ def unique_object(pairs):
 def parse_record(body):
     require(body.count('<!-- grow-together-release:') == 1, 'Expected exactly one Release PR record.')
     matches = RECORD.findall(body)
-    require(len(matches) == 1, 'Missing or malformed grow-together-release:v1 record.')
+    require(len(matches) == 1, 'Missing or malformed grow-together-release:v2 record; legacy records need explicit recovery planning.')
     record = json.loads(matches[0], object_pairs_hook=unique_object)
     require(set(record) == {'schema', 'base', 'head', 'apps', 'qa', 'compatibility',
                             'validation', 'approval'}, 'Release record has missing/unknown fields.')
-    require(type(record['schema']) is int and record['schema'] == 1, 'Unsupported release record schema.')
+    require(type(record['schema']) is int and record['schema'] == 2, 'Unsupported release record schema.')
     for key in ('base', 'head'):
         require(isinstance(record[key], str) and SHA.fullmatch(record[key]), f'Invalid {key} SHA.')
-    for key in ('qa', 'compatibility', 'approval'):
+    for key in ('compatibility', 'approval'):
         require(isinstance(record[key], str) and record[key].strip(), f'Missing {key} evidence.')
     require(isinstance(record['apps'], dict) and record['apps'] and
             set(record['apps']) <= APP_FILES.keys(), 'Select at least one known application.')
@@ -188,6 +188,27 @@ def parse_record(body):
                 and isinstance(check['evidence'], str) and check['evidence'].strip(),
                 'Every required validation must have executed/passed evidence.')
     return record
+
+
+def verify_qa(record, phase, merge):
+    qa = record['qa']
+    require(isinstance(qa, dict) and set(qa) == {'base', 'release'},
+            'QA must record base and final release staging evidence.')
+    targets = [(qa['base'], record['base'])]
+    if phase == 'publish':
+        targets.append((qa['release'], merge))
+    else:
+        require(qa['release'] is None, 'Final release QA must be absent before merge.')
+    for evidence, sha in targets:
+        require(isinstance(evidence, dict) and set(evidence) == {'sha', 'apps', 'result', 'evidence'},
+                'QA needs a SHA, selected apps, passed result and staging evidence.')
+        require(evidence['sha'] == sha, 'QA SHA differs from the exact base or release merge commit.')
+        apps = evidence['apps']
+        require(isinstance(apps, list) and all(isinstance(app, str) for app in apps)
+                and len(apps) == len(record['apps']) and set(apps) == set(record['apps']),
+                'QA must cover exactly all selected apps without duplicates.')
+        require(evidence['result'] == 'passed' and isinstance(evidence['evidence'], str)
+                and evidence['evidence'].strip(), 'QA requires passed staging results and nonblank evidence.')
 
 
 def digest(record):
@@ -353,6 +374,7 @@ def verify(args):
                 'Merge parent differs from approved base/head; approval is stale.')
         require(git('rev-parse', f'{merge}^{{tree}}') == git('rev-parse', f"{record['head']}^{{tree}}"),
                 'Merged tree differs from approved release head.')
+    verify_qa(record, args.phase, merge)
     # Fresh remote stable/prerelease app tags must be fetched; never silently miss a newer baseline.
     local = {f'refs/tags/{t}': git('rev-parse', f'refs/tags/{t}')
              for t in git('tag', '--list').splitlines() if any(t.startswith(f'{a}/v') for a in APP_FILES)}

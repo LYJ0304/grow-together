@@ -33,11 +33,13 @@ Apply later user corrections as well as the issue body. Surface scope difference
 in the final handoff so ship describes the actual change, not a superseded plan.
 
 1. Inspect `git status --short`, `git worktree list --porcelain`, local branches,
-   and existing remote task branches. Fetch the remote base (`develop` by default
+   and existing remote task branches. Fetch the remote base (`main` by default
    for new general tasks).
    Preserve the current checkout and all unrelated tracked/untracked work.
    Honor an explicitly requested base/PR target. If the remote base is missing,
-   report it rather than silently falling back to main.
+   report it rather than silently selecting another branch. For a resumed task
+   whose old base was deleted, resolve its target from current GitHub state and
+   user instructions; do not recreate the old base or silently rebase/retarget.
 2. Identify `<type>/issue-<number>-<slug>` branches by the complete issue number
    boundary (issue 13 must not match issue 1321). If multiple branches match,
    ask which one to resume. Use the existing issue branch/worktree when present.
@@ -61,7 +63,7 @@ in the final handoff so ship describes the actual change, not a superseded plan.
    explain path collisions or locked/missing worktrees before repair.
    If the user explicitly requests work in the current checkout/task branch,
    honor that location after inspecting its Git state. Do not create an extra
-   worktree anyway or edit develop/main/staging as the task branch. If a location
+   worktree anyway or edit `main` as the task branch. If a location
    change was requested, preserve local work and distinguish the active task checkout
    from an old detached worktree; do not delete that stale worktree implicitly.
 4. Run all edits/checks with the actual task checkout as the working directory. Read
@@ -91,10 +93,11 @@ local task changes when resuming and include their context in the handoff.
 If the user moves the work to another checkout mid-task, refresh this handoff
 with the new location instead of letting ship infer it from the original path.
 
-For new general tasks, the PR target is `develop` and the intended merge method
-is squash. Follow conventions for explicit target exceptions and maintained-
-branch synchronization. Include both in the handoff so ship can set its base
-explicitly rather than relying on GitHub's default branch.
+For new general tasks, the PR target is `main` and the intended merge method
+is squash. Follow conventions for explicit target exceptions. Staging and
+production are environments; no branch promotion is part of start. Include target
+and method in the handoff so ship can set its base explicitly rather than relying
+on GitHub's default branch.
 
 Ship will retain this checkout and its review environment after publishing the PR;
 cleanup is a later, verified post-merge step. Reviews and conflict resolution resume

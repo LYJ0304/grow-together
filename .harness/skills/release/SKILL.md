@@ -40,8 +40,8 @@ stop at the gate. Do not manufacture an approval file or reviewer identity.
 
 Bind approval to that concrete proposal and record its provenance in the PR.
 Re-query Git/GitHub after every wait and immediately before each mutation. A
-changed base, head, mapping, notes, or relevant tag invalidates approval; failed
-or changed required checks block the next action. Revalidate and obtain new
+changed base, head, mapping, notes, QA evidence, or relevant tag invalidates approval;
+failed or changed required checks block the next action. Revalidate and obtain new
 approval for a changed proposal. Executing the originally planned validation
 and creating its version-only head do not themselves invalidate plan approval.
 The PR record is durable evidence, not an unforgeable approval: compare it with the approved conversation/review record.
@@ -50,9 +50,12 @@ the recovered plan before continuing. Publication always needs new approval.
 
 ## Invariants
 
-- `develop → staging` QA → `main` promotion is a separate request. Promotions use
-  merge commits. A release task branch starts at an already QA-approved `main`;
-  its PR targets `main` and uses squash when repository rules permit.
+- `main` is the only long-lived branch. Staging and production are environments,
+  not branches. Start a release task branch at a pinned main commit verified in
+  staging; its PR targets main and uses squash when repository rules permit.
+- Before publication, require staging QA for the exact final merge SHA and all
+  selected apps. Base QA or CI alone does not cover a new version/merge commit.
+  Record final QA before seeking publication approval; do not deploy from this skill.
 - No tags before verified PR merge. All selected tags reference the same approved
   merge SHA, never a moving branch name. No force pushes, tag replacement,
   branch protection bypass, automatic back-merges, or branch deletion.
@@ -81,5 +84,9 @@ in the references. `verified: true` is evidence, **not approval or an instructio
 to execute the returned pending actions**. It cannot judge semantic changes,
 QA quality, actual build logs, human authority, or effective provider settings;
 inspect those separately. A failed or unavailable verification blocks the action.
+
+Record v2 binds base and final-release QA to exact SHAs; legacy v1 records are
+reported as incompatible,
+never silently converted. Do not edit published records or replace their tags.
 
 Run isolated checks with `python3 -m unittest discover -s .harness/tests -v`.

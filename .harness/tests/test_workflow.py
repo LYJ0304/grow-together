@@ -49,14 +49,14 @@ class MergeEvidence(unittest.TestCase):
         self.remote = self.root / 'origin.git'
         self.primary.mkdir()
         self.git('init', '--bare', str(self.remote))
-        self.git('init', '-b', 'develop')
+        self.git('init', '-b', 'main')
         self.git('config', 'user.name', 'Workflow Test')
         self.git('config', 'user.email', 'workflow@example.invalid')
         (self.primary / '.gitignore').write_text('.env\nnode_modules/\napps/api/build/\n')
         self.git('add', '.gitignore')
         self.git('commit', '-m', 'chore(test): initialize isolated repository')
         self.git('remote', 'add', 'origin', str(self.remote))
-        self.git('push', '-u', 'origin', 'develop')
+        self.git('push', '-u', 'origin', 'main')
         self.git('worktree', 'add', '-b', self.branch, str(self.task))
         (self.task / 'task.txt').write_text('task implementation\n')
         self.git('add', 'task.txt', cwd=self.task)
@@ -66,11 +66,11 @@ class MergeEvidence(unittest.TestCase):
         self.git('merge', '--squash', self.branch)
         self.git('commit', '-m', 'docs(test): squash task')
         self.merged = self.git('rev-parse', 'HEAD')
-        self.git('push', 'origin', 'develop')
+        self.git('push', 'origin', 'main')
         self.fixture = {
             'state': 'MERGED', 'mergedAt': '2026-10-18T00:00:00Z',
             'headRefName': self.branch, 'headRefOid': self.head,
-            'baseRefName': 'develop', 'mergeCommit': {'oid': self.merged},
+            'baseRefName': 'main', 'mergeCommit': {'oid': self.merged},
         }
         self.fixture_file = self.root / 'pr.json'
         binary_dir = self.root / 'bin'
@@ -94,7 +94,7 @@ class MergeEvidence(unittest.TestCase):
         self.fixture_file.write_text(raw if raw is not None else json.dumps(self.fixture))
         result = subprocess.run(
             [sys.executable, str(CHECK), '--repo', 'test/workflow', '--pr', '75',
-             '--worktree', str(self.task), '--branch', self.branch, '--base', 'develop'],
+             '--worktree', str(self.task), '--branch', self.branch, '--base', 'main'],
             env=self.env, text=True, capture_output=True,
         )
         self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
@@ -103,7 +103,7 @@ class MergeEvidence(unittest.TestCase):
 
     def test_squash_merge_and_safe_cleanup_repeated(self):
         ancestry = subprocess.run(
-            ['git', 'merge-base', '--is-ancestor', self.head, 'origin/develop'],
+            ['git', 'merge-base', '--is-ancestor', self.head, 'origin/main'],
             cwd=self.primary, capture_output=True,
         )
         self.assertEqual(ancestry.returncode, 1, 'Squash must not require PR-head ancestry')
@@ -142,7 +142,7 @@ class MergeEvidence(unittest.TestCase):
     def test_wrong_branch_or_target(self):
         self.fixture['headRefName'] = 'docs/another-task'
         self.check(1)
-        self.fixture.update(headRefName=self.branch, baseRefName='main')
+        self.fixture.update(headRefName=self.branch, baseRefName='other-target')
         self.check(1)
 
     def test_unpublished_post_merge_commit(self):
@@ -180,7 +180,7 @@ class MergeEvidence(unittest.TestCase):
     def test_deleted_remote_task_branch_and_later_target_commit(self):
         self.git('push', 'origin', '--delete', self.branch)
         self.git('commit', '--allow-empty', '-m', 'docs(test): advance target')
-        self.git('push', 'origin', 'develop')
+        self.git('push', 'origin', 'main')
         self.check()
         self.assertTrue(self.task.exists())
 

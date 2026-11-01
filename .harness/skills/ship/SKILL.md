@@ -24,8 +24,10 @@ for already authorized actions. Do not wait or poll indefinitely for a merge.
 
 Read root AGENTS.md and [conventions](../../conventions.md). Resolve the repository
 from its remote, issue, task branch, actual checkout (primary or linked), established
-base/PR target, and intended merge method. New general PRs target `develop` with
-squash; preserve explicit exceptions and existing targets. Never publish a maintained
+base/PR target, and intended merge method. If a resumed task's old base was
+removed, resolve its target from current GitHub evidence and user instructions;
+do not recreate the base or silently rebase/retarget. New general PRs target `main`
+with squash; preserve explicit exceptions and existing targets. Never publish a maintained
 branch or infer the active task solely from an old detached worktree's directory name.
 
 Use the actual task checkout even when invoked from the primary checkout. Preserve
@@ -124,7 +126,7 @@ stops processes, or removes files/worktrees. Fetch does not switch or update loc
 ## Safely clean up after verified merge
 
 - If the task used the primary checkout, retain it and report cleanup not applicable.
-  Never remove primary/develop/main/staging worktrees or delete any task branch.
+  Never remove primary/main worktrees or delete any task branch.
 - If the exact linked task worktree was already removed, confirm its absence in
   `git worktree list --porcelain` and report already cleaned. Do not recreate it just
   to clean it again, substitute another worktree, or create another PR. Verify the

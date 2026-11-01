@@ -54,14 +54,17 @@ ship never runs review automatically. Review does not edit code, approve,
 request changes, merge, or clean up the retained environment. Its skill defines
 snapshot verification, duplicate prevention, and publication failure handling.
 
-- `start` uses the latest remote `develop` for new tasks unless another base
+- `start` uses the latest remote `main` for new tasks unless another base
   was requested. Resume existing issue branches/worktrees with their established
-  base and PR target, preserving unrelated local work.
+  base and PR target, preserving unrelated local work. If an old base was deleted,
+  resolve the intended target from current GitHub state and user instructions;
+  do not recreate the base or silently retarget/rebase the task.
   Honor an explicitly requested task checkout and return its actual branch/path
   and primary/linked status in the handoff. Do not mistake an old detached
   worktree for the active task after the user moves work to another checkout.
-- General task PRs target `develop` and use squash merge. Promotions
-  `develop → staging → main` use merge commits, never squash or rebase merge.
+- General task PRs target `main` and use squash merge. `main` is the only
+  long-lived branch; temporary task/release branches and separate worktrees remain.
+  `staging` and `production` name deployment environments, not branches.
   See harness conventions for explicit base exceptions and merge authorization.
 - `ship` stages only task files and reports validation evidence. Failed required
   checks must be fixed before publishing; missing prerequisites must be disclosed.
@@ -93,21 +96,26 @@ snapshot verification, duplicate prevention, and publication failure handling.
   never force-remove them. Only allowlisted regenerable directories may be removed.
 - A task branch in the primary checkout can be shipped there when explicitly
   requested. Retain the primary worktree and report cleanup as not applicable;
-  never publish develop/main/staging as the task branch.
-- Keep task branches for PR follow-up. Never remove the primary, `develop`,
-  `main`, or `staging` worktree. Merge, deployment, maintained-branch updates, and branch deletion
-  require a separate request.
+  never publish `main` as the task branch.
+- Keep task branches for PR follow-up. Never remove the primary or `main`
+  worktree. Merge, deployment, maintained-branch updates, and branch deletion
+  require a separate request. Preserve existing worktrees and local data;
+  a single long-lived branch does not authorize bulk cleanup.
 
 ## Release lifecycle
 
 Use the repository [release skill](.harness/skills/release/SKILL.md) for release
 requests. It is separate from general issue implementation/shipping. Release
-branches start at QA-promoted `main`; Release PRs target `main`, using squash
-when compatible with repository protection. Maintained-branch promotions still
-use merge commits and need separate authorization.
+branches start at a pinned `main` commit verified in the staging environment;
+Release PRs target `main`, using squash when compatible with repository protection.
+There is no branch-promotion step. Recheck the final Release PR merge SHA in
+staging before publication; pre-version QA alone does not cover that new commit.
 
 Require separate explicit approval for the version plan before manifest edits,
 for PR merge, and for tag/Release publication. A mode invocation alone is not
 approval. All app tags reference the verified merge SHA. Release execution creates
 no Issues/Project items and never changes deployment environments or workflows.
 GitHub Actions/providers handle deployment; tags do not prove deployment success.
+Staging validates selected `main` commits. Production targets independently approved
+`mobile/vX.Y.Z`, `api/vX.Y.Z`, or `worker/vX.Y.Z` releases, never moving main HEAD.
+This policy does not configure CI/CD or provider triggers.

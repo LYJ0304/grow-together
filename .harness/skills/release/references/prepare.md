@@ -1,7 +1,7 @@
 # Prepare a Release PR
 
 Read [versioning](versioning.md) and [deployment boundaries](deployment.md).
-Preparation does not promote branches or create tags.
+Preparation does not deploy to staging or create tags.
 
 ## Inspect and propose
 
@@ -10,14 +10,15 @@ Preparation does not promote branches or create tags.
    and PRs, application manifests, tags, workflows, protections and provider
    integration evidence. Inspect tracked, untracked and ignored worktree data
    without printing secrets. Never copy `.env` between worktrees.
-2. Query `git ls-remote --heads --tags <remote>`. Fetch `main`, `staging` and tags
+2. Query `git ls-remote --heads --tags <remote>`. Fetch `main` and tags
    without force/pruning, then confirm local remote-tracking `main` equals the
    live remote SHA. A conflicting local tag blocks preparation; preserve it.
    Fetch PR head refs explicitly if needed. Do not trust stale tracking refs.
-3. Require a maintainer's QA evidence identifying the promoted staging SHA and
-   `staging → main` merge/promotion evidence. Record it in the proposal. If QA or
-   promotion is missing, stop with the prerequisite; do not import unpromoted
-   develop changes. Version-only commits after QA still need validation.
+3. Require a maintainer's successful staging-environment QA evidence for the
+   exact candidate main SHA and each selected app. Record commit, apps, result
+   and evidence in the proposal; missing QA blocks preparation. There is no
+   staging branch or promotion PR to fetch/require. Version-only commits after
+   QA create a new candidate; final-merge staging QA is required before publication.
 4. Pin `BASE` to fetched remote `main`. Run helper `inspect --ref <BASE>`; review
    actual diffs/merged PRs for each previous app tag, including shared consumers.
    Inspect available checks/protection and existing auto deployment effects.
@@ -28,7 +29,7 @@ Preparation does not promote branches or create tags.
 Grow Together Release Proposal
 Target branch: main
 Base commit: <full SHA>
-QA: <staging SHA, promotion PR, authoritative QA evidence>
+QA: <exact main SHA tested in staging, selected apps, passed result, evidence>
 mobile: previous tag / manifest → proposed stable version; behavior-based reason
 api: previous tag / manifest → proposed stable version; behavior-based reason
 worker: no release required; reason
@@ -79,9 +80,9 @@ Do not create an issue/Project item. Use a temporary body file outside the repo.
 Include exactly one block with these delimiters (no other text inside):
 
 ````text
-<!-- grow-together-release:v1
+<!-- grow-together-release:v2
 {
-  "schema": 1,
+  "schema": 2,
   "base": "<full approved main SHA>",
   "head": "<full final release branch SHA>",
   "apps": {
@@ -93,7 +94,15 @@ Include exactly one block with these delimiters (no other text inside):
       "notes": "승인된 앱별 Release Notes"
     }
   },
-  "qa": "승격 PR/검증한 staging SHA/QA 증거 링크",
+  "qa": {
+    "base": {
+      "sha": "<same SHA as base>",
+      "apps": ["mobile"],
+      "result": "passed",
+      "evidence": "staging 환경에서 해당 커밋·앱을 검증한 결과와 증거 링크"
+    },
+    "release": null
+  },
   "compatibility": "호환성 및 배포 순서/마이그레이션 검토",
   "validation": [
     {"command": "npm run typecheck", "result": "passed", "evidence": "실제 실행 로그/대화 참조"}
@@ -111,12 +120,21 @@ Hashing the canonical JSON gives a plan digest; helper `verify` prints it. Use
 that digest and exact head in the final approval/merge/publication proposals.
 A digest detects changes against an approval, not authenticity by itself.
 
+`qa.base` must identify `base`; its `apps` list must cover exactly the selected
+apps without duplicates, `result` must be `passed`, and `evidence` must be nonblank.
+At preparation `qa.release` is null. After merge, publication requires the same
+shape in `qa.release` identifying the exact merge SHA, not base, PR head or latest
+main. See [publish](publish.md) for the post-merge QA update and new approval.
+A v1 record lacks structured SHA-bound QA: report it as incompatible. Recover an
+unpublished legacy plan only through maintainer-approved re-preparation; never
+rewrite an already tagged/published record or move tags to satisfy v2.
+
 Push only the release branch and create/update the `main` PR. Preserve approval
 provenance in a PR comment when resuming/updating the body (commenting as part of
 this explicitly invoked skill is authorized); do not impersonate the human.
 Reconfirm the actual final PR head/record and CI. Run helper `verify --phase
 prepare`. It checks the PR remains OPEN, live main still equals base, version-only
-diff, head, tag collision and checks. Its conservative path excludes source
+diff, head, base QA SHA/app coverage, absent final QA, tag collision and checks. Its conservative path excludes source
 changes, dependency updates and incidental formatting; recreate the plan if those
 are needed. It does not inspect QA log truth or effective required-review rules.
 
@@ -138,7 +156,10 @@ compatible. Do not use admin bypass or auto-merge. Do not change strategy if
 blocked. A concurrently moved base invalidates approval; verify actual merge
 parent/tree afterward and do not publish a stale merge. Queueing is not a merge.
 Confirm MERGED and exact merge SHA on fetched main, then hand off to `publish`.
-No tag creation, deployment, cleanup, back-merge or branch deletion here.
+The final SHA now needs staging verification, even if its tree matches the PR
+head. Request that evidence through the separately authorized deployment process;
+release preparation does not run a deployment. No tag creation, deployment,
+cleanup, back-merge or branch deletion here.
 
 Example: `$release prepare` → approve/override the proposal → review PR/CI →
 explicitly approve merging that PR → `$release publish 123` with new approval.
