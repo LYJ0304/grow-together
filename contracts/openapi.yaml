@@ -296,6 +296,67 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/files/presigned-url:
+    post:
+      operationId: issueFileUploadUrl
+      summary: Register a pending file and issue an S3 upload URL
+      description: >-
+        Generates an object key on the server. Upload directly to S3 using PUT with
+        the declared Content-Type, then call the completion endpoint. Files must
+        not exceed the configured app.storage.s3.max-file-size (10 MB by default).
+        A presigned PUT URL does not enforce that size limit on S3 itself.
+        expiresAt describes the configured signing lifetime; underlying AWS credentials
+        may expire earlier. A URL can be reused until it expires, including after completion.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresignedUrlRequest' }
+      responses:
+        '201':
+          description: Pending file registered and upload URL issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PresignedUrlResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/files/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: completeFileUpload
+      summary: Verify an owned S3 object and complete its pending upload
+      description: >-
+        Verifies that the actual size and Content-Type match the registration and
+        that the size is within the configured limit. Failed verification leaves
+        the file pending. Missing files and files owned by another user return 404.
+        Content-Type is S3 object metadata; file bytes are not inspected.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Upload completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: File not found, not owned by the caller, or not uploaded to S3
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: File is no longer pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
 components:
   securitySchemes:
     bearerAuth:
@@ -307,6 +368,31 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    PresignedUrlRequest:
+      type: object
+      required: [filename, contentType, fileSize]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255, pattern: '\S' }
+        contentType: { type: string, minLength: 1, maxLength: 100, pattern: '\S' }
+        fileSize: { type: integer, format: int64, minimum: 1 }
+    PresignedUrlResponse:
+      type: object
+      required: [fileId, uploadUrl, objectKey, expiresAt]
+      properties:
+        fileId: { type: string, format: uuid }
+        uploadUrl: { type: string, format: uri }
+        objectKey: { type: string }
+        expiresAt: { type: string, format: date-time }
+    FileResponse:
+      type: object
+      required: [id, filename, contentType, fileSize, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        contentType: { type: string }
+        fileSize: { type: integer, format: int64 }
+        status: { type: string, enum: [PENDING, COMPLETED, FAILED] }
+        createdAt: { type: string, format: date-time }
     DiaryRequest:
       type: object
       required: [todoIds, diaryFiles]
@@ -404,7 +490,7 @@ components:
       properties:
         code:
           type: string
-          enum: [INVALID_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
+          enum: [INVALID_REQUEST, BAD_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
         message: { type: string }
   responses:
     Diary:
