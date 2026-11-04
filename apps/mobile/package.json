@@ -27,6 +27,7 @@
     "test:auth:api": "node tests/auth-api.mjs",
     "test:main:ui": "node tests/main-data.mjs && node tests/main-ui.mjs",
     "test:diary-generation": "node tests/diary-generation.mjs",
+    "test:diary:saved-edit": "node tests/diary-saved-edit.mjs",
     "test:diary:ui": "node tests/diary-result.mjs",
     "test:chat:ui": "node tests/chat-ui.mjs",
     "test:chat:keyboard": "node tests/chat-keyboard.mjs",

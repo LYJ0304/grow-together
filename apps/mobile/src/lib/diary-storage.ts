@@ -88,13 +88,18 @@ export async function readDiary(date: string): Promise<SavedDiary | null> {
   }
 }
 
-export async function saveDiary(diary: SavedDiary): Promise<void> {
+function encodeDiary(diary: SavedDiary): string {
   if (!isSavedDiary(diary)) throw new Error('일기 내용을 확인해주세요.');
   const encoded = JSON.stringify(diary);
   if (encoded.length > 1_500_000)
     throw new Error(
-      '사진 용량이 커서 저장하지 못했어요. 사진을 줄여 다시 시도해주세요.',
+      '본문이나 사진 용량이 커서 저장하지 못했어요. 내용을 줄여 다시 시도해주세요.',
     );
+  return encoded;
+}
+
+export async function saveDiary(diary: SavedDiary): Promise<void> {
+  const encoded = encodeDiary(diary);
   let existing: string | null;
   try {
     existing = await AsyncStorage.getItem(prefix + diary.date);
@@ -118,5 +123,25 @@ export async function deleteDiary(date: string): Promise<void> {
     await AsyncStorage.removeItem(prefix + date);
   } catch {
     throw new Error('일기를 삭제하지 못했어요. 다시 시도해주세요.');
+  }
+}
+
+export async function updateDiary(
+  date: string,
+  content: string,
+): Promise<SavedDiary> {
+  if (!content.trim()) throw new Error('일기 내용을 확인해주세요.');
+  const original = await readDiary(date);
+  if (!original)
+    throw new Error('수정할 일기가 없어요. 캘린더에서 다시 확인해주세요.');
+  const diary = { ...original, content: content.trim() };
+  const encoded = encodeDiary(diary);
+  try {
+    await AsyncStorage.setItem(prefix + date, encoded);
+    return diary;
+  } catch {
+    throw new Error(
+      '일기를 저장하지 못했어요. 기기의 저장 공간을 확인한 후 다시 시도해주세요.',
+    );
   }
 }

@@ -57,6 +57,7 @@ const {
   readDiary,
   savedDiaryDates,
   deleteDiary,
+  updateDiary,
 } = module.exports;
 
 assert.equal(diaryDateKey(new Date(2026, 9, 10, 23, 59)), '2026-10-10');
@@ -180,4 +181,38 @@ await assert.rejects(
 );
 console.log(
   'PASS: local dates, save/read, durable photos, duplicate protection, failed writes, invalid/corrupt data, storage failures, date-scoped deletion, failed deletes, and recreation',
+);
+
+// Updating only changes the body of an existing diary and preserves unknown fields.
+failRead = false;
+const updateDate = withSources.date;
+const original = { ...withSources, futureMetadata: { preserve: true } };
+values.set(prefix + updateDate, JSON.stringify(original));
+const updated = JSON.parse(
+  JSON.stringify(await updateDiary(updateDate, '  수정한 일기  ')),
+); // Normalize the vm realm for structural comparison.
+assert.deepEqual(updated, { ...original, content: '수정한 일기' });
+assert.deepEqual(await readDiary(updateDate), updated);
+await assert.rejects(
+  saveDiary({ ...withSources, content: '자동 덮어쓰기 금지' }),
+  /이미 저장된 날짜/,
+);
+await assert.rejects(updateDiary(updateDate, '  '), /내용/);
+assert.deepEqual(await readDiary(updateDate), updated);
+await assert.rejects(updateDiary('2026-12-01', '없는 일기'), /없/);
+assert.equal(values.has(prefix + '2026-12-01'), false);
+await assert.rejects(updateDiary('invalid', '잘못된 날짜'), /날짜/);
+await assert.rejects(updateDiary('2026-10-12', '손상된 일기'), /불러오/);
+assert.equal(values.get(prefix + '2026-10-12'), '{broken');
+failRead = true;
+await assert.rejects(updateDiary(updateDate, '읽기 오류'), /불러오/);
+failRead = false;
+failWrite = true;
+await assert.rejects(updateDiary(updateDate, '쓰기 오류'), /저장하지 못/);
+failWrite = false;
+assert.deepEqual(await readDiary(updateDate), updated);
+await assert.rejects(updateDiary(updateDate, 'a'.repeat(1_500_001)), /용량/);
+assert.deepEqual(await readDiary(updateDate), updated);
+console.log(
+  'PASS: saved body update, metadata preservation, missing/corrupt/read/write failures and create duplicate protection',
 );
