@@ -23,3 +23,9 @@ app:
     secret: ${JWT_SECRET:}
     access-token-seconds: ${JWT_ACCESS_TOKEN_SECONDS:900}
     refresh-session-seconds: ${JWT_REFRESH_SESSION_SECONDS:1209600}
+  storage:
+    s3:
+      region: ${AWS_REGION}
+      bucket: ${AWS_S3_BUCKET_NAME}
+      presigned-url-expiration: 10m
+      max-file-size: 10MB
