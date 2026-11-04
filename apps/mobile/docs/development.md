@@ -63,3 +63,11 @@ input retention, duplicate prevention, date/account isolation, lost responses,
 and the narrow layout. It does not prove connectivity to a live API. For live
 validation, disable preview, use a test account, and check CRUD, reload, and
 account switching against the configured API.
+
+## 아이 프로필 추가·수정
+
+마이페이지의 아이 프로필은 미등록 시 추가, 등록 후에는 요약과 수정 화면을 제공한다. 이름과 생년월일은 `@growtogether/child/v1/<계정 키>`에 기기 로컬로 저장하며 서버·다른 기기와 동기화하지 않는다. 계정 키는 인증 경계가 제공하는 JWT issuer/subject 조합이고 미리보기는 별도 키를 사용한다. 이는 저장 분리용이며 서버 인가를 대체하지 않는다.
+
+조회 실패는 미등록과 구분하고, 저장 실패·취소는 기존 저장값을 유지한다. 로그아웃·계정 전환 시 화면과 캐시를 초기화하며 계정 정보가 없는 세션에서는 공용 키로 저장하지 않는다.
+
+`npm run test:children:storage`, `npm run test:auth`로 저장/인증 경계를 검증한다. Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://localhost:8130 BROWSER_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:children:ui`로 추가·수정·복원·취소·오류·계정 분리와 반응형을 확인한다. 브라우저 경로와 서버 주소는 실행 환경에 맞게 지정한다.

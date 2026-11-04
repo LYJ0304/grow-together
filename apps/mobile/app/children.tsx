@@ -1,9 +1,12 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,68 +16,110 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-type Errors = { name?: string; birthday?: string };
+import { useAuth } from '../src/components/auth-provider';
+import {
+  saveChildProfile,
+  validateChildProfile,
+  type ChildProfileErrors,
+} from '../src/lib/child-profile';
+import { useChildProfile } from '../src/lib/use-child-profile';
 
 export default function ChildrenScreen() {
+  const { accountKey, epoch } = useAuth();
+  return <ChildrenEditor key={`${epoch}:${accountKey}`} />;
+}
+
+function ChildrenEditor() {
+  const profile = useChildProfile();
+  const { client, epoch } = useAuth();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [birthday, setBirthday] = useState('');
-  const [errors, setErrors] = useState<Errors>({});
-  const [confirmed, setConfirmed] = useState(false);
+  const [errors, setErrors] = useState<ChildProfileErrors>({});
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const pending = useRef(false);
   const nameInput = useRef<TextInput>(null);
   const birthdayInput = useRef<TextInput>(null);
-  const scroll = useRef<ScrollView>(null);
-
-  // shortcut: this is a preview until the child profile storage flow is decided.
-  useFocusEffect(
-    useCallback(() => {
-      setName('');
-      setBirthday('');
-      setErrors({});
-      setConfirmed(false);
-    }, []),
-  );
-
-  const confirm = () => {
-    const nextErrors: Errors = {};
-    if (!name.trim()) nextErrors.name = '아이 이름을 입력해주세요.';
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday.trim());
-    const date = new Date(0);
-    date.setHours(0, 0, 0, 0);
-    if (match) {
-      date.setFullYear(
-        Number(match[1]),
-        Number(match[2]) - 1,
-        Number(match[3]),
-      );
-    }
-    if (
-      !match ||
-      Number(match[1]) < 1 ||
-      date.getFullYear() !== Number(match[1]) ||
-      date.getMonth() + 1 !== Number(match[2]) ||
-      date.getDate() !== Number(match[3])
-    ) {
-      nextErrors.birthday =
-        '생년월일을 올바른 YYYY-MM-DD 형식으로 입력해주세요.';
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (date > today)
-        nextErrors.birthday = '생년월일은 오늘 또는 이전 날짜로 입력해주세요.';
-    }
+  const navigation = useNavigation();
+  const dirty =
+    editing &&
+    (name !== (profile.data?.name ?? '') ||
+      birthday !== (profile.data?.birthday ?? ''));
+  const current = () =>
+    client.getSnapshot().epoch === epoch &&
+    client.getSnapshot().accountKey === profile.accountKey;
+  usePreventRemove(dirty || saving, ({ data }) => {
+    if (!pending.current)
+      setLeaveAction(() => () => navigation.dispatch(data.action));
+  });
+  useEffect(() => {
+    if (discarding && !dirty && !saving) leaveAction?.();
+  }, [discarding, dirty, saving, leaveAction]);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || (!dirty && !saving)) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, saving]);
+  const edit = () => {
+    setName(profile.data?.name ?? '');
+    setBirthday(profile.data?.birthday ?? '');
+    setErrors({});
+    setNotice('');
+    setEditing(true);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setErrors({});
+    setNotice('');
+  };
+  const save = async () => {
+    if (pending.current || !profile.accountKey || !profile.isSuccess) return;
+    const nextErrors = validateChildProfile({ name, birthday });
     setErrors(nextErrors);
-    if (nextErrors.name) nameInput.current?.focus();
-    else if (nextErrors.birthday) birthdayInput.current?.focus();
-    else {
-      setName(name.trim());
-      setBirthday(birthday.trim());
-      setConfirmed(true);
+    if (nextErrors.name) {
+      nameInput.current?.focus();
+      return;
+    }
+    if (nextErrors.birthday) {
+      birthdayInput.current?.focus();
+      return;
+    }
+    pending.current = true;
+    setSaving(true);
+    setNotice('');
+    try {
+      const value = await saveChildProfile(profile.accountKey, {
+        name,
+        birthday,
+      });
+      if (!current()) return;
+      queryClient.setQueryData(profile.queryKey, value);
+      setEditing(false);
+      setNotice('아이 정보를 저장했어요.');
       Keyboard.dismiss();
-      scroll.current?.scrollTo({ y: 0, animated: false });
+    } catch (error) {
+      if (current())
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : '저장하지 못했어요. 다시 시도해주세요.',
+        );
+    } finally {
+      pending.current = false;
+      if (current()) setSaving(false);
     }
   };
-
+  const error = !profile.accountKey
+    ? '계정을 확인하지 못했어요. 다시 로그인해 주세요.'
+    : profile.error?.message;
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -89,141 +134,226 @@ export default function ChildrenScreen() {
         }
       >
         <ScrollView
-          ref={scroll}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="마이페이지로 돌아가기"
+            disabled={saving}
             onPress={() => router.dismissTo('/mypage')}
-            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+            style={styles.back}
           >
             <Text style={styles.backLabel}>‹ 마이페이지</Text>
           </Pressable>
           <Text accessibilityRole="header" style={styles.title}>
-            {confirmed ? '아이 정보를 확인해주세요' : '아이를 소개해주세요'}
+            {editing
+              ? profile.data
+                ? '아이 정보 수정'
+                : '아이 추가'
+              : '아이 프로필'}
           </Text>
           <Text style={styles.subtitle}>
-            {confirmed
-              ? '입력한 이름과 생년월일을 확인해보세요.'
-              : '이름과 생일로 아이의 이야기를 시작해요.'}
+            이름과 생일로 아이의 이야기를 시작해요.
           </Text>
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
-              미리보기 화면이에요. 입력한 정보는 저장되지 않으며, 화면을
-              나가거나 새로고침하면 초기화돼요.
+              이 기기에 저장되는 아이 정보예요. 다른 기기와는 동기화되지 않아요.
             </Text>
           </View>
-          <View style={styles.card}>
-            {confirmed ? (
-              <>
-                <Text style={styles.label}>아이 이름</Text>
-                <Text style={styles.value}>{name}</Text>
-                <Text style={styles.label}>생년월일</Text>
-                <Text style={styles.value}>{birthday}</Text>
+          {error ? (
+            <View style={styles.card}>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+              {profile.accountKey && (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => setConfirmed(false)}
-                  style={({ pressed }) => [
-                    styles.button,
-                    pressed && styles.pressed,
-                  ]}
+                  onPress={() => void profile.refetch()}
+                  style={styles.button}
                 >
-                  <Text style={styles.buttonLabel}>다시 수정</Text>
+                  <Text style={styles.buttonLabel}>다시 시도</Text>
                 </Pressable>
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>아이 이름 (필수)</Text>
-                <TextInput
-                  ref={nameInput}
-                  accessibilityLabel="아이 이름"
-                  accessibilityHint={errors.name}
-                  aria-describedby={
-                    errors.name ? 'child-name-error' : undefined
-                  }
-                  aria-invalid={Boolean(errors.name)}
-                  placeholder="예: 하늘"
-                  placeholderTextColor="#88889D"
-                  value={name}
-                  onChangeText={(value) => {
-                    setName(value);
-                    setErrors((current) => ({ ...current, name: undefined }));
-                  }}
-                  maxLength={50}
-                  returnKeyType="next"
-                  onSubmitEditing={() => birthdayInput.current?.focus()}
-                  style={[styles.input, errors.name && styles.invalid]}
-                />
-                {errors.name ? (
-                  <Text
-                    nativeID="child-name-error"
-                    accessibilityRole="alert"
-                    accessibilityLiveRegion="polite"
-                    style={styles.error}
+              )}
+            </View>
+          ) : profile.isPending ? (
+            <Text accessibilityRole="alert">
+              아이 정보를 불러오는 중이에요.
+            </Text>
+          ) : (
+            <View style={styles.card}>
+              {!editing ? (
+                <>
+                  {profile.data ? (
+                    <>
+                      <Text style={styles.label}>아이 이름</Text>
+                      <Text style={styles.value}>{profile.data.name}</Text>
+                      <Text style={styles.label}>생년월일</Text>
+                      <Text style={styles.value}>{profile.data.birthday}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.value}>등록된 아이가 없어요.</Text>
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={edit}
+                    style={styles.button}
                   >
-                    {errors.name}
+                    <Text style={styles.buttonLabel}>
+                      {profile.data ? '수정' : '아이 추가'}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View pointerEvents={saving ? 'none' : 'auto'}>
+                  <Text style={styles.label}>아이 이름 (필수)</Text>
+                  <TextInput
+                    ref={nameInput}
+                    editable={!saving}
+                    accessibilityLabel="아이 이름"
+                    accessibilityHint={errors.name}
+                    aria-describedby={
+                      errors.name ? 'child-name-error' : undefined
+                    }
+                    aria-invalid={Boolean(errors.name)}
+                    placeholder="예: 하늘"
+                    placeholderTextColor="#88889D"
+                    value={name}
+                    onChangeText={(value) => {
+                      setName(value);
+                      setErrors((current) => ({ ...current, name: undefined }));
+                    }}
+                    maxLength={50}
+                    returnKeyType="next"
+                    onSubmitEditing={() => birthdayInput.current?.focus()}
+                    style={[styles.input, errors.name && styles.invalid]}
+                  />
+                  {errors.name ? (
+                    <Text
+                      nativeID="child-name-error"
+                      accessibilityRole="alert"
+                      accessibilityLiveRegion="polite"
+                      style={styles.error}
+                    >
+                      {errors.name}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.label}>생년월일 (필수)</Text>
+                  <TextInput
+                    ref={birthdayInput}
+                    editable={!saving}
+                    accessibilityLabel="생년월일"
+                    accessibilityHint={
+                      errors.birthday ??
+                      'YYYY-MM-DD 형식으로 입력해주세요. 예: 2024-03-15'
+                    }
+                    aria-describedby={
+                      errors.birthday
+                        ? 'child-birthday-error child-birthday-hint'
+                        : 'child-birthday-hint'
+                    }
+                    aria-invalid={Boolean(errors.birthday)}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#88889D"
+                    value={birthday}
+                    onChangeText={(value) => {
+                      setBirthday(value);
+                      setErrors((current) => ({
+                        ...current,
+                        birthday: undefined,
+                      }));
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={() => void save()}
+                    style={[styles.input, errors.birthday && styles.invalid]}
+                  />
+                  <Text nativeID="child-birthday-hint" style={styles.hint}>
+                    예: 2024-03-15 · 오늘까지의 날짜를 입력해주세요.
                   </Text>
-                ) : null}
-                <Text style={styles.label}>생년월일 (필수)</Text>
-                <TextInput
-                  ref={birthdayInput}
-                  accessibilityLabel="생년월일"
-                  accessibilityHint={
-                    errors.birthday ??
-                    'YYYY-MM-DD 형식으로 입력해주세요. 예: 2024-03-15'
-                  }
-                  aria-describedby={
-                    errors.birthday
-                      ? 'child-birthday-error child-birthday-hint'
-                      : 'child-birthday-hint'
-                  }
-                  aria-invalid={Boolean(errors.birthday)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#88889D"
-                  value={birthday}
-                  onChangeText={(value) => {
-                    setBirthday(value);
-                    setErrors((current) => ({
-                      ...current,
-                      birthday: undefined,
-                    }));
-                  }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onSubmitEditing={confirm}
-                  style={[styles.input, errors.birthday && styles.invalid]}
-                />
-                <Text nativeID="child-birthday-hint" style={styles.hint}>
-                  예: 2024-03-15 · 오늘까지의 날짜를 입력해주세요.
-                </Text>
-                {errors.birthday ? (
-                  <Text
-                    nativeID="child-birthday-error"
-                    accessibilityRole="alert"
-                    accessibilityLiveRegion="polite"
-                    style={styles.error}
+                  {errors.birthday ? (
+                    <Text
+                      nativeID="child-birthday-error"
+                      accessibilityRole="alert"
+                      accessibilityLiveRegion="polite"
+                      style={styles.error}
+                    >
+                      {errors.birthday}
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void save()}
+                    disabled={saving}
+                    style={({ pressed }) => [
+                      styles.button,
+                      pressed && styles.pressed,
+                    ]}
                   >
-                    {errors.birthday}
-                  </Text>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={confirm}
-                  style={({ pressed }) => [
-                    styles.button,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.buttonLabel}>입력 내용 확인</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+                    <Text style={styles.buttonLabel}>
+                      {saving ? '저장 중...' : '저장'}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={cancel}
+                    disabled={saving}
+                    style={styles.back}
+                  >
+                    <Text style={styles.backLabel}>취소</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          )}
+          {notice ? (
+            <Text
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              style={styles.noticeText}
+            >
+              {notice}
+            </Text>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal
+        transparent
+        visible={leaveAction !== null && !discarding}
+        onRequestClose={() => setLeaveAction(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            padding: 24,
+            backgroundColor: '#00000055',
+          }}
+        >
+          <View accessibilityRole="alert" style={styles.card}>
+            <Text style={styles.value}>저장하지 않은 변경사항이 있어요.</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setLeaveAction(null)}
+              style={styles.button}
+            >
+              <Text style={styles.buttonLabel}>계속 작성</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setEditing(false);
+                setDiscarding(true);
+              }}
+              style={styles.back}
+            >
+              <Text style={styles.backLabel}>변경사항 버리고 나가기</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import { loadAuthModule } from './auth-loader.mjs';
 
@@ -460,3 +461,40 @@ for (const value of [null, {}, { message: 123 }, undefined]) {
   assert.match(s.client.getSnapshot().notice, /서버 연결 실패/);
 }
 console.log('Auth session checks passed');
+
+// A profile storage namespace is stable across token rotation and resets on logout.
+{
+  const jwt = (subject, nonce) =>
+    `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ iss: 'growtogether-api', sub: subject, nonce })).toString('base64url')}.test`;
+  let saved = null;
+  let rotation = 0;
+  const { AuthSession } = loadAuthModule({
+    atob,
+    process: { env: { EXPO_PUBLIC_API_URL: 'http://localhost:18069' } },
+    fetch: async (url) =>
+      url.endsWith('/logout')
+        ? new Response(null, { status: 204 })
+        : json({ ...pair(1), accessToken: jwt('7', ++rotation) }),
+  });
+  const storage = {
+    read: async () => saved,
+    write: async (value) => {
+      saved = value;
+    },
+    clear: async () => {
+      saved = null;
+    },
+  };
+  const client = new AuthSession(storage, () => {});
+  await login(client);
+  const first = client.getSnapshot();
+  assert.equal(first.accountKey, 'growtogether-api:7');
+  const restored = new AuthSession(storage, () => {});
+  await restored.restore();
+  assert.equal(restored.getSnapshot().accountKey, first.accountKey);
+  await client.logout();
+  assert.equal(client.getSnapshot().accountKey, null);
+  assert.notEqual(client.getSnapshot().epoch, first.epoch);
+  await client.preview();
+  assert.equal(client.getSnapshot().accountKey, 'preview');
+}

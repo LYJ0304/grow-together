@@ -10,13 +10,41 @@ export type SessionStatus =
   | 'signedOut'
   | 'authenticated'
   | 'preview';
-export type Session = { status: SessionStatus; notice: string };
+export type Session = {
+  status: SessionStatus;
+  notice: string;
+  accountKey: string | null;
+  epoch: number;
+};
+
+// Local storage namespacing only; API authorization still verifies the JWT on the server.
+function accountKey(accessToken?: string): string | null {
+  try {
+    const parts = accessToken?.split('.');
+    if (parts?.length !== 3) return null;
+    const claims = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+    );
+    return claims.iss === 'growtogether-api' &&
+      typeof claims.sub === 'string' &&
+      /^[1-9]\d*$/.test(claims.sub)
+      ? `${claims.iss}:${claims.sub}`
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 // The epoch also rejects responses from requests started before logout/account changes.
 export class AuthSession {
   private tokens: Tokens | null = null;
   private epoch = 0;
-  private session: Session = { status: 'restoring', notice: '' };
+  private session: Session = {
+    status: 'restoring',
+    notice: '',
+    accountKey: null,
+    epoch: 0,
+  };
   private listeners = new Set<() => void>();
   private storageQueue: Promise<unknown> = Promise.resolve();
   private refreshTask: { epoch: number; promise: Promise<void> } | null = null;
@@ -34,7 +62,17 @@ export class AuthSession {
   };
 
   private publish(status: SessionStatus, notice = '') {
-    this.session = { status, notice };
+    this.session = {
+      status,
+      notice,
+      accountKey:
+        status === 'preview'
+          ? 'preview'
+          : status === 'authenticated'
+            ? accountKey(this.tokens?.accessToken)
+            : null,
+      epoch: this.epoch,
+    };
     this.listeners.forEach((listener) => listener());
   }
 
