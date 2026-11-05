@@ -167,7 +167,7 @@ try {
   await page.getByText(stored.content, { exact: true }).waitFor();
   assert.equal(
     await page.getByRole('button', { name: '수정', exact: true }).count(),
-    0,
+    1,
   );
   assert.equal(await regen().count(), 0);
   await page.screenshot({

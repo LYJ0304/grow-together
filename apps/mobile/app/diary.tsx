@@ -25,6 +25,7 @@ import {
   parseDiaryDate,
   readDiary,
   saveDiary,
+  updateDiary,
 } from '../src/lib/diary-storage';
 
 import {
@@ -91,6 +92,14 @@ const growthTags = ['#성취/시도', '#언어/표현', '#감정'];
 type DiaryStep = 'activities' | 'notes' | 'generating' | 'result' | 'saved';
 
 export default function DiaryScreen() {
+  const { date, mode } = useLocalSearchParams<{
+    date?: string;
+    mode?: string;
+  }>();
+  return <DiaryEditor key={`${date}:${mode}`} />;
+}
+
+function DiaryEditor() {
   const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
   useEffect(() => setHydrated(true), []);
   const { date: dateParam, mode } = useLocalSearchParams<{
@@ -136,14 +145,22 @@ export default function DiaryScreen() {
   const [deleted, setDeleted] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState('');
   const deletingRef = useRef(false);
-  const dirty =
-    !viewing &&
-    !saved &&
-    (selectedRecordTimes.length > 0 ||
-      !!growthNote.trim() ||
-      selectedGrowthTags.length > 0 ||
-      photoUris.length > 0 ||
-      !!draft);
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  const dirty = viewing
+    ? editingText !== null && editingText !== savedQuery.data?.content
+    : !viewing &&
+      !saved &&
+      (selectedRecordTimes.length > 0 ||
+        !!growthNote.trim() ||
+        selectedGrowthTags.length > 0 ||
+        photoUris.length > 0 ||
+        !!draft);
   usePreventRemove(dirty || saving || deleting, ({ data }) => {
     if (savingRef.current || deletingRef.current) return;
     setLeaveAction(() => () => navigation.dispatch(data.action));
@@ -177,7 +194,8 @@ export default function DiaryScreen() {
   }, [deleting, saving, dirty]);
 
   const removeDiary = async () => {
-    if (deletingRef.current) return;
+    if (deletingRef.current || savingRef.current || editingText !== null)
+      return;
     deletingRef.current = true;
     setDeleting(true);
     setDeleteNotice('');
@@ -246,6 +264,41 @@ export default function DiaryScreen() {
       <Text style={styles.backIcon}>‹</Text>
     </Pressable>
   );
+
+  const persistSavedEdits = async () => {
+    if (
+      savingRef.current ||
+      deletingRef.current ||
+      editingText === null ||
+      !editingText.trim() ||
+      !savedQuery.data
+    )
+      return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveNotice('');
+    try {
+      const diary = await updateDiary(dateKey, editingText);
+      if (!active.current) return;
+      await queryClient.cancelQueries({ queryKey: ['savedDiary', dateKey] });
+      if (!active.current) return;
+      queryClient.setQueryData(['savedDiary', dateKey], diary);
+      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
+      setEditingText(null);
+      setSaveNotice('변경사항을 저장했어요.');
+      Keyboard.dismiss();
+    } catch (error) {
+      if (active.current)
+        setSaveNotice(
+          error instanceof Error
+            ? error.message
+            : '변경사항을 저장하지 못했어요. 다시 시도해주세요.',
+        );
+    } finally {
+      savingRef.current = false;
+      if (active.current) setSaving(false);
+    }
+  };
 
   const persistDiary = async () => {
     if (
@@ -715,20 +768,27 @@ export default function DiaryScreen() {
                   viewing ? savedQuery.data?.sourceRecords : sourceRecords
                 }
                 editingText={editingText}
+                persisted={viewing}
+                busy={saving || deleting}
                 onChangeText={setEditingText}
                 onEdit={
-                  !viewing && !saving
+                  !saving && !deleting
                     ? () => {
                         setSaveNotice('');
-                        setEditingText(draft);
+                        setEditingText(displayedDraft);
                       }
                     : undefined
                 }
                 onCancel={() => {
+                  setSaveNotice('');
                   Keyboard.dismiss();
                   setEditingText(null);
                 }}
                 onComplete={() => {
+                  if (viewing) {
+                    void persistSavedEdits();
+                    return;
+                  }
                   if (editingText?.trim()) {
                     setDraft(editingText.trim());
                     setEditingText(null);
@@ -745,7 +805,9 @@ export default function DiaryScreen() {
               ) : null}
               {editingText !== null ? (
                 <Text style={styles.recordHint}>
-                  본문에서 수정을 완료한 후 저장해주세요.
+                  {viewing
+                    ? '변경사항 저장을 누르면 기존 일기에 반영돼요.'
+                    : '본문에서 수정을 완료한 후 저장해주세요.'}
                 </Text>
               ) : (
                 <Pressable
@@ -774,8 +836,9 @@ export default function DiaryScreen() {
               {viewing ? (
                 <Pressable
                   accessibilityRole="button"
-                  disabled={deleting}
+                  disabled={deleting || saving || editingText !== null}
                   onPress={() => {
+                    if (savingRef.current || editingText !== null) return;
                     setDeleteNotice('');
                     setConfirmDelete(true);
                   }}

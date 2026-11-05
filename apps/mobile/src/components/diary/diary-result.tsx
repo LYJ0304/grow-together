@@ -46,6 +46,8 @@ type Props = {
   photos: string[];
   source?: DiarySourceRecords;
   editingText: string | null;
+  persisted?: boolean;
+  busy?: boolean;
   onChangeText: (text: string) => void;
   onEdit?: () => void;
   onCancel: () => void;
@@ -57,6 +59,8 @@ export function DiaryResultView({
   photos,
   source,
   editingText,
+  persisted = false,
+  busy = false,
   onChangeText,
   onEdit,
   onCancel,
@@ -97,6 +101,7 @@ export function DiaryResultView({
             <TextInput
               accessibilityLabel="일기 본문 수정"
               multiline
+              editable={!busy}
               autoFocus
               textAlignVertical="top"
               scrollEnabled={false}
@@ -119,10 +124,16 @@ export function DiaryResultView({
               </Text>
             ) : null}
             <View style={styles.editActions}>
-              <Action label="취소" onPress={onCancel} />
+              <Action label="취소" disabled={busy} onPress={onCancel} />
               <Action
-                label="수정 완료"
-                disabled={!editingText.trim()}
+                label={
+                  persisted
+                    ? busy
+                      ? '저장 중...'
+                      : '변경사항 저장'
+                    : '수정 완료'
+                }
+                disabled={busy || !editingText.trim()}
                 onPress={onComplete}
               />
             </View>
@@ -130,7 +141,9 @@ export function DiaryResultView({
         )}
         {onEdit ? (
           <Text style={styles.caption}>
-            기록을 엮은 초안 · 저장 전 자유롭게 다듬어주세요
+            {persisted
+              ? '저장된 일기의 본문을 수정할 수 있어요.'
+              : '기록을 엮은 초안 · 저장 전 자유롭게 다듬어주세요'}
           </Text>
         ) : null}
       </View>
