@@ -8,6 +8,7 @@ import {
 } from 'react-native-safe-area-context';
 import { useAuth } from '../src/components/auth-provider';
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { useChildProfile } from '../src/lib/use-child-profile';
 
 const menuGroups = [
   {
@@ -31,8 +32,17 @@ export default function MyPageScreen() {
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const [notice, setNotice] = useState('');
+  const profile = useChildProfile();
+  const profileLabel = !profile.accountKey
+    ? '계정 확인 필요'
+    : profile.isPending
+      ? '아이 정보 불러오는 중'
+      : profile.isError
+        ? '아이 정보 조회 실패'
+        : profile.data
+          ? `${profile.data.name} · ${profile.data.birthday}`
+          : '등록된 아이가 없어요';
 
-  // shortcut: profile values are preview data until the mobile profile API is connected.
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
@@ -52,10 +62,10 @@ export default function MyPageScreen() {
             <Text style={styles.avatarLabel}>가</Text>
           </View>
           <View style={styles.profileText}>
-            <Text style={styles.profileName}>사랑둥이 가족</Text>
-            <Text style={styles.profileDays}>
-              아이와 함께한 지 <Text style={styles.accent}>+378일</Text>
+            <Text style={styles.profileName}>
+              {profile.data?.name ?? '아이 프로필'}
             </Text>
+            <Text style={styles.profileDays}>{profileLabel}</Text>
           </View>
         </View>
 
@@ -80,7 +90,9 @@ export default function MyPageScreen() {
                   <View style={styles.menuText}>
                     <Text style={styles.menuTitle}>{item.title}</Text>
                     <Text style={styles.menuDescription}>
-                      {item.description}
+                      {item.title === '아이 프로필'
+                        ? `${profileLabel} · ${profile.data ? '수정하기' : '추가하기'}`
+                        : item.description}
                     </Text>
                   </View>
                   <Text style={styles.chevron} accessible={false}>

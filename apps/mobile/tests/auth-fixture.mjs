@@ -1,8 +1,8 @@
 // UI-only fixture for existing feature tests; auth-ui.mjs tests real route guards.
 // Runs in the browser before hydration, without enabling the production bypass.
-export function authenticatedSessionFixture() {
+export function authenticatedSessionFixture(subject = '1') {
   const tokens = {
-    accessToken: 'ui-test-access',
+    accessToken: `eyJhbGciOiJIUzI1NiJ9.${btoa(JSON.stringify({ iss: 'growtogether-api', sub: subject }))}.ui-test`,
     refreshToken: 'ui-test-refresh',
     tokenType: 'Bearer',
     expiresIn: 900,
