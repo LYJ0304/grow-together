@@ -35,10 +35,10 @@ services:
       timeout: 5s
       retries: 10
 
-  ai-worker:
-    build: ../apps/ai-worker
+  worker:
+    build: ../apps/worker
     profiles: ["worker"]
-    env_file: ../apps/ai-worker/.env
+    env_file: ../apps/worker/.env
 
 volumes:
   postgres-data:

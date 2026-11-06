@@ -13,9 +13,9 @@ APP_FILES = {
     'mobile': ('apps/mobile/package.json', 'apps/mobile/app.json',
                'apps/mobile/package-lock.json'),
     'api': ('apps/api/build.gradle',),
-    'worker': ('apps/ai-worker/pyproject.toml', 'apps/ai-worker/uv.lock'),
+    'worker': ('apps/worker/pyproject.toml', 'apps/worker/uv.lock'),
 }
-APP_DIRS = {'mobile': 'apps/mobile/', 'api': 'apps/api/', 'worker': 'apps/ai-worker/'}
+APP_DIRS = {'mobile': 'apps/mobile/', 'api': 'apps/api/', 'worker': 'apps/worker/'}
 VERSION = re.compile(
     r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
     r'(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?'

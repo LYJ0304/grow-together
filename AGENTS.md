@@ -2,8 +2,8 @@
 
 1. Prefer readable, maintainable code over cleverness.
 2. Do not add abstractions or infrastructure before a concrete requirement needs them.
-3. Keep mobile, API, and AI worker responsibilities independent.
-4. Keep the AI worker provider- and feature-neutral; it is not a RAG-only component.
+3. Keep mobile, API, and worker responsibilities independent.
+4. Keep the worker provider- and feature-neutral; it is not a RAG-only component.
 5. Do not prebuild unrequested features, directories, or placeholder classes.
 6. Keep secrets out of source control; document required environment variables in `.env.example`.
 7. Use TDD (RED → GREEN → REFACTOR) for behavior changes, including direct

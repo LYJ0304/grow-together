@@ -62,7 +62,7 @@ checks, inspect the whole diff and `git diff --check` before a named-file commit
 | Skill/manifests | helper consistency; inspect lockfile/dependency diff; `git diff --check` |
 | Mobile | `npm ci`, `npm run typecheck`, `npm run lint`, relevant `npm run test:*`, `npm run format:check`; web artifact when applicable: `npx expo export --platform web` |
 | API | `./gradlew test` and `./gradlew bootJar` in `apps/api`; Java 21 and Docker/Postgres integration tests as required; optional root `docker build -f apps/api/Dockerfile -t growtogether-api:release-check .` |
-| Worker | `uv sync --locked`, `uv run ruff check .`, `uv run pytest` in `apps/ai-worker` |
+| Worker | `uv sync --locked`, `uv run ruff check .`, `uv run pytest` in `apps/worker` |
 | Contract | parse OpenAPI, resolve refs, compare changed operations with controllers and actual consumers |
 
 Record exact commands, tested tree/head, results/log references, skipped tests
