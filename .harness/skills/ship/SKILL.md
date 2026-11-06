@@ -65,6 +65,8 @@ branch, including all states, and read the associated PR with `gh pr view`:
    Fix task failures before publishing; disclose missing prerequisites without
    claiming a successful ship. Record the observed TDD summary, or the applicable
    exception and actual validation, alongside final check results in the PR body.
+   For API work, assess the selected test scopes and excluded or unverified
+   coverage using the [API test organization](../../conventions.md#api-test-organization) rules.
    Report missing historical evidence explicitly; a passing final suite alone
    does not establish that RED occurred. Do not recreate failures retroactively.
 3. Stage explicit task paths. Run `git diff --cached --check` and inspect the staged

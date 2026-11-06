@@ -9,6 +9,7 @@
 7. Use TDD (RED → GREEN → REFACTOR) for behavior changes, including direct
    implementation requests outside `start`. Add focused tests for non-trivial
    behavior; follow the [TDD procedure and exceptions](.harness/conventions.md#tdd).
+   Choose API test scopes using the [API test organization](.harness/conventions.md#api-test-organization) rules.
 8. Prefer official documentation and stable releases.
 9. Minimize service-to-service coupling; use `contracts/openapi.yaml` for API contracts.
    Update it alongside external API behavior changes; when affected or uncertain,
