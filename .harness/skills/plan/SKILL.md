@@ -9,9 +9,11 @@ description: Plan a GrowTogether repository task on plan, /plan, or a work-plan 
 
 `plan → raise → start <issue-number> → ship`
 
+Alternatively: `start <task-description> → ship` (no issue required).
+
 - **plan (this stage):** task request → plan shown in the conversation.
 - **raise:** selected conversation plan plus user corrections → GitHub issue number/URL.
-- **start:** issue number → implementation, actual branch/checkout, verification results.
+- **start:** issue number or task description → implementation, actual branch/checkout, verification results.
 - **ship:** task handoff → commit/push/PR, retain the work environment until merge;
   a later invocation verifies merge and safely cleans up.
 
@@ -48,4 +50,6 @@ conversation. Do not silently replace another task's plan.
 
 Return the plan, main decisions, and unresolved blockers. A standalone `plan`
 does not implement, register an issue, commit, or push. The user can request
-`raise` next; it consumes this conversation result, not a file path.
+`raise` next; it consumes this conversation result, not a file path. The user
+can instead request `start <task-description>` using the plan's scope without
+registering an issue; planning alone does not authorize implementation.
