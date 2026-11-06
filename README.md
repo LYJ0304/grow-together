@@ -62,7 +62,7 @@ AI worker    (독립 실행, 선택 사항)
 | 환경 파일 | 주요 변수 | 용도 |
 | --- | --- | --- |
 | [infra/.env.example](infra/.env.example) | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose의 PostgreSQL 설정 |
-| [apps/mobile/.env.example](apps/mobile/.env.example) | `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS` | API 주소와 UI 미리보기 설정; 공개 값만 사용 |
+| [apps/mobile/.env.example](apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS` | API 주소와 UI 미리보기 설정; 공개 값만 사용 |
 | [apps/api/.env.example](apps/api/.env.example) | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` | DB 연결, JWT 서명, 브라우저 접근 설정 |
 | [apps/ai-worker/.env.example](apps/ai-worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL` | 작업 실행 로그 설정 |
 

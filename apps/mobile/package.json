@@ -35,7 +35,9 @@
     "test:chat:composer": "node tests/chat-composer.mjs",
     "test:chat:draft": "node tests/chat-draft.mjs",
     "test:chat:status": "node tests/chat-status.mjs",
-    "test:brand": "node tests/brand-assets.mjs"
+    "test:brand": "node tests/brand-assets.mjs",
+    "test:env": "node tests/env.mjs",
+    "test:env:ui": "node tests/env-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

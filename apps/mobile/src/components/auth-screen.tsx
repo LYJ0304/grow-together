@@ -1,3 +1,4 @@
+import { env } from '../config/env';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -23,9 +24,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   const { registered } = useLocalSearchParams<{ registered?: string }>();
   const pending = useRef(false);
   const [busy, setBusy] = useState(false);
-  const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
-  const canSkipAuthentication =
-    authBypassSetting === undefined || authBypassSetting === 'true';
+  const canSkipAuthentication = env.canPreview;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

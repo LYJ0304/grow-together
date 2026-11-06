@@ -1,3 +1,4 @@
+import { env } from '../../../config/env';
 import { ApiError, messages } from '../../api/errors';
 import { http } from '../../api/http';
 import { authApi } from './api';
@@ -270,8 +271,7 @@ export class AuthSession {
   }
 
   async preview() {
-    const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
-    if (authBypassSetting !== undefined && authBypassSetting !== 'true') return;
+    if (!env.canPreview) return;
     const cleared = this.clearSession();
     const epoch = this.epoch;
     await cleared;

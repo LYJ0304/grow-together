@@ -6,7 +6,10 @@ const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
 // Load the auth module graph with an isolated environment and fetch per test.
-export function loadAuthModule(globals) {
+export function loadAuthModule(
+  globals,
+  entry = '../src/lib/features/auth/index.ts',
+) {
   const context = vm.createContext({
     Headers,
     AbortController,
@@ -40,5 +43,5 @@ export function loadAuthModule(globals) {
     );
     return module.exports;
   }
-  return load(new URL('../src/lib/features/auth/index.ts', import.meta.url));
+  return load(new URL(entry, import.meta.url));
 }
