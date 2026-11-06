@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Publish a repository issue task on ship or /ship while retaining its work environment for review. On a later invocation for a merged PR, verify merge evidence and safely clean up its linked task worktree.
+description: Publish a repository task, with or without an issue, on ship or /ship while retaining its work environment for review. On a later invocation for a merged PR, verify merge evidence and safely clean up its linked task worktree.
 ---
 
 # Ship
@@ -9,9 +9,11 @@ description: Publish a repository issue task on ship or /ship while retaining it
 
 `plan → raise → start <issue-number> → ship`
 
+Alternatively: `start <task-description> → ship` (no issue required).
+
 - **plan:** task request → plan shown in the conversation.
 - **raise:** selected conversation plan plus user corrections → GitHub issue number/URL.
-- **start:** issue number → implementation, actual branch/checkout, verification results.
+- **start:** issue number or task description → implementation, actual branch/checkout, verification results.
 - **ship (this stage):** task handoff → commit/push/PR, retain the work environment until merge;
   a later invocation verifies merge and safely cleans up.
 
@@ -23,8 +25,8 @@ for already authorized actions. Do not wait or poll indefinitely for a merge.
 ## Resolve the task and PR state first
 
 Read root AGENTS.md and [conventions](../../conventions.md). Resolve the repository
-from its remote, issue, task branch, actual checkout (primary or linked), established
-base/PR target, and intended merge method. If a resumed task's old base was
+from its remote, issue if present, task branch, actual checkout (primary or linked),
+established base/PR target, and intended merge method. If a resumed task's old base was
 removed, resolve its target from current GitHub evidence and user instructions;
 do not recreate the base or silently rebase/retarget. New general PRs target `main`
 with squash; preserve explicit exceptions and existing targets. Never publish a maintained
@@ -32,7 +34,12 @@ branch or infer the active task solely from an old detached worktree's directory
 
 Use the actual task checkout even when invoked from the primary checkout. Preserve
 unrelated local changes. If it is absent, inspect the retained worktree's branch and
-GitHub association before recreating anything. Clarify only genuinely ambiguous tasks.
+GitHub association before recreating anything. For a task without an issue, use
+its latest conversation handoff and completion criteria, then verify the actual
+branch/checkout and any PR. Do not require an issue or plan file, or automatically
+create/look up/assign an issue. If the handoff is missing, recover the scope from
+available user context and Git/PR evidence; ask only if it remains ambiguous.
+Clarify only genuinely ambiguous tasks.
 
 Before staging, committing, or pushing, search PRs by repository and complete head
 branch, including all states, and read the associated PR with `gh pr view`:
@@ -46,7 +53,8 @@ branch, including all states, and read the associated PR with `gh pr view`:
 
 ## Publish and retain the environment
 
-1. Read the issue and inspect tracked, staged, and untracked task changes and commits
+1. Read the issue when present, otherwise the latest description-task handoff,
+   and inspect tracked, staged, and untracked task changes and commits
    against the established base. Do not include another task's staged files.
    Assess OpenAPI impact across the complete PR change and local task files.
    When affected or uncertain, use the shared [contract sync procedure](../../references/openapi.md)
@@ -71,11 +79,14 @@ branch, including all states, and read the associated PR with `gh pr view`:
    `--body-file` (temporary file outside the repository). The title must use
    `<type>(<scope>): <English description>`; write the body in Korean. Keep code,
    commands, paths, URLs, identifiers, and `Closes #<number>` as written. Record the
-   intended merge method and use `Closes` only for completed scope. Verify the
-   published title/body language and that the PR head equals the pushed task commit.
+   intended merge method and use `Closes #<number>` only for completed scope
+   linked to a real issue. Without an issue, describe the task and completion
+   evidence directly; omit `Closes` and never invent an issue or placeholder.
+   Verify the published title/body language and that the PR head equals the pushed task commit.
    Apply conventions' type/domain labels on both creation and updates: use the
-   linked issue's classification as a starting point, then reconcile with the
-   final change scope and title type. Create only missing required labels without
+   linked issue's classification as a starting point when present, then reconcile
+   with the final change scope and title type. Without an issue, derive the type
+   and domain labels directly from the final changes using conventions' tables. Create only missing required labels without
    changing existing label settings. Use repeated `--label` flags on create;
    on edit, add missing desired labels and remove only obsolete managed labels,
    preserving unrelated labels. Read back `gh pr view --json labels` to verify

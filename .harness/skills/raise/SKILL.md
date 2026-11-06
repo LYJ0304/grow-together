@@ -9,9 +9,11 @@ description: Register the selected conversation plan as a GitHub issue on raise 
 
 `plan → raise → start <issue-number> → ship`
 
+Alternatively: `start <task-description> → ship` (no issue required).
+
 - **plan:** task request → plan shown in the conversation.
 - **raise (this stage):** selected conversation plan plus user corrections → GitHub issue number/URL.
-- **start:** issue number → implementation, actual branch/checkout, verification results.
+- **start:** issue number or task description → implementation, actual branch/checkout, verification results.
 - **ship:** task handoff → commit/push/PR, retain the work environment until merge;
   a later invocation verifies merge and safely cleans up.
 
@@ -64,4 +66,6 @@ Return the issue number/link, whether it was created or updated, applied labels,
 any labels created, and remaining decisions. The issue becomes the persisted
 requirements that `start <number>` reads, so a later session does not need the
 original planning conversation.
-Standalone `raise` does not change product code, commit, or start implementation.
+Issue registration is optional for `start <task-description>`; that path does not
+invoke raise automatically. Standalone `raise` does not change product code,
+commit, or start implementation.

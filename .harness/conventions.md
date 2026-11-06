@@ -7,13 +7,19 @@ for the current request. Requirements in the user's request take precedence.
 
 `plan → raise → start <issue-number> → ship`
 
+Alternatively: `start <task-description> → ship`, without issue registration.
+
 The plan is shown in the conversation, including subsequent user corrections.
 `raise` consumes that selected plan and returns an issue number/URL. The GitHub
-issue persists the requirements; `start` reads it without a local plan file and
-returns repository, issue, base, PR target, intended merge method, task branch,
-actual checkout path (primary or linked), change scope, executed checks/results, and remaining limitations.
-`ship` verifies the latest handoff against Git/GitHub and returns commits, PR URL,
-verification and `awaiting merge; environment retained` with the actual branch/path.
+issue persists the requirements for issue tasks; description tasks use the supplied
+work description, relevant conversation plan, and latest user instructions without
+automatically creating, looking up, or assigning an issue. `start` returns repository,
+issue number/URL or explicitly no issue with description and completion criteria,
+base, PR target, intended merge method, task branch, actual checkout path (primary
+or linked), change scope, executed checks/results, and remaining limitations.
+Neither path needs a local plan file or a separate status store. `ship` verifies
+the latest task handoff against the actual checkout/branch, Git and PR, then
+returns commits, PR URL, verification and `awaiting merge; environment retained` with the actual branch/path.
 A later ship invocation or separately requested merge verifies the completed merge
 before safe cleanup; it reports removal or the reason for retaining the environment.
 
@@ -29,8 +35,13 @@ SHA, findings, actual checks and limits, and publication status.
 
 Only perform requested stages. Explicitly combined requests authorize that
 sequence without another confirmation; standalone stages stop at their own
-boundary. Existing issues can go directly to start. If a new session lacks a
-selected plan, ask for its text or a planning request rather than inventing it.
+boundary. Existing issues or actionable descriptions can go directly to start.
+A bare positive integer selects the issue path; invalid numbers or failed issue
+lookups must not silently become descriptions. Numbers within prose do not imply
+an issue. For empty input or scope that cannot be established from context, ask
+for the task. If raise lacks a selected plan in a new session, ask for its text or
+a planning request rather than inventing it; this does not require a plan for
+`start <task-description>`.
 Do not generate/search a plan directory to bridge missing conversation context.
 Save a plan only on an explicit file-output request and preserve existing user
 plan files. GitHub body-file transport uses a temporary file outside the repo.
@@ -54,10 +65,17 @@ plan files. GitHub body-file transport uses a temporary file outside the repo.
 - Issues: purpose, current state, scope, implementation steps, completion criteria,
   unresolved decisions, and relevant links. Apply the type and domain labels below.
 - PRs: concrete problem and resulting behavior, verification, remaining limits,
-  and `Closes #<number>` only when the PR completes the issue.
-- Branch: `<type>/issue-<number>-<slug>`; use a short lowercase hyphenated slug.
-  Worktree: a sibling of the primary worktree named `<repo>-issue-<number>`.
-  Find the primary worktree with `git worktree list --porcelain`.
+  and `Closes #<number>` only when the PR completes a real linked issue. Without
+  an issue, describe the task and completion evidence and omit `Closes`; never
+  create a placeholder issue to satisfy the PR format.
+- Issue task branch: `<type>/issue-<number>-<slug>`; worktree: a sibling of the
+  primary worktree named `<repo>-issue-<number>`. Description task branch:
+  `<type>/task-<slug>`; sibling worktree: `<repo>-task-<slug>`. Use a short
+  lowercase hyphenated slug from the task scope. Find the primary worktree with
+  `git worktree list --porcelain`. Resume verified tasks using conversation
+  handoff, actual checkout/branch, and existing PR; a matching slug alone is
+  insufficient. Resolve ambiguous tasks and path collisions without overwriting
+  existing work or silently assigning a different task to the same slug.
 - Default base and PR target for new general tasks: remote `main`. Fetch
   before creating a task branch. Never reset or switch the user's current branch merely to prepare a separate task worktree.
   If the user explicitly requests a task branch in the current checkout instead,
@@ -91,8 +109,10 @@ change scope, not only the title scope (`auth` can affect both API and mobile).
 
 Apply every relevant domain for cross-module work. Do not invent a domain for
 work outside this table or label all domains for a generic root file change.
-PRs start with the linked issue's type/domain classification, then reconcile it
-with the final change scope and title type. Do not copy unrelated issue labels.
+PRs start with the linked issue's type/domain classification when present, then
+reconcile it with the final change scope and title type. Without an issue, derive
+the type and all relevant domains from the final changes using the tables above.
+Do not copy unrelated issue labels or create an issue to obtain labels.
 
 Before creation/update, list repository labels with
 `gh label list --repo <owner/repo> --limit 1000 --json name,color,description`.
@@ -119,6 +139,9 @@ before retrying. Never bulk-relabel other issues/PRs; merged-PR cleanup does not
 create or change labels.
 
 ## Start assignees
+
+This procedure applies only to issue-number tasks. Description tasks skip issue
+lookup and assignment entirely, including on resume.
 
 After validating the open issue and resolving the task branch/checkout and any
 existing PR state, assign the issue before implementation, including on resume.
@@ -269,7 +292,8 @@ secret values or silently copy them between worktrees.
 ## Skill discovery
 
 `.agents/skills/<name>` is a relative symlink to `.harness/skills/<name>`.
-Use `$plan`, `$raise`, `$start 1321`, `$ship`, `$review 1321`, and `$release`, or select them with `/skills`.
+Use `$plan`, `$raise`, `$start <issue-number>`, `$start <task-description>`,
+`$ship`, `$review 1321`, and `$release`, or select them with `/skills`.
 If the current session has not refreshed its skills, start a new session from
 this checkout. AGENTS.md also routes plain-text requests to the canonical files.
 On platforms that do not restore Git symlinks, enable symlink support or read

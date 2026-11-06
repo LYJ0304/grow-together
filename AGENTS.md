@@ -26,22 +26,26 @@ use the repository skill linked below for this workflow.
 | --- | --- | --- |
 | `plan <task>` or `$plan <task>` | [plan](.harness/skills/plan/SKILL.md) | Plan shown in the conversation; no files or implementation by default |
 | `raise` or `$raise` | [raise](.harness/skills/raise/SKILL.md) | GitHub issue from the selected conversation plan and latest corrections |
-| `start 1321` or `$start 1321` | [start](.harness/skills/start/SKILL.md) | Implement issue #1321 in a separate worktree |
+| `start <issue-number>` / `start <task-description>` (also `$start`) | [start](.harness/skills/start/SKILL.md) | Implement an issue or a described task in a separate worktree |
 | `$release`, `$release prepare`, `$release publish <PR_NUMBER>`, `$release status` | [release](.harness/skills/release/SKILL.md) | Inspect, prepare or publish approved app releases; never deploy |
 | `ship` or `$ship` | [ship](.harness/skills/ship/SKILL.md) | Validate, commit, push, create/update PR; preserve the environment until verified merge |
 | `review 1321` or `$review 1321` | [review](.harness/skills/review/SKILL.md) | Review PR correctness, safety, and code quality; publish Korean summary and inline comments |
 
-These are agent requests, not shell commands. `/plan`, `/raise`, `/start 1321`,
-`/ship`, and `/review 1321` in user messages route to the same skills; they do not register
+These are agent requests, not shell commands. `/plan`, `/raise`, `/start <issue-number>`,
+`/start <task-description>`, `/ship`, and `/review 1321` in user messages route
+to the same skills; they do not register
 new native slash commands. Select a conversation plan when multiple plans exist.
 
 Use [harness conventions](.harness/conventions.md) for issue/PR formatting,
 branch names, checks, and failure handling. `plan → raise → start <number> → ship`
-is the usual sequence; an existing issue can go directly to `start`.
+is the usual sequence; an existing issue can go directly to `start`. Alternatively,
+`start <task-description> → ship` implements a described task without automatically
+creating, looking up, or assigning an issue.
 Each SKILL.md describes the complete workflow and its own input/output boundary.
-The handoff is conversation plan → issue number/URL → actual task checkout and
-verification results → PR publication with environment retained → verified
-merge/cleanup results on a later invocation. No local plan file is required.
+The handoff is issue requirements or a described task in the conversation →
+actual task checkout, scope, completion criteria and verification results → PR
+publication with environment retained → verified merge/cleanup results on a later
+invocation. No local plan file or separate status store is required.
 Invoke only the requested stages; explicitly combined requests can proceed
 through those stages without asking again. Standalone `plan` does not write
 files or publish. `start` implements and verifies; `ship` commits/pushes/publishes.
@@ -55,7 +59,7 @@ request changes, merge, or clean up the retained environment. Its skill defines
 snapshot verification, duplicate prevention, and publication failure handling.
 
 - `start` uses the latest remote `main` for new tasks unless another base
-  was requested. Resume existing issue branches/worktrees with their established
+  was requested. Resume existing task branches/worktrees with their established
   base and PR target, preserving unrelated local work. If an old base was deleted,
   resolve the intended target from current GitHub state and user instructions;
   do not recreate the base or silently retarget/rebase the task.
@@ -72,9 +76,13 @@ snapshot verification, duplicate prevention, and publication failure handling.
   domain labels (`mobile`, `api`, `worker`, `harness`, `contracts`). Create only
   missing required labels; preserve existing label settings and unrelated labels.
   Follow conventions for classification, repeat runs, and result verification.
-- `start` assigns the issue before implementation, using explicitly requested
-  GitHub login(s) or the authenticated user by default. Preserve existing assignees,
+- For issue-number tasks, `start` assigns the issue before implementation, using
+  explicitly requested GitHub login(s) or the authenticated user by default.
+  Preserve existing assignees,
   add only missing users, and verify assignment; report failures before proceeding.
+  Description tasks use `<type>/task-<slug>` and sibling `<repo>-task-<slug>`
+  worktrees, skip issue operations, and hand off scope in the conversation.
+  Their PRs derive labels from the final changes and omit issue-closing references.
 - Write issue titles as `<type>(<scope>): <한글 설명>` and issue bodies in Korean.
   Write PR titles as `<type>(<scope>): <English description>` and PR bodies in Korean.
   Keep code, commands, paths, URLs, and identifiers in their original form.
