@@ -95,7 +95,10 @@ final handoff so ship describes the actual change, not a superseded plan.
    intended RED failure before implementation, reach GREEN, then REFACTOR as
    needed and rerun relevant tests. Follow its separate guidance for
    behavior-preserving refactoring, excluded changes, and resumed work with
-   missing historical evidence. Run the changed area's required final checks.
+   missing historical evidence. For API work, apply the shared
+   [API test organization](../../conventions.md#api-test-organization) rules when
+   choosing tests and summarizing coverage in the handoff.
+   Run the changed area's required final checks.
    For external API contract changes or uncertain impact, follow the shared
    [contract sync procedure](../../references/openapi.md) during implementation;
    include the OpenAPI changes/checks or no-impact reason in the handoff.

@@ -221,6 +221,43 @@ under Verification. Cycle checks complement those final checks. Continue through
 cycles without asking for approval at each phase; existing stage boundaries and
 explicit approval requirements still apply.
 
+### API test organization
+
+For Java tests in `apps/api`, choose test scopes by the responsibility of the
+changed behavior. Keep distinct responsibilities in appropriate test classes;
+do not concentrate every case in one integration test class.
+
+| Test scope | Responsibility | Existing tools |
+| --- | --- | --- |
+| ControllerTest | HTTP status, request deserialization/validation, authentication at the HTTP boundary, authenticated owner passed to the service, response JSON | `@WebMvcTest`, MockMvc, mocked service |
+| ServiceTest | Business branches, duplicate/missing resources, no writes or changes on failure | Mockito unit tests |
+| RepositoryTest | Persistence, owner-scoped queries, updates verified after flush and clear | `@DataJpaTest` |
+| IntegrationTest | Core flows across real layers, account isolation, data preservation and rollback on failure | `@SpringBootTest`, MockMvc |
+| PostgreSQL tests | Flyway migrations, real database constraints/query differences, locking and concurrency | Existing Testcontainers setup |
+
+- Add only scopes needed by the change. Five classes per feature are not a
+  requirement; do not create empty classes or tests solely to fill this table.
+- Keep input-error combinations and request boundary cases in controller tests.
+  Use unit or slice tests when they can verify the behavior without a full
+  Spring context. Retain integration tests for guarantees that need real layers
+  to work together, including actual account isolation and transaction rollback.
+- Use PostgreSQL when the guarantee depends on its behavior. Mock or H2 tests
+  alone do not establish PostgreSQL migration, constraint, lock or concurrency
+  correctness. Keep concurrency tests outside a shared test transaction so
+  competing operations use independent transactions.
+- Start each RED cycle with the smallest suitable scope that can observe the
+  behavior, including PostgreSQL tests when needed. After GREEN, run related
+  tests; finish with the changed area's checks under Verification.
+- Before moving existing tests, run the relevant suite. Preserve the meaning
+  and coverage of success, failure and boundary cases when moving assertions
+  between scopes. Keep the behavior-preserving refactoring procedure below;
+  do not manufacture RED failures for test reorganization.
+
+The [diary tests](../apps/api/src/test/java/com/growtogether/diary/) and
+[child tests](../apps/api/src/test/java/com/growtogether/child/) illustrate this
+separation. Use them as references for responsibilities, not templates requiring
+every file or case to be copied. Mobile and worker test organization is unchanged.
+
 ### Applicability and exceptions
 
 - Features and bug fixes follow the full cycle above.
@@ -242,6 +279,8 @@ representative tests and commands, the observed RED failure reason, GREEN result
 and refactoring plus rerun results (or why no refactoring was needed). For
 behavior-preserving refactoring, report before/after results; for excluded work,
 report the reason and actual validation. Preserve failed or unrun checks as such.
+For API work, include the selected test scopes and reasons for any excluded or
+unverified coverage in this same summary; no separate report is required.
 
 On resumed work, distinguish observed results from missing historical evidence.
 Do not infer RED from a passing final suite or alter completed implementation to
