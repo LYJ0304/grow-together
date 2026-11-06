@@ -22,6 +22,8 @@ import {
   validateChildProfile,
   type ChildProfileErrors,
 } from '../src/lib/child-profile';
+import { ApiError } from '../src/lib/api/errors';
+import { createChildApi } from '../src/lib/features/child/childApi';
 import { useChildProfile } from '../src/lib/use-child-profile';
 
 export default function ChildrenScreen() {
@@ -31,12 +33,15 @@ export default function ChildrenScreen() {
 
 function ChildrenEditor() {
   const profile = useChildProfile();
-  const { client, epoch } = useAuth();
+  const { client, epoch, status } = useAuth();
+  const api = createChildApi(client);
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [birthday, setBirthday] = useState('');
   const [errors, setErrors] = useState<ChildProfileErrors>({});
   const [editing, setEditing] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
@@ -69,6 +74,8 @@ function ChildrenEditor() {
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, saving]);
   const edit = () => {
+    setCreating(!profile.data);
+    setConflict(false);
     setName(profile.data?.name ?? '');
     setBirthday(profile.data?.birthday ?? '');
     setErrors({});
@@ -76,12 +83,19 @@ function ChildrenEditor() {
     setEditing(true);
   };
   const cancel = () => {
+    setConflict(false);
     setEditing(false);
     setErrors({});
     setNotice('');
   };
   const save = async () => {
-    if (pending.current || !profile.accountKey || !profile.isSuccess) return;
+    if (
+      pending.current ||
+      conflict ||
+      !profile.accountKey ||
+      !profile.isSuccess
+    )
+      return;
     const nextErrors = validateChildProfile({ name, birthday });
     setErrors(nextErrors);
     if (nextErrors.name) {
@@ -96,9 +110,18 @@ function ChildrenEditor() {
     setSaving(true);
     setNotice('');
     try {
-      const value = await saveChildProfile(profile.accountKey, {
-        name,
-        birthday,
+      const input = { name: name.trim(), birthday: birthday.trim() };
+      const value =
+        status === 'preview'
+          ? await saveChildProfile(profile.accountKey, input)
+          : creating
+            ? await api.createProfile(input)
+            : await api.saveProfile(input);
+      if (!current()) return;
+      // Prevent an older in-flight GET from replacing the saved response.
+      await queryClient.cancelQueries({
+        queryKey: profile.queryKey,
+        exact: true,
       });
       if (!current()) return;
       queryClient.setQueryData(profile.queryKey, value);
@@ -106,7 +129,13 @@ function ChildrenEditor() {
       setNotice('아이 정보를 저장했어요.');
       Keyboard.dismiss();
     } catch (error) {
-      if (current())
+      if (!current()) return;
+      if (creating && error instanceof ApiError && error.status === 409) {
+        setConflict(true);
+        setNotice(
+          '이미 등록된 아이 정보가 있어요. 등록 정보를 다시 확인해주세요.',
+        );
+      } else
         setNotice(
           error instanceof Error
             ? error.message
@@ -116,6 +145,17 @@ function ChildrenEditor() {
       pending.current = false;
       if (current()) setSaving(false);
     }
+  };
+  const recheckRegistration = async () => {
+    const result = await profile.refetch();
+    if (!current() || !result.isSuccess) return;
+    setCreating(!result.data);
+    setConflict(false);
+    setNotice(
+      result.data
+        ? '등록 정보를 확인했어요. 저장하면 작성 중인 내용으로 수정돼요.'
+        : '등록된 아이가 없어요. 작성 중인 내용을 저장할 수 있어요.',
+    );
   };
   const error = !profile.accountKey
     ? '계정을 확인하지 못했어요. 다시 로그인해 주세요.'
@@ -148,9 +188,9 @@ function ChildrenEditor() {
           </Pressable>
           <Text accessibilityRole="header" style={styles.title}>
             {editing
-              ? profile.data
-                ? '아이 정보 수정'
-                : '아이 추가'
+              ? creating
+                ? '아이 추가'
+                : '아이 정보 수정'
               : '아이 프로필'}
           </Text>
           <Text style={styles.subtitle}>
@@ -158,7 +198,9 @@ function ChildrenEditor() {
           </Text>
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
-              이 기기에 저장되는 아이 정보예요. 다른 기기와는 동기화되지 않아요.
+              {status === 'preview'
+                ? '이 기기에 저장되는 미리보기용 아이 정보예요.'
+                : '로그인한 계정에 저장되는 아이 정보예요.'}
             </Text>
           </View>
           {error ? (
@@ -285,7 +327,7 @@ function ChildrenEditor() {
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => void save()}
-                    disabled={saving}
+                    disabled={saving || conflict}
                     style={({ pressed }) => [
                       styles.button,
                       pressed && styles.pressed,
@@ -308,6 +350,18 @@ function ChildrenEditor() {
               )}
             </View>
           )}
+          {conflict ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={profile.isFetching}
+              onPress={() => void recheckRegistration()}
+              style={styles.button}
+            >
+              <Text style={styles.buttonLabel}>
+                {profile.isFetching ? '확인 중...' : '등록 정보 다시 확인'}
+              </Text>
+            </Pressable>
+          ) : null}
           {notice ? (
             <Text
               accessibilityRole="alert"

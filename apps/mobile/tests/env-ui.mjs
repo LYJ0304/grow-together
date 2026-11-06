@@ -35,10 +35,25 @@ try {
   await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
   await page.waitForURL('**/main');
   await page.getByTestId('main-screen').waitFor();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
+  await page.getByRole('button', { name: /아이 프로필/ }).click();
+  await page.getByRole('button', { name: '아이 추가', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: '아이 이름', exact: true })
+    .fill('미리보기');
+  await page
+    .getByRole('textbox', { name: '생년월일', exact: true })
+    .fill('2024-02-29');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page
+    .getByRole('heading', { name: '아이 프로필', exact: true })
+    .locator('..')
+    .getByText('미리보기', { exact: true })
+    .waitFor();
   assert.deepEqual(apiRequests, []);
   assert.deepEqual(errors, []);
   console.log(
-    'Staging without API: login error, preview entry, no API requests or page errors passed',
+    'Staging without API: login error, preview child save, no API requests or page errors passed',
   );
 } finally {
   await browser.close();

@@ -43,5 +43,7 @@ export function loadAuthModule(
     );
     return module.exports;
   }
-  return load(new URL(entry, import.meta.url));
+  return Array.isArray(entry)
+    ? entry.map((path) => load(new URL(path, import.meta.url)))
+    : load(new URL(entry, import.meta.url));
 }
