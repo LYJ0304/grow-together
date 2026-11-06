@@ -67,10 +67,16 @@ For Render deployment and staging verification, see the
 ## Child profile
 
 Authenticated accounts can store one child profile matching the current Children
-screen. Both operations use the access JWT to identify the account:
+screen. All operations use the access JWT to identify the account:
 
 - `GET /api/v1/children/me`: returns the profile, or `404` if none is registered.
+- `POST /api/v1/children/me`: registers the first profile and returns `201`.
+  If one already exists, returns `409` and preserves the existing profile.
 - `PUT /api/v1/children/me`: creates or replaces the profile and returns `200`.
+
+POST and PUT serialize writes for the same account. Concurrent POST requests
+result in one registration and a conflict for the other request. PUT retains its
+create-or-replace behavior for existing callers.
 
 Request and response use the same two fields:
 

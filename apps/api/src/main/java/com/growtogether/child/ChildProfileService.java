@@ -13,6 +13,17 @@ import org.springframework.web.server.ResponseStatusException;
 public class ChildProfileService {
     private final ChildProfileRepository profiles;
 
+    @Transactional
+    public ChildProfileResponse create(Long userId, ChildProfileRequest request) {
+        profiles.lockOwner(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+        if (profiles.existsById(userId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Child profile already exists");
+        }
+        return ChildProfileResponse.from(profiles.saveAndFlush(
+                new ChildProfile(userId, request.name(), request.birthday())));
+    }
+
     @Transactional(readOnly = true)
     public ChildProfileResponse get(Long userId) {
         return profiles.findById(userId).map(ChildProfileResponse::from)

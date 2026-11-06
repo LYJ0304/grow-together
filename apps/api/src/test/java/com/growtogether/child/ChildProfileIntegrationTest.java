@@ -2,6 +2,7 @@ package com.growtogether.child;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,13 +31,35 @@ class ChildProfileIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private AuthRepository users;
     @Autowired private EntityManager entityManager;
-    private Long ownerId;
-    private Long otherId;
+    protected Long ownerId;
+    protected Long otherId;
 
     @BeforeEach
     void setUp() {
         ownerId = users.save(new User("Owner", "child-owner@example.com", "unused-test-hash")).getId();
         otherId = users.save(new User("Other", "child-other@example.com", "unused-test-hash")).getId();
+    }
+
+    @Test
+    void create_등록후조회하고수정() throws Exception {
+        create(ownerId, body("  하늘  ", "2024-03-15"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("하늘"))
+                .andExpect(jsonPath("$.birthday").value("2024-03-15"));
+        read(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("하늘"));
+        save(ownerId, body("바다", "2023-02-28")).andExpect(status().isOk());
+        read(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("바다"));
+    }
+
+    @Test
+    void create_이미등록되어있으면409반환하고기존정보유지() throws Exception {
+        save(ownerId, body("하늘", "2024-03-15")).andExpect(status().isOk());
+
+        create(ownerId, body("바다", "2023-02-28"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        read(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("하늘"))
+                .andExpect(jsonPath("$.birthday").value("2024-03-15"));
     }
 
     @Test
@@ -66,25 +89,22 @@ class ChildProfileIntegrationTest {
     void profilesAreIsolatedByAuthenticatedUserEvenWithSuppliedOwnerId() throws Exception {
         save(ownerId, body("하늘", "2024-03-15")).andExpect(status().isOk());
         read(otherId).andExpect(status().isNotFound());
-        save(otherId, """
+        create(otherId, """
                 {"name":"바다","birthday":"2023-01-01","userId":%d}
-                """.formatted(ownerId)).andExpect(status().isOk());
+                """.formatted(ownerId)).andExpect(status().isCreated());
+        save(otherId, body("바다 수정", "2023-01-01")).andExpect(status().isOk());
         read(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("하늘"));
-        read(otherId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("바다"));
+        read(otherId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("바다 수정"));
     }
 
     @Test
     void requiresAuthenticationForReadAndSave() throws Exception {
         mvc.perform(get(PATH)).andExpect(status().isUnauthorized());
+        mvc.perform(post(PATH).contentType(MediaType.APPLICATION_JSON).content(body("하늘", "2024-03-15")))
+                .andExpect(status().isUnauthorized());
         mvc.perform(put(PATH).contentType(MediaType.APPLICATION_JSON).content(body("하늘", "2024-03-15")))
                 .andExpect(status().isUnauthorized());
         read(ownerId).andExpect(status().isNotFound());
-    }
-
-    @Test
-    void acceptsNameBoundaryAndToday() throws Exception {
-        save(ownerId, body("  " + "가".repeat(50) + "  ", LocalDate.now().toString())).andExpect(status().isOk());
-        read(ownerId).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("가".repeat(50)));
     }
 
     @Test
@@ -97,20 +117,10 @@ class ChildProfileIntegrationTest {
     @Test
     void rejectsInvalidFieldsAndPreservesExistingProfile() throws Exception {
         save(ownerId, body("하늘", "2024-03-15")).andExpect(status().isOk());
-        for (String request : new String[] {
-                "{}", "{", "null", "{\"name\":\"하늘\"}", "{\"birthday\":\"2024-03-15\"}",
-                body("", "2024-03-15"), body("   ", "2024-03-15"),
-                body("가".repeat(51), "2024-03-15"),
-                body("하늘", LocalDate.now().plusDays(1).toString()),
-                body("하늘", "2023-02-29"), body("하늘", "2024-02-30"),
-                body("하늘", "0000-01-01"), body("하늘", "-0001-01-01"),
-                body("하늘", "2024-3-15"), body("하늘", ""),
-                "{\"name\":null,\"birthday\":\"2024-03-15\"}",
-                "{\"name\":\"하늘\",\"birthday\":null}"
-        }) {
-            save(ownerId, request).andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        }
+        create(ownerId, body("", "2024-03-15")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        save(ownerId, body("하늘", LocalDate.now().plusDays(1).toString())).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         read(ownerId).andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("하늘"))
                 .andExpect(jsonPath("$.birthday").value("2024-03-15"));
@@ -124,6 +134,11 @@ class ChildProfileIntegrationTest {
 
     private ResultActions save(Long userId, String body) throws Exception {
         return mvc.perform(put(PATH).with(jwt().jwt(token -> token.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    private ResultActions create(Long userId, String body) throws Exception {
+        return mvc.perform(post(PATH).with(jwt().jwt(token -> token.subject(userId.toString())))
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 

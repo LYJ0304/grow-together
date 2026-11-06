@@ -4,6 +4,35 @@ info:
   version: 0.1.0
 paths:
   /api/v1/children/me:
+    post:
+      operationId: createChildProfile
+      summary: Register the authenticated user's first child profile
+      description: >-
+        Creates one profile per account. An existing profile returns 409 without
+        changing it. Ownership comes exclusively from the access JWT. Validation
+        and name normalization are the same as PUT.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChildProfileRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/ChildProfile' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Account no longer exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: A child profile is already registered for this account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
     get:
       operationId: getChildProfile
       summary: Get the authenticated user's child profile
