@@ -103,7 +103,7 @@ change scope, not only the title scope (`auth` can affect both API and mobile).
 | --- | --- |
 | `mobile` | `apps/mobile/` and mobile behavior |
 | `api` | `apps/api/` and API behavior |
-| `worker` | `apps/ai-worker/` and AI worker behavior |
+| `worker` | `apps/worker/` and worker behavior |
 | `harness` | `.harness/`, `.agents/skills/`, and workflow rules in `AGENTS.md` |
 | `contracts` | `contracts/` and shared API contracts |
 
@@ -296,7 +296,7 @@ Run checks relevant to the actual change, from the task worktree:
 | --- | --- |
 | Mobile | `npm run typecheck`, `npm run lint`; relevant tests and UI checks |
 | API | `./gradlew test` or focused tests; PostgreSQL/Flyway tests for migrations |
-| AI worker | `uv sync --locked`, `uv run ruff check .`, `uv run pytest` |
+| worker | `uv sync --locked`, `uv run ruff check .`, `uv run pytest` |
 | Contracts | Follow the [contract sync procedure](references/openapi.md) when API impact exists or is uncertain; parse OpenAPI, resolve references, compare with implementation |
 | Harness | Validate SKILL.md frontmatter/links; verify Codex skill discovery; run `python3 -m unittest discover -s .harness/tests -v` for isolated Git/GitHub-response checks |
 

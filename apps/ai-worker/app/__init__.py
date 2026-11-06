@@ -1,1 +1,0 @@
-"""GrowTogether AI worker package."""

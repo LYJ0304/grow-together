@@ -58,8 +58,8 @@ class ReleaseDryRun(unittest.TestCase):
         self.write('apps/mobile/package-lock.json', json.dumps(
             {'version': mobile, 'packages': {'': {'version': mobile}}, 'lockfileVersion': 3}))
         self.write('apps/api/build.gradle', f"plugins {{ id 'java' }}\nversion = '{api}'\n")
-        self.write('apps/ai-worker/pyproject.toml', f'[project]\nname = "worker"\nversion = "{worker}"\n')
-        self.write('apps/ai-worker/uv.lock',
+        self.write('apps/worker/pyproject.toml', f'[project]\nname = "worker"\nversion = "{worker}"\n')
+        self.write('apps/worker/uv.lock',
                    f'version = 1\n[[package]]\nname = "worker"\nversion = "{worker}"\nsource = {{virtual = "."}}\n')
 
     def save_commit(self, message):
@@ -487,9 +487,21 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.record['qa']['base'] = self.qa(self.base)
         self.check(phase='prepare')
 
+    def test_worker_change_is_selected_for_release(self):
+        self.git('checkout', 'main')
+        self.write('apps/worker/app/main.py', '# worker change\n')
+        target = self.save_commit('worker change')
+        result = subprocess.run([sys.executable, str(SCRIPT), 'inspect', '--ref', target],
+                                cwd=self.repo, env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        apps = json.loads(result.stdout)['apps']
+        self.assertEqual(apps['worker']['candidate_files'], ['apps/worker/app/main.py'])
+        self.assertTrue(apps['worker']['requires_semantic_review'])
+        self.assertEqual(apps['worker']['manifest'], '0.1.0')
+
     def test_worker_release_checks_local_lock_entry(self):
         self.git('checkout', 'main')
-        self.write('apps/ai-worker/app.py', '# worker fix already QA approved\n')
+        self.write('apps/worker/app.py', '# worker fix already QA approved\n')
         self.base = self.save_commit('worker fix')
         self.sync_main()
         self.git('checkout', '-b', 'release/2026-10-25-2')
@@ -501,7 +513,7 @@ sys.exit(subprocess.run([os.environ['RELEASE_TEST_REAL_GIT'],*args]).returncode)
         self.pr.update(headRefOid=self.head, headRefName='release/2026-10-25-2')
         self.record['qa']['base'] = self.qa(self.base)
         self.check(phase='prepare')
-        self.write('apps/ai-worker/uv.lock', 'version = 1\n[[package]]\nname = "worker"\n'
+        self.write('apps/worker/uv.lock', 'version = 1\n[[package]]\nname = "worker"\n'
                    'version = "0.1.0"\nsource = {virtual = "."}\n')
         self.head = self.save_commit('inconsistent lock entry')
         self.record['head'] = self.pr['headRefOid'] = self.head

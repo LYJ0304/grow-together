@@ -1,4 +1,4 @@
-# GrowTogether AI Worker
+# GrowTogether Worker
 
 Runs internal AI jobs independently from the API.
 

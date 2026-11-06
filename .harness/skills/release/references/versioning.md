@@ -7,10 +7,10 @@ not permission to create absent applications or change package managers:
 | --- | --- | --- |
 | `mobile` / `mobile/v` | `apps/mobile` | `package.json.version`, `app.json.expo.version`, `package-lock.json.version` and `packages[""].version` must match |
 | `api` / `api/v` | `apps/api` | Only the app `version` assignment in `build.gradle`; not plugin/dependency versions |
-| `worker` / `worker/v` | `apps/ai-worker` | `pyproject.toml` `[project].version` and the local project entry in `uv.lock` |
+| `worker` / `worker/v` | `apps/worker` | `pyproject.toml` `[project].version` and the local project entry in `uv.lock` |
 
 Mobile uses Expo/React Native/TypeScript and npm; API uses Java 21/Gradle;
-worker uses Python >=3.12/uv. Do not rename the worker to `apps/worker`.
+worker uses Python >=3.12/uv. Use the canonical manifest paths listed above.
 `contracts/openapi.yaml.info.version` describes the API document, not a common
 application version. Revisit it on contract changes; do not synchronize it
 mechanically with every API patch or other applications.
