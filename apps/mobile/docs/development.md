@@ -24,10 +24,38 @@ Replace the example IP with the computer's LAN address.
 
 ## Authentication settings
 
-`EXPO_PUBLIC_ENABLE_AUTH_BYPASS` defaults to false. Explicit `true` enables labeled
-UI preview only; protected API requests remain unavailable. Keep it false for API
-validation and Production. Use the actual API endpoint in `EXPO_PUBLIC_API_URL`
-(LAN address for physical devices). Never put secrets in `EXPO_PUBLIC_*` settings.
+`EXPO_PUBLIC_APP_ENV` selects `development` (default), `staging`, or
+`production`. Invalid values fail configuration validation. The shared `env`
+module controls API configuration and authentication preview in both the UI and
+session layer. This deployment environment is independent of `NODE_ENV`.
+
+Development and production require `EXPO_PUBLIC_API_URL`. Staging permits an
+omitted or blank URL for UI preview; API actions then return `API_NOT_CONFIGURED`
+without sending a network request. Supplying a URL enables normal API access.
+Use the computer's LAN address for physical devices.
+
+`EXPO_PUBLIC_ENABLE_AUTH_BYPASS` unset or `true` enables labeled UI preview in
+development and staging. Explicit `false` disables it for API validation.
+Production always disables preview, including when this setting is `true`.
+Preview does not grant access to protected API requests.
+
+To export staging with no API connection, remove the API URL from the deployment
+environment and any loaded `.env` files, then run:
+
+```bash
+EXPO_PUBLIC_APP_ENV=staging npx expo export --platform web
+```
+
+Serve that export with a static server that maps extensionless routes such as
+`/login` to `login.html`, then run
+`npm run test:env:ui -- http://localhost:8135` against it. The browser check
+verifies the missing-API login notice, preview entry, and absence of API requests
+or page errors. Install Playwright Chromium (`npx playwright-core install chromium`)
+and its system dependencies, or set `CHROME_PATH` to an installed Chrome binary.
+
+For production, set `EXPO_PUBLIC_APP_ENV=production` and the actual
+`EXPO_PUBLIC_API_URL` before building. These public settings are bundled into the
+app; rebuild to change them. Never put secrets in `EXPO_PUBLIC_*` settings.
 
 See [authentication](authentication.md) for token storage, session recovery,
 refresh, and logout behavior.
@@ -39,6 +67,8 @@ From `apps/mobile`:
 ```bash
 npm run typecheck
 npm run lint
+npm run test:env
+npm run test:auth
 ```
 
 See [launch drawing assets and verification](launch-logo.md) for logo generation,
