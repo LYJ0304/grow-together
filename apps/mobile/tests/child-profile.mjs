@@ -71,6 +71,13 @@ for (const birthday of ['0001-01-01', '0099-12-31', '2000-02-29'])
     undefined,
   );
 assert.ok(validateChildProfile({ name: ' ', birthday: '2024-03-15' }).name);
+assert.ok(
+  validateChildProfile({ name: '가'.repeat(51), birthday: '2024-03-15' }).name,
+);
+assert.equal(
+  validateChildProfile({ name: '가'.repeat(50), birthday: '2024-03-15' }).name,
+  undefined,
+);
 const today = new Date();
 const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 assert.equal(

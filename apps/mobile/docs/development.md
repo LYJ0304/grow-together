@@ -96,8 +96,16 @@ account switching against the configured API.
 
 ## 아이 프로필 추가·수정
 
-마이페이지의 아이 프로필은 미등록 시 추가, 등록 후에는 요약과 수정 화면을 제공한다. 이름과 생년월일은 `@growtogether/child/v1/<계정 키>`에 기기 로컬로 저장하며 서버·다른 기기와 동기화하지 않는다. 계정 키는 인증 경계가 제공하는 JWT issuer/subject 조합이고 미리보기는 별도 키를 사용한다. 이는 저장 분리용이며 서버 인가를 대체하지 않는다.
+마이페이지의 아이 프로필은 미등록 시 추가, 등록 후에는 요약과 수정 화면을 제공한다. 로그인 상태에서는 `/api/v1/children/me`를 GET으로 조회하고, 최초 추가는 POST, 수정은 PUT으로 저장한다. 요청은 공통 인증 세션을 사용하며 소유자는 서버가 JWT로 결정한다. 계정당 아이 한 명의 이름·생년월일을 저장하고, 같은 계정으로 다른 기기에서 로그인하면 서버 값을 조회한다.
 
-조회 실패는 미등록과 구분하고, 저장 실패·취소는 기존 저장값을 유지한다. 로그아웃·계정 전환 시 화면과 캐시를 초기화하며 계정 정보가 없는 세션에서는 공용 키로 저장하지 않는다.
+GET 404만 미등록으로 처리한다. 다른 조회 오류는 재시도 화면을 제공하며 저장 실패·취소는 기존 값과 작성 중인 입력을 보존한다. POST 409는 자동 덮어쓰기를 하지 않고 `등록 정보 다시 확인`을 제공한다. 재조회해도 입력은 유지되며, 서버 프로필이 있으면 이후 저장은 수정으로 진행된다. 로그아웃·계정 전환 후 이전 요청의 응답은 현재 계정 화면에 반영하지 않는다.
 
-`npm run test:children:storage`, `npm run test:auth`로 저장/인증 경계를 검증한다. Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://localhost:8130 BROWSER_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:children:ui`로 추가·수정·복원·취소·오류·계정 분리와 반응형을 확인한다. 브라우저 경로와 서버 주소는 실행 환경에 맞게 지정한다.
+미리보기는 `@growtogether/child/v1/preview`의 기기 로컬 저장을 유지하며 child API를 호출하지 않는다. 로그인 계정의 기존 로컬 프로필은 서버로 자동 이관하거나 조회 대체값으로 사용하지 않으며 삭제하지도 않는다. 서버 미등록 계정은 아이 추가에서 다시 입력해야 한다.
+
+`npm run test:children:api`는 인증·refresh·GET/POST/PUT·404/409·오류·이전 세션 응답과 조회 훅의 인증/미리보기 분기를 검증한다. `npm run test:children:storage`는 미리보기에서 사용하는 로컬 저장과 입력 검증을 확인한다.
+
+환경 변수를 바꿔 검증 빌드를 만들 때는 `npx expo export --platform web --clear --max-workers 2`로 이전 환경의 변환 캐시를 비운다. export 서버는 `/children`처럼 확장자가 없는 경로를 해당 `.html` 파일로 연결해야 한다.
+
+Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://localhost:8141 BROWSER_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:children:ui`로 추가·수정·복원·취소·오류·충돌·계정 분리·반응형과 API 없는 미리보기를 확인한다. 이 테스트는 API 응답을 가로채므로 실제 API 연결을 증명하지 않는다.
+
+실제 API 확인은 운영 데이터가 없는 독립 로컬 API/DB를 준비하고, web 빌드의 `EXPO_PUBLIC_API_URL`과 API의 `CORS_ALLOWED_ORIGINS`를 맞춘 뒤 `CHILDREN_URL=http://localhost:8141 CHILDREN_API_URL=http://localhost:18141 npm run test:children:live`로 실행한다. 임시 테스트 계정을 생성하며 등록·수정·마이페이지 반영·재로그인·별도 브라우저 조회·새로고침을 검증한다. 테스트 계정은 해당 임시 DB에 남는다. 주소와 브라우저 경로는 실행 환경에 맞게 지정한다.
