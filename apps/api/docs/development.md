@@ -63,3 +63,23 @@ requires authorization again under the default settings.
 
 For Render deployment and staging verification, see the
 [staging deployment guide](staging/Development.md).
+
+## Child profile
+
+Authenticated accounts can store one child profile matching the current Children
+screen. Both operations use the access JWT to identify the account:
+
+- `GET /api/v1/children/me`: returns the profile, or `404` if none is registered.
+- `PUT /api/v1/children/me`: creates or replaces the profile and returns `200`.
+
+Request and response use the same two fields:
+
+```json
+{"name":"하늘","birthday":"2024-03-15"}
+```
+
+Names are trimmed and must contain 1–50 characters. Birthdays use `YYYY-MM-DD`,
+must be real dates from year 0001, and cannot be after the server's current date.
+The `V7` Flyway migration creates the account-owned profile table. It does not
+import profiles already stored in mobile AsyncStorage; the mobile screen still
+uses local storage until API integration is implemented.
