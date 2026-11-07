@@ -78,6 +78,16 @@ export default function CalendarScreen() {
     }, [refetch]),
   );
   const days = calendarDays(month);
+  const today = new Date();
+  const todayKey = diaryDateKey(today);
+  const selectedDateLabel = `${selected.getFullYear()}년 ${selected.getMonth() + 1}월 ${selected.getDate()}일 ${['일', '월', '화', '수', '목', '금', '토'][selected.getDay()]}요일`;
+  const selectionHint = diaryNotice
+    ? '일기 목록을 다시 불러온 뒤 확인해주세요.'
+    : loadingDiaries
+      ? '저장된 일기를 확인하고 있어요.'
+      : selectedHasDiary
+        ? '이날의 성장 이야기가 저장되어 있어요.'
+        : '하루의 작은 성장을 일기로 남겨보세요.';
 
   const changeMonth = (offset: number) => {
     setMonth(
@@ -145,6 +155,31 @@ export default function CalendarScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.calendarToolbar}>
+          <Text style={styles.calendarCaption}>우리의 성장 기록</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="오늘로 이동"
+            onPress={() => {
+              const current = new Date();
+              setSelected(
+                new Date(
+                  current.getFullYear(),
+                  current.getMonth(),
+                  current.getDate(),
+                ),
+              );
+              setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
+              setNotice('');
+            }}
+            style={({ pressed }) => [
+              styles.todayButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.todayLabel}>오늘</Text>
+          </Pressable>
+        </View>
         <View style={styles.calendar}>
           <View style={styles.weekdays}>
             {['일', '월', '화', '수', '목', '금', '토'].map((label, index) => (
@@ -165,12 +200,13 @@ export default function CalendarScreen() {
                 {days.slice(week * 7, week * 7 + 7).map((date) => {
                   const isSelected = date.getTime() === selected.getTime();
                   const outsideMonth = date.getMonth() !== month.getMonth();
+                  const isToday = diaryDateKey(date) === todayKey;
                   const hasDiary = savedDates.has(diaryDateKey(date));
                   return (
                     <Pressable
                       key={date.getTime()}
                       accessibilityRole="button"
-                      accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${hasDiary ? ', 일기 있음' : ''}`}
+                      accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${isToday ? ', 오늘' : ''}${hasDiary ? ', 일기 있음' : ''}`}
                       accessibilityState={{ selected: isSelected }}
                       aria-pressed={isSelected}
                       onPress={() => {
@@ -183,6 +219,7 @@ export default function CalendarScreen() {
                       }}
                       style={({ pressed }) => [
                         styles.day,
+                        isToday && styles.todayDay,
                         isSelected && styles.selectedDay,
                         pressed && styles.pressed,
                       ]}
@@ -219,7 +256,12 @@ export default function CalendarScreen() {
             <Text style={styles.legendDot}>●</Text> 일기가 저장된 날
           </Text>
         ) : null}
-        <View style={styles.actions}>
+        <View testID="calendar-selection" style={styles.actions}>
+          <Text style={styles.selectionEyebrow}>선택한 날의 일기</Text>
+          <Text style={styles.selectionDate}>{selectedDateLabel}</Text>
+          <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
+            {selectionHint}
+          </Text>
           {diaryNotice || notice ? (
             <Text
               accessibilityRole="alert"
@@ -299,6 +341,10 @@ const styles = StyleSheet.create({
   monthButton: {
     width: 44,
     height: 44,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAE1DE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -309,10 +355,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Jua',
     fontSize: 22,
     lineHeight: 28,
-    color: '#4F4F4F',
+    color: '#433C39',
   },
-  calendar: { width: '100%', maxWidth: 360 },
-  weekdays: { flexDirection: 'row', marginTop: 16 },
+  calendarToolbar: {
+    width: '100%',
+    maxWidth: 360,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 12,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  calendarCaption: { fontFamily: 'Jua', fontSize: 13, color: '#756A65' },
+  todayButton: {
+    minWidth: 52,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayLabel: { fontFamily: 'Jua', fontSize: 14, color: '#A84D40' },
+  calendar: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 10,
+  },
+  weekdays: { flexDirection: 'row', marginTop: 2, marginBottom: 4 },
   weekday: {
     flex: 1,
     fontFamily: 'Jua',
@@ -328,7 +398,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -339,7 +411,8 @@ const styles = StyleSheet.create({
     color: '#4F4F4F',
   },
   outsideDay: { color: '#B8B8C1' },
-  selectedDay: { backgroundColor: '#D26A5C' },
+  todayDay: { borderColor: '#B25447' },
+  selectedDay: { backgroundColor: '#B25447', borderColor: '#B25447' },
   selectedDayText: { color: '#FFFFFF' },
   diaryDot: {
     position: 'absolute',
@@ -368,15 +441,42 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    marginTop: 20,
+    padding: 14,
+    marginTop: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFF1EC',
+    borderWidth: 1,
+    borderColor: '#F0DED6',
+  },
+  selectionEyebrow: {
+    fontFamily: 'Jua',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#8D594E',
+  },
+  selectionDate: {
+    fontFamily: 'Jua',
+    fontSize: 18,
+    lineHeight: 24,
+    color: '#433C39',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  selectionHint: {
+    fontFamily: 'Jua',
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#756A65',
+    marginTop: 6,
+    marginBottom: 14,
+    textAlign: 'center',
   },
   generateButton: {
     width: '100%',
     maxWidth: 320,
     minHeight: 48,
     borderRadius: 10,
-    backgroundColor: '#D26A5C',
+    backgroundColor: '#B25447',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,

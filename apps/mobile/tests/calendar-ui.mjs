@@ -8,7 +8,7 @@ import { chromium, webkit } from 'playwright-core';
 // BROWSER=webkit exercises WebKit. BROWSER_EXECUTABLE_PATH supports a local browser.
 const url = process.env.CALENDAR_URL ?? 'http://localhost:8094';
 const engine = process.env.BROWSER === 'webkit' ? webkit : chromium;
-const artifacts = process.env.ARTIFACT_DIR ?? '/tmp/growtogether-calendar-43';
+const artifacts = process.env.ARTIFACT_DIR ?? '/tmp/growtogether-calendar-152';
 await mkdir(artifacts, { recursive: true });
 const browser = await engine.launch({
   headless: true,
@@ -62,6 +62,50 @@ async function open(date) {
 }
 
 try {
+  await page.clock.install({ time: new Date('2026-11-07T03:00:00Z') });
+  await open('2026-10-10');
+  await page.getByText('2026년 10월 10일 토요일', { exact: true }).waitFor();
+  await page
+    .getByText('이날의 성장 이야기가 저장되어 있어요.', { exact: true })
+    .waitFor();
+  await page.getByRole('button', { name: '오늘로 이동', exact: true }).click();
+  assert.equal(await heading.innerText(), '2026년 11월');
+  const today = grid.getByRole('button', {
+    name: '2026년 11월 7일, 오늘',
+    exact: true,
+  });
+  assert.equal(await today.getAttribute('aria-pressed'), 'true');
+  await page.getByText('2026년 11월 7일 토요일', { exact: true }).waitFor();
+  await page
+    .getByText('하루의 작은 성장을 일기로 남겨보세요.', { exact: true })
+    .waitFor();
+  await page
+    .getByRole('button', { name: '2026년 11월 6일', exact: true })
+    .click();
+  assert.equal(await today.getAttribute('aria-pressed'), 'false');
+  const todayStyle = await today.evaluate((node) => ({
+    border: getComputedStyle(node).borderColor,
+    width: parseFloat(getComputedStyle(node).borderWidth),
+    fill: getComputedStyle(node).backgroundColor,
+  }));
+  const selectedFill = await grid
+    .getByRole('button', { pressed: true })
+    .evaluate((node) => getComputedStyle(node).backgroundColor);
+  assert.ok(todayStyle.width >= 1);
+  assert.equal(
+    todayStyle.border,
+    selectedFill,
+    'Today outline uses the selection accent',
+  );
+  assert.notEqual(
+    todayStyle.fill,
+    selectedFill,
+    'Today remains distinct from the selected date',
+  );
+  await page.screenshot({
+    path: path.join(artifacts, `${engine.name()}-today.png`),
+  });
+  await page.getByText('2026년 11월 6일 금요일', { exact: true }).waitFor();
   for (const [width, height] of [
     [320, 568],
     [390, 844],
@@ -94,13 +138,21 @@ try {
       assert.ok(Math.abs(box.x - columns[index % 7]) < 1);
     }
     const title = await heading.boundingBox();
+    assert.ok(title.y < 40, 'Content starts near the safe top');
+    await page.screenshot({
+      path: path.join(artifacts, `${engine.name()}-${width}-calendar.png`),
+    });
+    // The date summary may need scrolling on short screens, like six-week months.
+    await view.scrollIntoViewIfNeeded();
     const legend = await page
       .getByText('● 일기가 저장된 날', { exact: true })
       .boundingBox();
     const button = await view.boundingBox();
     const navigation = await tabs.boundingBox();
-    assert.ok(title.y < 40, 'Content starts near the safe top');
-    assert.ok(button.y - legend.y - legend.height <= 24);
+    const summary = await page.getByTestId('calendar-selection').boundingBox();
+    assert.ok(summary.y >= legend.y + legend.height);
+    assert.ok(button.y >= summary.y);
+    assert.ok(button.y + button.height <= summary.y + summary.height);
     assert.ok(button.height >= 48 && button.height <= 54);
     assert.ok(button.y + button.height <= navigation.y);
     assert.ok(navigation.y + navigation.height <= height);
@@ -126,10 +178,13 @@ try {
     await page.screenshot({
       path: path.join(artifacts, `${engine.name()}-${width}.png`),
     });
-    // Viewport height changes (browser chrome) must not move the CTA away from its legend.
+    // Browser chrome must preserve the relationship between the summary and CTA.
     await page.setViewportSize({ width, height: height - 100 });
     const resized = await view.boundingBox();
-    assert.equal(resized.y, button.y);
+    const resizedSummary = await page
+      .getByTestId('calendar-selection')
+      .boundingBox();
+    assert.equal(resized.y - resizedSummary.y, button.y - summary.y);
   }
 
   await page.setViewportSize({ width: 320, height: 568 });
@@ -208,6 +263,15 @@ try {
       .getByRole('button', { name: /선택한 날짜의 일기/ })
       .getAttribute('aria-disabled'),
     'true',
+  );
+  await page
+    .getByText('일기 목록을 다시 불러온 뒤 확인해주세요.', { exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByText('하루의 작은 성장을 일기로 남겨보세요.', { exact: true })
+      .count(),
+    0,
   );
   await page.evaluate(() => {
     window.diaryStorageUnavailable = false;
