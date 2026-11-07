@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     ai_worker_api_key: SecretStr
     openrouter_api_key: SecretStr
 
+    llm_schedule_model: str | None = None
     llm_diary_model: str
 
     model_config = SettingsConfigDict(

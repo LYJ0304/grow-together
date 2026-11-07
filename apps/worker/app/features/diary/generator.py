@@ -1,11 +1,11 @@
 import json
-from typing import Protocol
 
 from pydantic import ValidationError
 
+from app.llm.client import LLMClient
 from app.llm.errors import LLMError
 
-from .prompts.system import SYSTEM_PROMPT
+from .prompts.generation import SYSTEM_PROMPT
 from .schemas import (
     DiaryGenerateRequest,
     DiaryGenerationResponse,
@@ -14,15 +14,6 @@ from .schemas import (
 
 class DiaryGenerationError(Exception):
     pass
-
-
-class LLMClient(Protocol):
-    async def complete(
-        self,
-        *,
-        system_prompt: str,
-        user_prompt: str,
-    ) -> str: ...
 
 
 class DiaryGenerator:

@@ -135,3 +135,12 @@ def test_client_rejects_empty_results(transport, choices) -> None:
     client = OpenRouterClient(api_key="test-key", model="test/model")
     with pytest.raises(LLMError, match="Empty LLM response"):
         asyncio.run(client.complete(system_prompt="system", user_prompt="user"))
+
+
+def test_client_identifies_timeout_for_gateway_mapping(transport) -> None:
+    _, outcome = transport
+    outcome["exception"] = httpx.ReadTimeout("private upstream details")
+    client = OpenRouterClient(api_key="test-key", model="test/model")
+    with pytest.raises(LLMError) as raised:
+        asyncio.run(client.complete(system_prompt="system", user_prompt="user"))
+    assert type(raised.value).__name__ == "LLMTimeoutError"
