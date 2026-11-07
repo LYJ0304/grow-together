@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  executablePath: process.env.BROWSER_EXECUTABLE_PATH,
+  headless: true,
+});
 try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   await page.addInitScript(authenticatedSessionFixture);
@@ -32,6 +35,31 @@ try {
     name: '상담 질문 입력',
     exact: true,
   });
+  await input.fill('우리 아이 질문 초안');
+  const suggestion = page.getByRole('button', {
+    name: '질문 입력: 아직 안 걷는데 괜찮나요?',
+    exact: true,
+  });
+  await suggestion.click();
+  assert.equal(
+    await input.inputValue(),
+    '우리 아이 질문 초안',
+    'A suggested question must not overwrite an existing draft',
+  );
+  const notice = page.getByRole('alert');
+  assert.ok(
+    (await notice.innerText()).includes(
+      '작성 중인 질문을 먼저 마무리해주세요.',
+    ),
+  );
+  assert.ok(
+    await input.evaluate((element) => element === document.activeElement),
+  );
+  await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
+  await input.fill('   ');
+  await suggestion.click();
+  assert.equal(await input.inputValue(), '아직 안 걷는데 괜찮나요?');
+  assert.equal(await notice.count(), 0);
   await input.fill('우리 아이 질문 초안');
   const tabs = page.getByRole('tablist');
   for (const [label, route] of [
