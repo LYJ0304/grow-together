@@ -9,7 +9,7 @@ from app.features.diary.schemas import DiaryGenerateRequest
 
 def test_generator_passes_request_and_parses_response() -> None:
     from app.features.diary.generator import DiaryGenerator
-    from app.features.diary.prompts.system import SYSTEM_PROMPT
+    from app.features.diary.prompts.generation import SYSTEM_PROMPT
 
     client = AsyncMock()
     client.complete.return_value = '{"content": "오늘 산책을 했다.", "source_todo_ids": [1]}'

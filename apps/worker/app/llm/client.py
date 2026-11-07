@@ -1,8 +1,19 @@
+from typing import Protocol
+
 import httpx
 from openrouter import OpenRouter
 from openrouter.errors import OpenRouterError
 
-from app.llm.errors import LLMError
+from app.llm.errors import LLMError, LLMTimeoutError
+
+
+class LLMClient(Protocol):
+    async def complete(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str: ...
 
 
 class OpenRouterClient:
@@ -23,6 +34,8 @@ class OpenRouterClient:
                     stream=False,
                     retries=None,
                 )
+        except httpx.TimeoutException as exc:
+            raise LLMTimeoutError("LLM request failed") from exc
         except (OpenRouterError, httpx.HTTPError) as exc:
             raise LLMError("LLM request failed") from exc
 

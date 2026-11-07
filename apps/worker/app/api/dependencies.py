@@ -9,6 +9,10 @@ from app.core.config import settings
 from app.features.diary.generator import DiaryGenerator
 from app.features.diary.service import DiaryService
 from app.features.diary.validator import DiaryValidator
+from app.features.schedule.planner import SchedulePlanner
+from app.features.schedule.scheduler import ScheduleScheduler
+from app.features.schedule.service import ScheduleService
+from app.features.schedule.validator import ScheduleValidator
 from app.llm.client import OpenRouterClient
 
 api_key_header = APIKeyHeader(
@@ -59,4 +63,22 @@ def get_diary_service(
     return DiaryService(
         generator=generator,
         validator=validator,
+    )
+
+
+@lru_cache
+def get_schedule_llm_client() -> OpenRouterClient:
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.llm_schedule_model or settings.llm_diary_model,
+    )
+
+
+def get_schedule_service(
+    llm_client: Annotated[OpenRouterClient, Depends(get_schedule_llm_client)],
+) -> ScheduleService:
+    return ScheduleService(
+        planner=SchedulePlanner(llm_client),
+        scheduler=ScheduleScheduler(),
+        validator=ScheduleValidator(),
     )
