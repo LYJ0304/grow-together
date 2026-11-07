@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { typography } from './typography';
 import { useIsFocused } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
@@ -130,7 +131,7 @@ export function RoutineProgress({ progress }: { progress: number }) {
         }}
         style={styles.metric}
       >
-        <Text style={styles.label}>오늘의 루틴</Text>
+        <Text style={styles.label}>오늘의 달성률</Text>
         <Text style={styles.value}>
           {progress}
           <Text style={styles.percent}>%</Text>
@@ -141,29 +142,35 @@ export function RoutineProgress({ progress }: { progress: number }) {
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center' },
-  art: { width: 240, height: 236, overflow: 'hidden' },
-  ring: { position: 'absolute', width: 200, height: 200, left: 20, top: 32 },
-  disc: { position: 'absolute', width: 132, height: 132, left: 54, top: 66 },
+  container: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    columnGap: 20,
+    rowGap: 8,
+  },
+  art: { width: 120, height: 118, overflow: 'hidden' },
+  ring: { position: 'absolute', width: 100, height: 100, left: 10, top: 16 },
+  disc: { position: 'absolute', width: 66, height: 66, left: 27, top: 33 },
   // Original 1024×1536 PNG: opaque character bounds are (284, 738)–(739, 1339).
   character: {
     position: 'absolute',
-    width: 307.2,
-    height: 460.8,
-    left: -33.6,
-    top: -198,
+    width: 153.6,
+    height: 230.4,
+    left: -16.8,
+    top: -99,
   },
   metric: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
     maxWidth: '100%',
     alignItems: 'center',
     gap: 12,
-    marginTop: 8,
+    paddingVertical: 8,
   },
-  label: { fontSize: 14, lineHeight: 22, color: '#777574' },
+  label: { ...typography.caption, color: '#706C69' },
   value: {
+    ...typography.button,
     fontSize: 30,
     lineHeight: 38,
     fontWeight: '600',

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { typography } from '../typography';
 import {
   ActivityIndicator,
   Pressable,
@@ -292,15 +293,22 @@ const styles = StyleSheet.create({
   book: { width: 20, height: 20 },
   grow: { flex: 1 },
   title: {
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: '600',
+    ...typography.section,
     color: '#292929',
     flexShrink: 1,
   },
-  body: { fontSize: 16, lineHeight: 27, color: '#494442' },
-  caption: { fontSize: 12, lineHeight: 19, color: '#777574' },
-  meta: { fontSize: 13, lineHeight: 21, color: '#777574' },
+  body: {
+    ...typography.body,
+    color: '#494442',
+  },
+  caption: {
+    ...typography.caption,
+    color: '#777574',
+  },
+  meta: {
+    ...typography.caption,
+    color: '#777574',
+  },
   action: {
     minHeight: 44,
     minWidth: 44,
@@ -309,10 +317,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionText: {
-    fontSize: 14,
-    lineHeight: 22,
+    ...typography.button,
     color: '#B25447',
-    fontWeight: '600',
   },
   editor: {
     padding: 10,
@@ -342,7 +348,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#EEE8E5',
   },
-  observation: { fontSize: 15, lineHeight: 25, color: '#494442' },
+  observation: {
+    ...typography.body,
+    color: '#494442',
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
@@ -350,7 +359,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#FFF1EC',
   },
-  chipText: { color: '#914C41', fontSize: 13, lineHeight: 20 },
+  chipText: {
+    ...typography.caption,
+    color: '#914C41',
+  },
   sources: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#EEE8E5',
@@ -362,7 +374,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sourceBody: { gap: 10, paddingBottom: 16 },
-  sourceText: { fontSize: 14, lineHeight: 23, color: '#494442' },
+  sourceText: {
+    ...typography.body,
+    color: '#494442',
+  },
   generating: { gap: 20 },
   skeleton: { height: 12, borderRadius: 4, backgroundColor: '#EEE8E5' },
   pressed: { opacity: 0.65 },

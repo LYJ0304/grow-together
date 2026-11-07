@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { typography } from '../src/components/typography';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1011,19 +1012,18 @@ const styles = StyleSheet.create({
   },
   backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
   recordHeading: {
-    fontFamily: 'Jua',
-    fontSize: 24,
-    lineHeight: 32,
+    ...typography.title,
     color: '#D26A5C',
   },
   recordStep: {
+    ...typography.label,
     marginTop: 18,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
     color: '#4F4F4F',
   },
-  recordHint: { fontSize: 13, lineHeight: 21, color: '#777574' },
+  recordHint: {
+    ...typography.caption,
+    color: '#777574',
+  },
   recordScroll: { backgroundColor: '#FAF9F9' },
   recordList: {
     width: '100%',
@@ -1050,15 +1050,17 @@ const styles = StyleSheet.create({
   },
   recordSelected: { borderColor: '#D26A5C', backgroundColor: '#FFF5F2' },
   recordCopy: { flex: 1 },
-  recordTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
+  recordTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   recordTime: {
-    width: 36,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
+    ...typography.label,
+    minWidth: 44,
     color: '#4F4F4F',
   },
-  recordTitle: { flex: 1, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  recordTitle: {
+    ...typography.label,
+    flex: 1,
+    color: '#4F4F4F',
+  },
   recordCheck: {
     width: 20,
     height: 20,
@@ -1072,11 +1074,15 @@ const styles = StyleSheet.create({
   recordCheckLabel: { fontSize: 12, lineHeight: 16, color: '#FFFFFF' },
   recordFooter: {
     paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     backgroundColor: '#FAF9F9',
   },
   recordNext: {
-    width: 239,
+    width: '100%',
+    maxWidth: 350,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     minHeight: 51,
     borderRadius: 14,
     backgroundColor: '#B25447',
@@ -1084,9 +1090,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   recordNextLabel: {
-    fontFamily: 'Jua',
-    fontSize: 24,
-    lineHeight: 32,
+    ...typography.button,
     color: '#FFFFFF',
   },
   growthContent: {
@@ -1107,18 +1111,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   growthTitle: {
-    fontFamily: 'Jua',
-    fontSize: 24,
-    lineHeight: 32,
+    ...typography.section,
     color: '#4F4F4F',
   },
   growthSubtitle: {
+    ...typography.caption,
     marginTop: 5,
-    fontSize: 12,
-    lineHeight: 18,
     color: '#4F4F4F',
   },
   growthInput: {
+    ...typography.body,
     minHeight: 144,
     marginTop: 14,
     paddingHorizontal: 12,
@@ -1127,11 +1129,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAEAEA',
     borderRadius: 12,
-    fontSize: 15,
-    lineHeight: 25,
     color: '#4F4F4F',
   },
-  growthTags: { marginTop: 12, flexDirection: 'row', gap: 9 },
+  growthTags: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   growthTag: {
     flex: 1,
     minHeight: 44,
@@ -1144,18 +1144,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   growthTagSelected: { borderColor: '#D26A5C', backgroundColor: '#FDEDE6' },
-  growthTagLabel: { fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
-  growthHint: { marginTop: 13, fontSize: 12, lineHeight: 18, color: '#4F4F4F' },
+  growthTagLabel: {
+    ...typography.caption,
+    color: '#4F4F4F',
+  },
+  growthHint: {
+    ...typography.caption,
+    marginTop: 13,
+    color: '#4F4F4F',
+  },
   growthDivider: {
     marginTop: 26,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
   photoLabel: {
+    ...typography.caption,
     marginTop: 14,
     marginBottom: 8,
-    fontSize: 12,
-    lineHeight: 18,
     color: '#4F4F4F',
   },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -1180,14 +1186,24 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#D26A5C',
   },
-  photoCountLabel: { fontSize: 11, lineHeight: 16, color: '#FFFFFF' },
+  photoCountLabel: {
+    ...typography.caption,
+    color: '#FFFFFF',
+  },
   photoRemove: {
     minHeight: 44,
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  photoRemoveLabel: { fontSize: 12, color: '#D26A5C' },
-  photoNotice: { marginTop: 8, fontSize: 12, lineHeight: 18, color: '#D26A5C' },
+  photoRemoveLabel: {
+    ...typography.button,
+    color: '#D26A5C',
+  },
+  photoNotice: {
+    ...typography.caption,
+    marginTop: 8,
+    color: '#D26A5C',
+  },
   confirmationCard: {
     width: '100%',
     maxWidth: 350,
@@ -1203,9 +1219,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   confirmationTitle: {
-    fontFamily: 'Jua',
-    fontSize: 24,
-    lineHeight: 32,
+    ...typography.section,
     color: '#D26A5C',
   },
   resultContent: {
@@ -1235,10 +1249,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dateLabel: { fontSize: 13, lineHeight: 21, color: '#777574', flex: 1 },
+  dateLabel: {
+    ...typography.caption,
+    color: '#777574',
+    flex: 1,
+  },
   saveNotice: {
-    fontSize: 12,
-    lineHeight: 18,
+    ...typography.caption,
     color: '#C9534A',
     backgroundColor: '#FFFFFF',
     padding: 8,
@@ -1252,9 +1269,7 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   readStatusText: {
-    fontFamily: 'Jua',
-    fontSize: 16,
-    lineHeight: 24,
+    ...typography.body,
     color: '#4F4F4F',
     textAlign: 'center',
   },
@@ -1266,7 +1281,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDEDE6',
     borderRadius: 12,
   },
-  readStatusButtonLabel: { fontFamily: 'Jua', fontSize: 16, color: '#D26A5C' },
+  readStatusButtonLabel: {
+    ...typography.button,
+    color: '#D26A5C',
+  },
   regenerateButton: {
     flex: 1,
     minHeight: 49,
@@ -1280,8 +1298,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   regenerateLabel: {
-    fontSize: 13,
-    lineHeight: 21,
+    ...typography.button,
     color: '#777574',
     textAlign: 'center',
   },
@@ -1296,9 +1313,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   resultSaveLabel: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
+    ...typography.button,
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -1310,6 +1325,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  deleteLabel: { fontFamily: 'Jua', fontSize: 16, color: '#C9534A' },
+  deleteLabel: {
+    ...typography.button,
+    color: '#C9534A',
+  },
   pressed: { opacity: 0.78 },
 });

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
@@ -30,10 +31,18 @@ let holdRead;
 let holdWrite;
 let writes = 0;
 const reads = [];
+await page.route('**/api/v1/children/me', (route) =>
+  route.fulfill({ json: { name: '하늘', birthday: '2026-10-01' } }),
+);
 await page.route('**/api/v1/todos**', async (route) => {
   const request = route.request();
   const target = new URL(request.url());
-  assert.equal(request.headers().authorization, 'Bearer ui-test-access');
+  const token = request.headers().authorization;
+  assert.ok(token?.startsWith('Bearer '));
+  assert.equal(
+    JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).sub,
+    '1',
+  );
   if (request.method() === 'GET') {
     reads.push(target.searchParams.get('date'));
     if (holdRead) await holdRead;
