@@ -1,0 +1,62 @@
+import secrets
+from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import APIKeyHeader
+
+from app.core.config import settings
+from app.features.diary.generator import DiaryGenerator
+from app.features.diary.service import DiaryService
+from app.features.diary.validator import DiaryValidator
+from app.llm.client import OpenRouterClient
+
+api_key_header = APIKeyHeader(
+    name="X-API-Key",
+    auto_error=False,
+)
+
+
+def verify_service_key(
+    api_key: Annotated[str | None, Security(api_key_header)],
+) -> None:
+    expected_key = settings.ai_worker_api_key.get_secret_value()
+
+    if not expected_key or not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    if not secrets.compare_digest(api_key.encode("utf-8"), expected_key.encode("utf-8")):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+
+@lru_cache
+def get_llm_client() -> OpenRouterClient:
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.llm_diary_model,
+    )
+
+
+def get_diary_service(
+    llm_client: Annotated[
+        OpenRouterClient,
+        Depends(get_llm_client),
+    ],
+) -> DiaryService:
+
+    generator = DiaryGenerator(
+        llm_client=llm_client,
+    )
+
+    validator = DiaryValidator()
+
+    return DiaryService(
+        generator=generator,
+        validator=validator,
+    )

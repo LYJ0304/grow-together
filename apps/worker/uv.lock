@@ -74,6 +74,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "openrouter" },
     { name = "pydantic-settings" },
 ]
@@ -87,6 +88,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162,<0.163" },
+    { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "openrouter", specifier = ">=1,<2" },
     { name = "pydantic-settings", specifier = ">=2.12,<3" },
 ]
