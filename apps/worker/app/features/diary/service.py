@@ -20,11 +20,8 @@ class DiaryService:
         request: DiaryGenerateRequest,
     ) -> DiaryGenerationResponse:
 
-        # 1. LLM으로 일기 초안 생성
         result = await self.generator.generate(request)
 
-        # 2. 생성된 결과 검증
         self.validator.validate(request, result)
 
-        # 3. 검증된 결과 반환
         return result
