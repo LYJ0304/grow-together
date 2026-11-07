@@ -28,7 +28,7 @@
     "test:auth": "node tests/auth-session.mjs",
     "test:auth:ui": "node tests/auth-ui.mjs",
     "test:auth:api": "node tests/auth-api.mjs",
-    "test:main:ui": "node tests/main-data.mjs && node tests/main-ui.mjs",
+    "test:main:ui": "node tests/main-data.mjs && node tests/main-profile.mjs && node tests/main-ui.mjs",
     "test:diary-generation": "node tests/diary-generation.mjs",
     "test:diary:saved-edit": "node tests/diary-saved-edit.mjs",
     "test:diary:ui": "node tests/diary-result.mjs",
@@ -39,7 +39,8 @@
     "test:chat:status": "node tests/chat-status.mjs",
     "test:brand": "node tests/brand-assets.mjs",
     "test:env": "node tests/env.mjs",
-    "test:env:ui": "node tests/env-ui.mjs"
+    "test:env:ui": "node tests/env-ui.mjs",
+    "test:diary:typography": "node tests/diary-typography.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

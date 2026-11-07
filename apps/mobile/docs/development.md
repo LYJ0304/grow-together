@@ -109,3 +109,18 @@ GET 404만 미등록으로 처리한다. 다른 조회 오류는 재시도 화�
 Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://localhost:8141 BROWSER_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:children:ui`로 추가·수정·복원·취소·오류·충돌·계정 분리·반응형과 API 없는 미리보기를 확인한다. 이 테스트는 API 응답을 가로채므로 실제 API 연결을 증명하지 않는다.
 
 실제 API 확인은 운영 데이터가 없는 독립 로컬 API/DB를 준비하고, web 빌드의 `EXPO_PUBLIC_API_URL`과 API의 `CORS_ALLOWED_ORIGINS`를 맞춘 뒤 `CHILDREN_URL=http://localhost:8141 CHILDREN_API_URL=http://localhost:18141 npm run test:children:live`로 실행한다. 임시 테스트 계정을 생성하며 등록·수정·마이페이지 반영·재로그인·별도 브라우저 조회·새로고침을 검증한다. 테스트 계정은 해당 임시 DB에 남는다. 주소와 브라우저 경로는 실행 환경에 맞게 지정한다.
+
+## 홈·일기 UI 검증
+
+홈은 기존 아이 프로필과 Todo 조회를 사용한다. 아이 정보 → 일기 작성 → 루틴 요약 → 일정 → 기록 돌아보기 순서이며, 일기 작성과 돌아보기는 기존 캘린더로 이동한다. 날짜와 경과일은 로컬 달력 날짜를 기준으로 갱신한다. 미리보기에서는 로컬 아이 프로필만 읽고 보호된 API를 호출하지 않는다.
+
+홈과 일기는 `src/components/typography.ts`의 역할별 스타일을 공유한다. 화면·섹션 제목은 Jua, 본문·입력·버튼은 플랫폼 시스템 글꼴이다. 본문 읽기와 수정은 같은 16px/27px 규칙을 사용한다. 장식용 기호는 별도로 표시한다.
+
+Expo web export와 확장자 없는 경로를 제공하는 정적 서버를 준비한 뒤, `apps/mobile`에서 실행한다. 아래 주소와 브라우저 경로는 환경에 맞게 바꾼다.
+
+```bash
+MAIN_URL=http://localhost:8149 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:main:ui
+CHROME_PATH=/usr/bin/google-chrome npm run test:diary:typography -- http://localhost:8149
+```
+
+홈 검사는 실제 프로필·로딩·미등록·오류·재시도·계정 전환·생일 당일·서머타임·자정·복귀, 일정과 진행률, 반응형 화면과 움직임 줄이기를 확인한다. 일기 글꼴 검사는 로드된 폰트와 실제 computed style, 단계/모달의 역할별 규칙, 본문 읽기/수정의 일치, 큰 글씨와 작은 편집 영역을 확인한다. API 응답은 가로채므로 실서버 연결을 증명하지 않으며, 네이티브 폰트 fallback·키보드·OS 글씨 확대는 기기에서 별도로 확인한다.

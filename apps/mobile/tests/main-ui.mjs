@@ -18,6 +18,9 @@ const page = await browser.newPage({
   reducedMotion: 'no-preference',
 });
 await page.addInitScript(authenticatedSessionFixture);
+await page.route('**/api/v1/children/me', (route) =>
+  route.fulfill({ json: { name: '하늘', birthday: '2026-10-01' } }),
+);
 await page.route('**/api/v1/todos**', (route) =>
   route.fulfill({
     json: Array.from({ length: 10 }, (_, i) => ({
@@ -76,11 +79,14 @@ try {
     assert.equal(await progress.getAttribute('aria-valuemax'), '100');
     assert.equal(await progress.getAttribute('aria-valuetext'), '70퍼센트');
     const schedule = page.getByRole('heading', { name: '오늘의 일정' });
-    const diary = page.getByRole('heading', { name: 'AI 일기' });
+    const diary = page.getByRole('heading', {
+      name: '오늘의 이야기를 남겨보세요',
+    });
     const a = await schedule.boundingBox();
     const b = await diary.boundingBox();
-    assert.ok(width < 360 ? b.y > a.y : Math.abs(a.y - b.y) < 1);
-    for (const name of ['전체 보기 →', '만들러 가기']) {
+    assert.ok(b.y < a.y, 'Diary action precedes the full-width schedule');
+    assert.equal(Math.round(a.x), Math.round(b.x));
+    for (const name of ['전체 보기 →', '일기 작성하기']) {
       const button = page.getByRole('button', { name, exact: true });
       await button.scrollIntoViewIfNeeded();
       const box = await button.boundingBox();
@@ -156,7 +162,9 @@ try {
   await page.waitForURL('**/todo');
   assert.equal(await character.count(), 0);
   await page.getByRole('tab', { name: '홈', exact: true }).click();
-  await page.getByRole('button', { name: '만들러 가기', exact: true }).click();
+  await page
+    .getByRole('button', { name: '일기 작성하기', exact: true })
+    .click();
   await page.waitForURL('**/calendar');
   for (const [label, route] of [
     ['투두', 'todo'],
@@ -183,15 +191,15 @@ try {
   });
   assert.ok(
     await page
-      .getByRole('heading', { name: '사랑둥이와 함께한 지 +378일' })
+      .getByRole('heading', { name: /^하늘, 함께한 지/ })
       .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
   );
   await page
-    .getByRole('button', { name: '만들러 가기', exact: true })
+    .getByRole('button', { name: '일기 작성하기', exact: true })
     .scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   const largeAction = await page
-    .getByRole('button', { name: '만들러 가기', exact: true })
+    .getByRole('button', { name: '일기 작성하기', exact: true })
     .boundingBox();
   const largeNav = await page.getByRole('tablist').boundingBox();
   assert.ok(
