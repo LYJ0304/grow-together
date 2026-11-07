@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  executablePath: process.env.BROWSER_EXECUTABLE_PATH,
+  headless: true,
+});
 try {
   const context = await browser.newContext({
     viewport: { width: 393, height: 852 },

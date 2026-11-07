@@ -81,6 +81,7 @@ try {
       path: `${artifacts}/${engine.name()}-${width}.png`,
     });
 
+    await input.fill('');
     const suggestion = '편식이 심한데 어쩌죠?';
     await page
       .getByRole('button', { name: `질문 입력: ${suggestion}` })
@@ -95,7 +96,7 @@ try {
     );
     await page.waitForFunction(() => {
       const intro = [...document.querySelectorAll('[dir="auto"]')].find(
-        (element) => element.textContent === '이 시기에는 이런 질문이 많아요',
+        (element) => element.textContent === '이런 질문으로 시작해보세요',
       );
       const header = document.querySelector('[role="heading"]');
       return (

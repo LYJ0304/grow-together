@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  executablePath: process.env.BROWSER_EXECUTABLE_PATH,
+  headless: true,
+});
 try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   page.setDefaultNavigationTimeout(300000);
