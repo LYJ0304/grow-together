@@ -3,7 +3,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.routes.diary import router as diary_router
+from app.api.routes.v1.diary import router as diary_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.jobs.example import ExampleJob

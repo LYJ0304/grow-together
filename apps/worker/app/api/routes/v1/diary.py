@@ -15,7 +15,7 @@ from app.features.diary.service import DiaryService
 from app.features.diary.validator import DiaryValidationError
 
 router = APIRouter(
-    prefix="/internal/diary",
+    prefix="/internal/v1/diary",
     tags=["diary"],
     dependencies=[Depends(verify_service_key)],
 )

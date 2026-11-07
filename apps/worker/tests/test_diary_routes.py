@@ -29,6 +29,12 @@ def test_registered_route_returns_generation(post_diary, diary_service) -> None:
     assert diary_service.generate.call_args.args[0].date.isoformat() == "2026-11-07"
 
 
+def test_openapi_exposes_versioned_diary_endpoint(worker_app) -> None:
+    paths = worker_app.openapi()["paths"]
+    assert "/internal/v1/diary/generate" in paths
+    assert "/internal/diary/generate" not in paths
+
+
 @pytest.mark.parametrize(
     "headers", [{}, {"X-API-Key": "wrong"}, {"X-API-Key": ""}, {"X-API-Key": b"\xff"}]
 )

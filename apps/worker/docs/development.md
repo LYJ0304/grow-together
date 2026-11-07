@@ -29,8 +29,9 @@ set `SERVICE_NAME=growtogether-worker` unless you need a custom service name.
 Keep old local files until you have verified the new setup. Virtual environments
 contain absolute paths and should be recreated rather than moved.
 
-The FastAPI application at `app.main:app` registers `POST /internal/diary/generate`,
-authenticated with the `X-API-Key` header. The current command-line entry point
+The FastAPI application at `app.main:app` registers `POST /internal/v1/diary/generate`,
+authenticated with the `X-API-Key` header. Versioned routes live in `app/api/routes/v1/`.
+The current command-line entry point
 still runs the example job; an HTTP server is not configured.
 
 ## Run with Compose

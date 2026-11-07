@@ -39,7 +39,7 @@ def post_diary(worker_app):
                 transport=httpx.ASGITransport(app=worker_app),
                 base_url="http://test",
             ) as client:
-                return await client.post("/internal/diary/generate", json=payload, headers=headers)
+                return await client.post("/internal/v1/diary/generate", json=payload, headers=headers)
 
         return asyncio.run(send())
 
