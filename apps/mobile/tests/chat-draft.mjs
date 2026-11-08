@@ -82,9 +82,7 @@ try {
     '우리 아이 질문 초안',
     'Unsent draft survives preparation notice',
   );
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('textbox', { name: '이메일', exact: true })
@@ -100,9 +98,7 @@ try {
     'Another account never receives the old draft',
   );
   await input.fill('다른 사용자의 초안');
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
@@ -114,9 +110,7 @@ try {
     'Preview never receives an account draft',
   );
   await input.fill('미리보기 초안');
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page
     .getByRole('button', { name: '미리보기 종료', exact: true })
     .click();

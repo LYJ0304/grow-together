@@ -2,7 +2,7 @@ import { useAuth } from '../src/components/auth-provider';
 import { useSessionStore, useSessionValue } from '../src/lib/session-state';
 import { typography } from '../src/components/typography';
 import { createDiaryApi } from '../src/lib/features/diary/diaryApi';
-import { ProfileEntry } from '../src/components/profile-entry';
+import { AppHeader } from '../src/components/app-header';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -158,12 +158,12 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
+      <AppHeader />
       <ScrollView
         ref={scroll}
         style={styles.scroll}
         contentContainerStyle={styles.content}
       >
-        <ProfileEntry />
         <View style={styles.monthHeader}>
           <Pressable
             accessibilityRole="button"

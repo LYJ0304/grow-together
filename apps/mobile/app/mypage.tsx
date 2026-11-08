@@ -1,216 +1,118 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/components/auth-provider';
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { typography } from '../src/components/typography';
 import { useChildProfile } from '../src/lib/use-child-profile';
-
-const menuGroups = [
-  {
-    title: '가족 관리',
-    items: [
-      { title: '가족 정보', description: '보호자와 아이 정보' },
-      { title: '아이 프로필', description: '이름과 생일 관리' },
-    ],
-  },
-  {
-    title: '앱 설정',
-    items: [
-      { title: '알림 설정', description: '기록 알림 관리' },
-      { title: '앱 정보', description: '버전 1.0' },
-    ],
-  },
-];
 
 export default function MyPageScreen() {
   const { client, status } = useAuth();
-  const insets = useSafeAreaInsets();
-  const scroll = useRef<ScrollView>(null);
-  const [notice, setNotice] = useState('');
   const profile = useChildProfile();
-  const profileLabel = !profile.accountKey
-    ? '계정 확인 필요'
+  const scroll = useRef<ScrollView>(null);
+  const profileLabel = profile.isError
+    ? '아이 정보 조회 실패'
     : profile.isPending
       ? '아이 정보 불러오는 중'
-      : profile.isError
-        ? '아이 정보 조회 실패'
-        : profile.data
-          ? `${profile.data.name} · ${profile.data.birthday}`
-          : '등록된 아이가 없어요';
-
+      : profile.data
+        ? `${profile.data.name} · ${profile.data.birthday}`
+        : '등록된 아이가 없어요';
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <ScrollView
-        ref={scroll}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: Math.max(14, 68 - insets.top) },
-        ]}
-      >
-        <Text accessibilityRole="header" style={styles.title}>
-          마이페이지
-        </Text>
-
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLabel}>가</Text>
-          </View>
-          <View style={styles.profileText}>
-            <Text style={styles.profileName}>
-              {profile.data?.name ?? '아이 프로필'}
-            </Text>
-            <Text style={styles.profileDays}>{profileLabel}</Text>
-          </View>
-        </View>
-
-        {menuGroups.map((group) => (
-          <View key={group.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{group.title}</Text>
-            <View style={styles.menuCard}>
-              {group.items.map((item, index) => (
-                <Pressable
-                  key={item.title}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    if (item.title === '아이 프로필') router.push('/children');
-                    else setNotice(`${item.title} 화면은 준비 중입니다.`);
-                  }}
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    index < group.items.length - 1 && styles.menuDivider,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.menuText}>
-                    <Text style={styles.menuTitle}>{item.title}</Text>
-                    <Text style={styles.menuDescription}>
-                      {item.title === '아이 프로필'
-                        ? `${profileLabel} · ${profile.data ? '수정하기' : '추가하기'}`
-                        : item.description}
-                    </Text>
-                  </View>
-                  <Text style={styles.chevron} accessible={false}>
-                    ›
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ))}
-
+      <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => void client.logout()}
-          style={({ pressed }) => [
-            styles.logoutButton,
-            pressed && styles.pressed,
-          ]}
+          accessibilityLabel="이전 화면으로"
+          onPress={() =>
+            router.canGoBack() ? router.back() : router.replace('/main')
+          }
+          style={styles.back}
         >
-          <Text style={styles.logoutLabel}>
-            {status === 'preview' ? '미리보기 종료' : '로그아웃'}
-          </Text>
+          <Text style={styles.link}>‹ 뒤로</Text>
         </Pressable>
-
-        {notice ? (
-          <Text
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-            style={styles.notice}
-          >
-            {notice}
+        <Text accessibilityRole="header" style={styles.title}>
+          설정
+        </Text>
+      </View>
+      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.section}>
+            계정
           </Text>
-        ) : null}
+          <Text style={styles.body}>
+            {status === 'preview' ? '미리보기 이용 중' : '로그인되어 있어요.'}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void client.logout()}
+            style={styles.button}
+          >
+            <Text style={styles.logout}>
+              {status === 'preview' ? '미리보기 종료' : '로그아웃'}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.section}>
+            아이 정보 관리
+          </Text>
+          <Text style={styles.caption}>{profileLabel}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/children')}
+            style={styles.button}
+          >
+            <Text style={styles.link}>아이 프로필</Text>
+            <Text style={styles.caption}>
+              {profile.data ? '이름과 생일 수정하기' : '아이 정보 추가하기'}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.section}>
+            앱 정보
+          </Text>
+          <Text style={styles.body}>
+            버전 {Constants.expoConfig?.version ?? '확인 불가'}
+          </Text>
+        </View>
       </ScrollView>
-
       <BottomNavigation
         active={null}
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  screen: { flex: 1, backgroundColor: '#FAF9F9' },
+  header: {
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    padding: 16,
+    gap: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  back: { minWidth: 60, minHeight: 44, justifyContent: 'center' },
   content: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    padding: 20,
+    gap: 18,
   },
-  title: {
-    marginBottom: 22,
-    fontFamily: 'Jua',
-    fontSize: 28,
-    lineHeight: 36,
-    color: '#4F4F4F',
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 28,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 12px rgba(84, 87, 92, 0.08)',
-  },
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FDEDE6',
-  },
-  avatarLabel: { fontFamily: 'Jua', fontSize: 25, color: '#D26A5C' },
-  profileText: { flex: 1, gap: 5 },
-  profileName: { fontFamily: 'Jua', fontSize: 20, color: '#4F4F4F' },
-  profileDays: { fontFamily: 'Jua', fontSize: 14, color: '#858895' },
-  accent: { color: '#D26A5C' },
-  section: { marginBottom: 22 },
-  sectionTitle: {
-    marginBottom: 10,
-    paddingHorizontal: 4,
-    fontFamily: 'Jua',
-    fontSize: 17,
-    color: '#4F4F4F',
-  },
-  menuCard: {
-    overflow: 'hidden',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  menuItem: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  menuDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ECECEF',
-  },
-  menuText: { flex: 1, gap: 3 },
-  menuTitle: { fontFamily: 'Jua', fontSize: 16, color: '#4F4F4F' },
-  menuDescription: { fontFamily: 'Jua', fontSize: 12, color: '#A0A3B1' },
-  chevron: { fontFamily: 'Jua', fontSize: 26, color: '#A0A3B1' },
-  notice: {
-    marginBottom: 12,
-    fontFamily: 'Jua',
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#D26A5C',
-    textAlign: 'center',
-  },
-  pressed: { opacity: 0.75 },
-  logoutButton: { alignItems: 'center', paddingVertical: 14 },
-  logoutLabel: { fontFamily: 'Jua', fontSize: 16, color: '#C62828' },
+  card: { padding: 20, gap: 12, borderRadius: 18, backgroundColor: '#FFFFFF' },
+  title: { ...typography.title, color: '#433C39' },
+  section: { ...typography.section, color: '#433C39' },
+  body: { ...typography.body, color: '#494442' },
+  caption: { ...typography.caption, color: '#625B57' },
+  link: { ...typography.button, color: '#A84D40' },
+  logout: { ...typography.button, color: '#A03C30' },
+  button: { minHeight: 48, paddingVertical: 10, gap: 4 },
 });

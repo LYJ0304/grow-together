@@ -1,5 +1,6 @@
-import { ProfileEntry } from '../src/components/profile-entry';
+import { AppHeader } from '../src/components/app-header';
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
@@ -36,6 +37,7 @@ const suggestions = [
 ];
 
 export default function CounselorChatScreen() {
+  const { compose } = useLocalSearchParams<{ compose?: string }>();
   const scroll = useRef<ScrollView>(null);
   const input = useRef<TextInput>(null);
   const { width, height } = useWindowDimensions();
@@ -65,6 +67,13 @@ export default function CounselorChatScreen() {
     if (notice) scroll.current?.scrollToEnd({ animated: false });
   }, [notice]);
 
+  useEffect(() => {
+    if (compose === 'true') {
+      input.current?.focus();
+      router.setParams({ compose: '' });
+    }
+  }, [compose]);
+
   const send = () => {
     if (!draft.trim()) return;
     setNotice(
@@ -90,38 +99,7 @@ export default function CounselorChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <View style={styles.header}>
-          <View style={styles.avatar} accessible={false}>
-            <Image
-              source={require('../assets/images/brand/emblem.svg')}
-              style={styles.avatarImage}
-              contentFit="contain"
-              accessible={false}
-            />
-          </View>
-          <View style={styles.headerCopy}>
-            <Text accessibilityRole="header" style={styles.personaName}>
-              육아 도우미
-            </Text>
-            <Text style={styles.connectionStatus}>답변 연결 준비 중</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="도우미 설정"
-            onPress={() => setNotice('설정 기능은 준비 중이에요.')}
-            style={({ pressed }) => [
-              styles.settingsButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image
-              source={require('../assets/images/chat/settings.svg')}
-              style={styles.settingsIcon}
-              contentFit="contain"
-              accessible={false}
-            />
-          </Pressable>
-        </View>
+        <AppHeader title="육아 도우미" subtitle="연결 준비 중" />
 
         <ScrollView
           ref={scroll}
@@ -129,7 +107,6 @@ export default function CounselorChatScreen() {
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
-          <ProfileEntry />
           <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
           <View style={styles.suggestions}>
             {suggestions.map((item) => (
@@ -271,45 +248,6 @@ export default function CounselorChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
   keyboard: { flex: 1, minHeight: 0 },
-  header: {
-    minHeight: 72,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 12,
-    flexShrink: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EAE6E4',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FDEDE6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: { width: 32, height: 28 },
-  headerCopy: { flex: 1, minWidth: 0, gap: 3 },
-  personaName: {
-    fontFamily: 'Jua',
-    fontSize: 17,
-    lineHeight: 24,
-    color: '#A44F43',
-  },
-  connectionStatus: { ...typography.caption, color: '#706A67' },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#EAE6E4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsIcon: { width: 22, height: 22 },
   messages: {
     flexGrow: 1,
     paddingHorizontal: 20,

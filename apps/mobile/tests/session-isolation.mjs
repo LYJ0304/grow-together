@@ -40,9 +40,7 @@ try {
   await page
     .getByRole('textbox', { name: '상담 질문 입력', exact: true })
     .fill('첫 계정의 비공개 질문');
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('textbox', { name: '이메일', exact: true })
@@ -65,9 +63,7 @@ try {
       .count(),
     0,
   );
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })

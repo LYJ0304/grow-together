@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useAuth } from '../src/components/auth-provider';
 import { BottomNavigation } from '../src/components/bottom-navigation';
-import { ProfileEntry } from '../src/components/profile-entry';
+import { AppHeader } from '../src/components/app-header';
 import { ActionButton } from '../src/components/action-button';
 import {
   DiaryResultView,
@@ -414,11 +414,11 @@ function DiaryEditor() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+        <AppHeader disabled={busy || generating || preparing} />
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <ProfileEntry disabled={busy || generating || preparing} />
           <ActionButton
             label="기록으로 돌아가기"
             secondary

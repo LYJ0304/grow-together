@@ -21,7 +21,7 @@ const input = page.getByRole('textbox', {
   name: '상담 질문 입력',
   exact: true,
 });
-const settings = page.getByRole('button', { name: '도우미 설정', exact: true });
+const settings = page.getByRole('button', { name: '앱 설정', exact: true });
 const heading = page.getByRole('heading', { name: '육아 도우미' });
 const tabs = page.getByRole('tablist');
 const questionTab = tabs.getByRole('tab', { name: '질문', exact: true });
@@ -73,7 +73,7 @@ try {
     await checkLayout(height);
     await settings.locator('img').waitFor();
     await page.waitForFunction(() => {
-      const icon = document.querySelector('[aria-label="도우미 설정"] img');
+      const icon = document.querySelector('[aria-label="앱 설정"] img');
       return icon?.complete && icon.naturalWidth > 0;
     });
     assert.equal(await settings.innerText(), '');

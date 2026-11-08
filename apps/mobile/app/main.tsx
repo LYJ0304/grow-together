@@ -1,3 +1,4 @@
+import { HomeQuestionEntry } from '../src/components/home-question-entry';
 import { useCallback, useRef, useState } from 'react';
 import {
   AppState,
@@ -12,7 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { BottomNavigation } from '../src/components/bottom-navigation';
-import { ProfileEntry } from '../src/components/profile-entry';
+import { AppHeader } from '../src/components/app-header';
 import { ActionButton } from '../src/components/action-button';
 import { RecommendationOptions } from '../src/components/recommendation-options';
 import { typography } from '../src/components/typography';
@@ -90,8 +91,8 @@ export default function MainScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
+      <AppHeader />
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
-        <ProfileEntry />
         <Text style={styles.meta}>
           {new Date(`${today}T12:00:00`).toLocaleDateString('ko-KR', {
             month: 'long',
@@ -99,6 +100,7 @@ export default function MainScreen() {
             weekday: 'long',
           })}
         </Text>
+        <HomeQuestionEntry />
         {profile.isPending ? (
           <Text style={styles.body}>아이 정보를 불러오고 있어요.</Text>
         ) : profile.isError ? (

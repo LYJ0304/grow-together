@@ -119,7 +119,12 @@ try {
   });
   await fits(400);
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
-  await page.getByRole('button', { name: '도우미 설정', exact: true }).click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page.waitForURL('**/mypage');
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
+  await input.waitFor();
   await fits(400);
   await page.screenshot({ path: `${artifacts}/chat-large-text.png` });
   console.log(

@@ -3,7 +3,7 @@ import { RecommendationOptions } from '../src/components/recommendation-options'
 import { ActionButton } from '../src/components/action-button';
 import { typography } from '../src/components/typography';
 import { useSessionValue } from '../src/lib/session-state';
-import { ProfileEntry } from '../src/components/profile-entry';
+import { AppHeader } from '../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -183,13 +183,13 @@ export default function TodoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
+      <AppHeader />
       <View style={styles.scheduleContent}>
         <ScrollView
           ref={scroll}
-          stickyHeaderIndices={[2]}
+          stickyHeaderIndices={[1]}
           contentContainerStyle={styles.content}
         >
-          <ProfileEntry />
           <View
             style={[
               styles.dateHeader,

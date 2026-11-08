@@ -77,7 +77,7 @@ try {
     await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).count(),
     previewEnabled ? 1 : 0,
   );
-  assert.equal(await heading('마이페이지').count(), 0);
+  assert.equal(await heading('설정').count(), 0);
 
   if (previewEnabled) {
     await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
@@ -97,10 +97,8 @@ try {
       await page.evaluate((key) => sessionStorage.getItem(key), sessionKey),
       null,
     );
-    await page
-      .getByRole('button', { name: '프로필과 설정', exact: true })
-      .click();
-    await heading('마이페이지').waitFor();
+    await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+    await heading('설정').waitFor();
     assert.equal(
       await page.getByText('미리보기 · 서버 API를 이용할 수 없어요.').count(),
       0,
@@ -163,7 +161,7 @@ try {
   );
 
   await page.goto(`${siteUrl}/mypage`);
-  await heading('마이페이지').waitFor();
+  await heading('설정').waitFor();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await heading('다시 만났네요!').waitFor();
   assert.equal(
@@ -172,7 +170,7 @@ try {
   );
   await page.goBack();
   await heading('다시 만났네요!').waitFor();
-  assert.equal(await heading('마이페이지').count(), 0);
+  assert.equal(await heading('설정').count(), 0);
 
   // Startup network failure must preserve credentials and offer retry/logout.
   await fillLogin();
@@ -188,7 +186,7 @@ try {
     .getByRole('button', { name: '다시 시도', exact: true })
     .waitFor({ state: 'hidden' });
   await page.goto(`${siteUrl}/mypage`);
-  await heading('마이페이지').waitFor();
+  await heading('설정').waitFor();
   await page.route('**/api/v1/auth/logout', offline);
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await heading('다시 만났네요!').waitFor();

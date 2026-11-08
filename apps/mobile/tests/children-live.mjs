@@ -52,7 +52,7 @@ try {
     .fill('바다');
   await click('저장');
   await page.getByText('바다', { exact: true }).waitFor();
-  await click('마이페이지로 돌아가기');
+  await click('이전 화면으로 돌아가기');
   await page.getByText('바다 · 2024-02-29', { exact: true }).waitFor();
   await click('로그아웃');
   await login(page);

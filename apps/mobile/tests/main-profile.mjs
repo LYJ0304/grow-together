@@ -21,9 +21,7 @@ const heading = (name) => page.getByRole('heading', { name, exact: true });
 try {
   await page.goto(`${url}/main`, { waitUntil: 'commit', timeout: 120000 });
   await heading('하늘의 하루 · 11개월').waitFor();
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   profile = { name: '바다', birthday: '2025-11-08' };

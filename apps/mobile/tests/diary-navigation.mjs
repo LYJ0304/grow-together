@@ -26,9 +26,7 @@ try {
     '기록',
     '질문',
   ]);
-  await page
-    .getByRole('button', { name: '프로필과 설정', exact: true })
-    .click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page.getByRole('tab', { name: '일정', exact: true }).click();
   const dateButtons = page.locator('[aria-pressed]');
