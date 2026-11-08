@@ -1,3 +1,4 @@
+import { typography } from '../src/components/typography';
 import { router, useNavigation } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -179,12 +180,14 @@ function ChildrenEditor() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="마이페이지로 돌아가기"
+            accessibilityLabel="이전 화면으로 돌아가기"
             disabled={saving}
-            onPress={() => router.dismissTo('/mypage')}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace('/mypage')
+            }
             style={styles.back}
           >
-            <Text style={styles.backLabel}>‹ 마이페이지</Text>
+            <Text style={styles.backLabel}>‹ 뒤로</Text>
           </Pressable>
           <Text accessibilityRole="header" style={styles.title}>
             {editing
@@ -468,8 +471,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E8',
     borderRadius: 12,
     padding: 14,
-    fontFamily: 'Jua',
-    fontSize: 16,
+    ...typography.body,
     color: '#4F4F4F',
     backgroundColor: '#FAF9F9',
   },

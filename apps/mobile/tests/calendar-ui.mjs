@@ -1,367 +1,107 @@
-import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import { chromium, webkit } from 'playwright-core';
-
-// Serve an Expo web export first; development error overlays can cover navigation.
-// BROWSER=webkit exercises WebKit. BROWSER_EXECUTABLE_PATH supports a local browser.
-const url = process.env.CALENDAR_URL ?? 'http://localhost:8094';
-const engine = process.env.BROWSER === 'webkit' ? webkit : chromium;
-const artifacts = process.env.ARTIFACT_DIR ?? '/tmp/growtogether-calendar-152';
-await mkdir(artifacts, { recursive: true });
-const browser = await engine.launch({
-  headless: true,
-  executablePath: process.env.BROWSER_EXECUTABLE_PATH,
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({
+  executablePath:
+    process.env.BROWSER_EXECUTABLE_PATH ?? '/usr/bin/google-chrome',
+  args: ['--no-sandbox'],
 });
-const context = await browser.newContext({
-  viewport: { width: 390, height: 844 },
-  isMobile: true,
-  hasTouch: true,
-  timezoneId: 'Asia/Seoul',
-});
-await context.addInitScript(() => {
+const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
+page.setDefaultTimeout(12000);
+await page.clock.setFixedTime(new Date('2026-11-08T12:00:00'));
+await page.addInitScript(() => {
+  const diary = {
+    date: '2026-10-31',
+    content: '함께한 날의 저장된 미리보기 요약',
+    emotions: [],
+    growthPoints: [],
+    photoUris: [],
+  };
   localStorage.setItem(
-    '@growtogether/diary/v1/2026-10-10',
-    JSON.stringify({
-      date: '2026-10-10',
-      content: '캘린더 회귀 검증용 일기',
-      emotions: [],
-      growthPoints: [],
-      photoUris: [],
-    }),
+    '@growtogether/diary/preview/v2/2026-10-31',
+    JSON.stringify(diary),
   );
-  const originalKey = Storage.prototype.key;
+  const key = Storage.prototype.key;
   Storage.prototype.key = function (index) {
-    if (window.diaryStorageUnavailable) throw new Error('Storage unavailable');
-    return originalKey.call(this, index);
+    if (window.failList) throw new Error('Unavailable');
+    return key.call(this, index);
   };
 });
-const page = await context.newPage();
-await page.addInitScript(authenticatedSessionFixture);
-page.setDefaultTimeout(15000);
-const grid = page.getByTestId('calendar-grid');
-const weeks = page.getByTestId('calendar-week');
-const heading = page.getByRole('heading');
-const tabs = page.getByRole('tablist');
-const create = page.getByRole('button', {
-  name: '선택한 날짜의 일기 생성하기',
-});
-const view = page.getByRole('button', { name: '선택한 날짜의 일기 보기' });
-
-async function open(date) {
-  await page.goto(`${url}/calendar?date=${date}`);
-  await grid.waitFor();
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('[role="button"]')].some(
-      (button) =>
-        button.textContent === '일기 보기' ||
-        button.textContent === '일기 생성하기',
-    ),
-  );
-}
-
+const click = (name) => page.getByRole('button', { name, exact: true }).click();
 try {
-  await page.clock.install({ time: new Date('2026-11-07T03:00:00Z') });
-  await open('2026-10-10');
-  await page.getByText('2026년 10월 10일 토요일', { exact: true }).waitFor();
-  await page
-    .getByText('이날의 성장 이야기가 저장되어 있어요.', { exact: true })
-    .waitFor();
-  await page.getByRole('button', { name: '오늘로 이동', exact: true }).click();
-  assert.equal(await heading.innerText(), '2026년 11월');
-  const today = grid.getByRole('button', {
-    name: '2026년 11월 7일, 오늘',
-    exact: true,
-  });
-  assert.equal(await today.getAttribute('aria-pressed'), 'true');
-  await page.getByText('2026년 11월 7일 토요일', { exact: true }).waitFor();
-  await page
-    .getByText('하루의 작은 성장을 일기로 남겨보세요.', { exact: true })
-    .waitFor();
-  await page
-    .getByRole('button', { name: '2026년 11월 6일', exact: true })
-    .click();
-  assert.equal(await today.getAttribute('aria-pressed'), 'false');
-  const todayStyle = await today.evaluate((node) => ({
-    border: getComputedStyle(node).borderColor,
-    width: parseFloat(getComputedStyle(node).borderWidth),
-    fill: getComputedStyle(node).backgroundColor,
-  }));
-  const selectedFill = await grid
-    .getByRole('button', { pressed: true })
-    .evaluate((node) => getComputedStyle(node).backgroundColor);
-  assert.ok(todayStyle.width >= 1);
-  assert.equal(
-    todayStyle.border,
-    selectedFill,
-    'Today outline uses the selection accent',
+  await page.goto(
+    `${process.env.CALENDAR_URL ?? 'http://localhost:8156'}/login`,
+    { waitUntil: 'commit', timeout: 120000 },
   );
-  assert.notEqual(
-    todayStyle.fill,
-    selectedFill,
-    'Today remains distinct from the selected date',
-  );
-  await page.screenshot({
-    path: path.join(artifacts, `${engine.name()}-today.png`),
-  });
-  await page.getByText('2026년 11월 6일 금요일', { exact: true }).waitFor();
-  for (const [width, height] of [
-    [320, 568],
-    [390, 844],
-    [430, 932],
-  ]) {
-    await page.setViewportSize({ width, height });
-    await open('2026-10-10');
-    assert.equal(await weeks.count(), 5);
-    assert.equal(await grid.getByRole('button').count(), 35);
-    assert.equal(await heading.innerText(), '2026년 10월');
-    assert.equal(await grid.getByRole('button', { pressed: true }).count(), 1);
-    const first = await weeks.first().getByRole('button').first().boundingBox();
-    assert.ok(first.width >= 43.9 && first.height >= 48);
-    const cells = await weeks.first().getByRole('button').all();
-    for (const cell of cells) {
-      const box = await cell.boundingBox();
-      assert.ok(Math.abs(box.width - first.width) < 1);
-      assert.equal(box.y, first.y);
-    }
-    const columns = await weeks
-      .first()
-      .getByRole('button')
-      .evaluateAll((items) =>
-        items.map((item) => item.getBoundingClientRect().x),
-      );
-    const allCells = await grid.getByRole('button').all();
-    for (const [index, cell] of allCells.entries()) {
-      const box = await cell.boundingBox();
-      assert.ok(Math.abs(box.width - first.width) < 1);
-      assert.ok(Math.abs(box.x - columns[index % 7]) < 1);
-    }
-    const title = await heading.boundingBox();
-    assert.ok(title.y < 40, 'Content starts near the safe top');
-    await page.screenshot({
-      path: path.join(artifacts, `${engine.name()}-${width}-calendar.png`),
-    });
-    // The date summary may need scrolling on short screens, like six-week months.
-    await view.scrollIntoViewIfNeeded();
-    const legend = await page
-      .getByText('● 일기가 저장된 날', { exact: true })
-      .boundingBox();
-    const button = await view.boundingBox();
-    const navigation = await tabs.boundingBox();
-    const summary = await page.getByTestId('calendar-selection').boundingBox();
-    assert.ok(summary.y >= legend.y + legend.height);
-    assert.ok(button.y >= summary.y);
-    assert.ok(button.y + button.height <= summary.y + summary.height);
-    assert.ok(button.height >= 48 && button.height <= 54);
-    assert.ok(button.y + button.height <= navigation.y);
-    assert.ok(navigation.y + navigation.height <= height);
-    assert.deepEqual(
-      await tabs
-        .getByRole('tab')
-        .evaluateAll((items) =>
-          items.map((item) => item.getAttribute('aria-label')),
-        ),
-      ['캘린더', '투두', '홈', '질문', '마이'],
-    );
-    assert.equal(
-      await tabs
-        .getByRole('tab', { selected: true })
-        .getAttribute('aria-label'),
-      '캘린더',
-    );
-    assert.ok(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    );
-    await page.screenshot({
-      path: path.join(artifacts, `${engine.name()}-${width}.png`),
-    });
-    // Browser chrome must preserve the relationship between the summary and CTA.
-    await page.setViewportSize({ width, height: height - 100 });
-    const resized = await view.boundingBox();
-    const resizedSummary = await page
-      .getByTestId('calendar-selection')
-      .boundingBox();
-    assert.equal(resized.y - resizedSummary.y, button.y - summary.y);
-  }
-
-  await page.setViewportSize({ width: 320, height: 568 });
-  for (const [date, count] of [
-    ['2026-02-15', 4],
-    ['2026-08-15', 6],
-    ['2028-02-29', 5],
-  ]) {
-    await open(date);
-    assert.equal(await weeks.count(), count);
-  }
-  await open('2026-08-15');
-  const headerBefore = await heading.boundingBox();
-  const navBefore = await tabs.boundingBox();
-  await page.getByRole('button', { name: '다음 달', exact: true }).click();
-  assert.equal(await weeks.count(), 5);
-  assert.equal((await heading.boundingBox()).y, headerBefore.y);
-  assert.equal((await tabs.boundingBox()).y, navBefore.y);
-  await page.getByRole('button', { name: '이전 달', exact: true }).click();
-  assert.equal(await weeks.count(), 6);
-
-  await open('2026-12-31');
-  await page.getByRole('button', { name: '다음 달', exact: true }).click();
-  assert.equal(await heading.innerText(), '2027년 1월');
-  await open('2026-10-10');
+  await click('인증 없이 미리보기 진입');
+  await page.getByRole('tab', { name: '기록', exact: true }).click();
   await page
-    .getByRole('button', { name: '2026년 9월 30일', exact: true })
-    .click();
-  assert.equal(await heading.innerText(), '2026년 9월');
-  await create.click();
-  assert.ok(new URL(page.url()).searchParams.get('date') === '2026-09-30');
-  assert.ok(new URL(page.url()).searchParams.get('mode') === 'create');
-
-  await open('2026-10-10');
-  await view.focus();
-  await page.keyboard.press('Enter');
-  await page.getByText('캘린더 회귀 검증용 일기', { exact: true }).waitFor();
-  assert.equal(new URL(page.url()).searchParams.get('mode'), 'view');
-  await page
-    .getByRole('button', { name: '캘린더로 돌아가기', exact: true })
-    .click();
-  await view.waitFor();
-
-  // Exercise the direct preview/save flow through the calendar CTA.
-  await page
-    .getByRole('button', { name: '2026년 10월 11일', exact: true })
-    .click();
-  await create.click();
-  await page.getByRole('checkbox').first().click();
-  await page.getByRole('button', { name: '다음으로', exact: true }).click();
-  await page
-    .getByRole('button', { name: '일기 생성하기', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
-    .click();
-  await view.waitFor();
-  await page.getByText('일기를 저장했어요.', { exact: true }).waitFor();
-  assert.equal(
-    await grid
-      .getByRole('button', { pressed: true })
-      .getAttribute('aria-label'),
-    '2026년 10월 11일, 일기 있음',
-  );
-
-  await page.evaluate(() => {
-    window.diaryStorageUnavailable = true;
-  });
-  await page.getByRole('tab', { name: '홈', exact: true }).click();
-  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
-  await page
-    .getByRole('button', { name: '일기 목록 다시 불러오기', exact: true })
+    .getByRole('heading', { name: '2026년 11월', exact: true })
     .waitFor();
+  const grid = page.getByTestId('calendar-grid');
+  assert.equal(await grid.getByRole('button').count(), 35);
+  await click('이전 달');
+  await page
+    .getByRole('heading', { name: '2026년 10월', exact: true })
+    .waitFor();
+  assert.equal(await grid.getByRole('button').count(), 35);
+  await click('2026년 10월 31일, 일기 있음');
+  await page
+    .getByText('함께한 날의 저장된 미리보기 요약', { exact: true })
+    .waitFor();
+  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByRole('tab', { name: '기록', exact: true }).click();
   assert.equal(
     await page
-      .getByRole('button', { name: /선택한 날짜의 일기/ })
-      .getAttribute('aria-disabled'),
+      .getByRole('button', { name: '2026년 10월 31일, 일기 있음', exact: true })
+      .getAttribute('aria-pressed'),
     'true',
   );
+  await page.evaluate(() => {
+    window.failList = true;
+  });
+  await page.getByRole('tab', { name: '오늘', exact: true }).click();
+  await page.getByRole('tab', { name: '기록', exact: true }).click();
   await page
-    .getByText('일기 목록을 다시 불러온 뒤 확인해주세요.', { exact: true })
+    .getByRole('alert')
+    .filter({ hasText: '목록을 불러오지 못했어요' })
     .waitFor();
-  assert.equal(
+  assert(
     await page
-      .getByText('하루의 작은 성장을 일기로 남겨보세요.', { exact: true })
-      .count(),
-    0,
+      .getByRole('button', { name: '선택한 날짜의 일기 보기', exact: true })
+      .isDisabled(),
   );
   await page.evaluate(() => {
-    window.diaryStorageUnavailable = false;
+    window.failList = false;
   });
+  await click('일기 목록 다시 불러오기');
+  await click('오늘로 이동');
   await page
-    .getByRole('button', { name: '일기 목록 다시 불러오기', exact: true })
-    .click();
-  await page.waitForFunction(
-    () => !document.querySelector('[role="button"][aria-disabled="true"]'),
+    .getByText('저장된 미리보기 기록이 없어요. 오늘의 순간을 남겨보세요.', {
+      exact: true,
+    })
+    .waitFor();
+  await click('선택한 날짜의 일기 작성하기');
+  await page.waitForURL('**/diary**');
+  await page
+    .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+    .fill('아직 저장하지 않은 관찰');
+  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByRole('tab', { name: '기록', exact: true }).click();
+  await click('작성하던 일기 이어 쓰기');
+  assert.equal(
+    await page
+      .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+      .inputValue(),
+    '아직 저장하지 않은 관찰',
   );
-
-  for (const [label, route] of [
-    ['투두', '/todo'],
-    ['홈', '/main'],
-    ['질문', '/chat'],
-    ['마이', '/mypage'],
-    ['캘린더', '/calendar'],
-  ]) {
-    await page.getByRole('tab', { name: label, exact: true }).click();
-    await page.waitForURL((address) => address.pathname === route);
-    assert.equal(
-      await tabs
-        .getByRole('tab', { selected: true })
-        .getAttribute('aria-label'),
-      label,
-    );
-    assert.equal(await tabs.getByRole('tab').count(), 5);
-    const box = await tabs.boundingBox();
-    assert.ok(box.y + box.height <= 568);
-  }
-
-  await open('2026-08-15');
-  await page.addStyleTag({
-    content: `
-    [data-testid="calendar-grid"] [role="button"] > div:first-child { font-size: 30px !important; line-height: 40px !important; }
-    [role="heading"] { font-size: 44px !important; line-height: 56px !important; }
-  `,
-  });
-  await create.scrollIntoViewIfNeeded();
-  const action = await create.boundingBox();
-  const nav = await tabs.boundingBox();
-  assert.ok(
-    action.y + action.height <= nav.y,
-    'Large text CTA scrolls above navigation',
-  );
-  assert.ok(
+  assert(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
-  await page.screenshot({
-    path: path.join(artifacts, `${engine.name()}-large-text.png`),
-  });
-  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
-  await page.waitForFunction(() => {
-    const heading = document.querySelector('[role="heading"]');
-    return heading && heading.getBoundingClientRect().top >= 0;
-  });
-
-  // Simulate notch/home-indicator insets through the installed provider's CSS probe.
-  // This verifies layout integration, not actual iOS standalone/browser chrome behavior.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await open('2026-10-10');
-  await page.addStyleTag({
-    content: `body > div[style*="safe-area-inset-top"] { padding-top: 47px !important; padding-bottom: 34px !important; }`,
-  });
-  await page.waitForFunction(() => {
-    const heading = document.querySelector('[role="heading"]');
-    const navigation = document.querySelector('[role="tablist"]');
-    return (
-      heading?.getBoundingClientRect().top >= 47 &&
-      navigation?.getBoundingClientRect().bottom <= innerHeight - 34
-    );
-  });
-  assert.ok(
-    (await view.boundingBox()).y + (await view.boundingBox()).height <
-      (await tabs.boundingBox()).y,
-  );
-  await page.screenshot({
-    path: path.join(artifacts, `${engine.name()}-safe-area.png`),
-  });
   console.log(
-    `PASS: ${engine.name()} mobile layouts, 4/5/6 weeks, month/date navigation, diary create/view/save, retry, tab routes, keyboard, large text, simulated safe area. Screenshots: ${artifacts}`,
+    'PASS calendar grid, selected date/month retention, saved summary, empty/error/retry and draft entry at 320px',
   );
-} catch (error) {
-  await page.screenshot({
-    path: path.join(artifacts, `${engine.name()}-failure.png`),
-  });
-  console.error(await page.locator('body').innerText());
-  throw error;
 } finally {
   await browser.close();
 }

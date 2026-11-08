@@ -1,15 +1,21 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
-  active: '홈' | '캘린더' | '투두' | '질문' | '마이';
+  active: '오늘' | '일정' | '기록' | '질문' | null;
   onReselect: () => void;
+  disabled?: boolean;
   onUnavailable?: (label: string) => void;
 };
 
-export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
+export function BottomNavigation({
+  active,
+  onReselect,
+  onUnavailable,
+  disabled = false,
+}: Props) {
   const insets = useSafeAreaInsets();
   const items: {
     label: string;
@@ -17,29 +23,24 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
     href: '/main' | '/calendar' | '/todo' | '/chat' | '/mypage';
   }[] = [
     {
-      label: '캘린더',
-      icon: require('../../assets/images/main/calendar.svg'),
-      href: '/calendar',
+      label: '오늘',
+      icon: require('../../assets/images/calendar/home.svg'),
+      href: '/main',
     },
     {
-      label: '투두',
+      label: '일정',
       icon: require('../../assets/images/main/todo.svg'),
       href: '/todo',
     },
     {
-      label: '홈',
-      icon: require('../../assets/images/calendar/home.svg'),
-      href: '/main',
+      label: '기록',
+      icon: require('../../assets/images/main/calendar.svg'),
+      href: '/calendar',
     },
     {
       label: '질문',
       icon: require('../../assets/images/main/search.svg'),
       href: '/chat',
-    },
-    {
-      label: '마이',
-      icon: require('../../assets/images/main/user.svg'),
-      href: '/mypage',
     },
   ];
 
@@ -53,7 +54,8 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
             key={item.label}
             accessibilityRole="tab"
             accessibilityLabel={item.label}
-            accessibilityState={{ selected: item.label === active }}
+            disabled={disabled}
+            accessibilityState={{ selected: item.label === active, disabled }}
             aria-selected={item.label === active}
             onPress={() => {
               if (item.label === active) onReselect();
@@ -76,6 +78,14 @@ export function BottomNavigation({ active, onReselect, onUnavailable }: Props) {
                 accessible={false}
               />
             </View>
+            <Text
+              style={[
+                styles.label,
+                item.label === active && styles.selectedLabel,
+              ]}
+            >
+              {item.label}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -101,7 +111,7 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -111,6 +121,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  label: { fontSize: 13, lineHeight: 20, color: '#625B57' },
+  selectedLabel: { color: '#A84D40', fontWeight: '600' },
   image: { width: 24, height: 24 },
   selectedIcon: { backgroundColor: '#FDEDE8', borderRadius: 10 },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },

@@ -1,3 +1,8 @@
+import { useAuth } from '../src/components/auth-provider';
+import { useSessionStore, useSessionValue } from '../src/lib/session-state';
+import { typography } from '../src/components/typography';
+import { createDiaryApi } from '../src/lib/features/diary/diaryApi';
+import { AppHeader } from '../src/components/app-header';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -18,9 +23,14 @@ import {
   diaryDateKey,
   parseDiaryDate,
   savedDiaryDates,
+  readDiary,
 } from '../src/lib/diary-storage';
 
 export default function CalendarScreen() {
+  const { status, client, epoch } = useAuth();
+  const preview = status === 'preview';
+  const [knownIds] = useSessionValue<Record<string, number>>('diaryIds', {});
+  const values = useSessionStore((state) => state.values);
   const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
   useEffect(() => setHydrated(true), []);
   const {
@@ -39,10 +49,11 @@ export default function CalendarScreen() {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
-  const [month, setMonth] = useState(
+  const [month, setMonth] = useSessionValue(
+    'calendarMonth',
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
   );
-  const [selected, setSelected] = useState(initialDate);
+  const [selected, setSelected] = useSessionValue('calendarDate', initialDate);
   const [notice, setNotice] = useState('');
   const {
     data: dates,
@@ -50,12 +61,42 @@ export default function CalendarScreen() {
     error: diaryError,
     refetch,
   } = useQuery({
-    queryKey: ['savedDiaryDates'],
+    queryKey: ['savedDiaryDates', 'preview'],
+    enabled: preview,
     queryFn: savedDiaryDates,
     retry: false,
   });
-  const savedDates = new Set(dates ?? []);
-  const diaryNotice = diaryError instanceof Error ? diaryError.message : '';
+  const savedDates = new Set(preview ? (dates ?? []) : Object.keys(knownIds));
+  const summary = useQuery({
+    queryKey: [
+      'diarySummary',
+      preview ? 'preview' : epoch,
+      diaryDateKey(selected),
+      knownIds[diaryDateKey(selected)],
+    ],
+    enabled: savedDates.has(diaryDateKey(selected)),
+    retry: false,
+    queryFn: async () =>
+      preview
+        ? ((await readDiary(diaryDateKey(selected)))?.content ?? '')
+        : ((
+            await createDiaryApi(client).getDiary(
+              knownIds[diaryDateKey(selected)],
+            )
+          ).content ?? ''),
+  });
+  const diaryNotice =
+    preview && diaryError instanceof Error
+      ? diaryError.message
+      : summary.isError
+        ? '일기 요약을 불러오지 못했어요.'
+        : '';
+  const hasDraft = Object.entries(values).some(
+    ([key, value]) =>
+      key.startsWith(`diary:${diaryDateKey(selected)}:`) &&
+      key.endsWith(':dirty') &&
+      value === true,
+  );
   const selectedHasDiary = savedDates.has(diaryDateKey(selected));
 
   useEffect(() => {
@@ -63,6 +104,7 @@ export default function CalendarScreen() {
     if (!fromRoute) return;
     setSelected(fromRoute);
     setMonth(new Date(fromRoute.getFullYear(), fromRoute.getMonth(), 1));
+    router.setParams({ date: '', saved: '', deleted: '' });
     setNotice(
       deleted === 'true'
         ? '일기를 삭제했어요.'
@@ -70,12 +112,12 @@ export default function CalendarScreen() {
           ? '일기를 저장했어요.'
           : '',
     );
-  }, [dateParam, saved, deleted]);
+  }, [dateParam, saved, deleted, setMonth, setSelected]);
 
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      if (preview) void refetch();
+    }, [refetch, preview]),
   );
   const days = calendarDays(month);
   const today = new Date();
@@ -85,9 +127,15 @@ export default function CalendarScreen() {
     ? '일기 목록을 다시 불러온 뒤 확인해주세요.'
     : loadingDiaries
       ? '저장된 일기를 확인하고 있어요.'
-      : selectedHasDiary
-        ? '이날의 성장 이야기가 저장되어 있어요.'
-        : '하루의 작은 성장을 일기로 남겨보세요.';
+      : hasDraft
+        ? '이 세션에서 작성하던 내용이 있어요.'
+        : selectedHasDiary
+          ? preview
+            ? '이 기기에 저장된 미리보기 일기예요.'
+            : '이 세션에서 저장한 일기예요.'
+          : preview
+            ? '저장된 미리보기 기록이 없어요. 오늘의 순간을 남겨보세요.'
+            : '날짜별 서버 기록 조회는 연결 준비 중이에요. 기록 유무를 확인할 수 없어요.';
 
   const changeMonth = (offset: number) => {
     setMonth(
@@ -110,6 +158,7 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
+      <AppHeader />
       <ScrollView
         ref={scroll}
         style={styles.scroll}
@@ -156,7 +205,7 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.calendarToolbar}>
-          <Text style={styles.calendarCaption}>우리의 성장 기록</Text>
+          <Text style={styles.calendarCaption}>우리의 기록</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="오늘로 이동"
@@ -257,11 +306,28 @@ export default function CalendarScreen() {
           </Text>
         ) : null}
         <View testID="calendar-selection" style={styles.actions}>
-          <Text style={styles.selectionEyebrow}>선택한 날의 일기</Text>
+          <Text style={styles.selectionEyebrow}>선택한 날의 기록</Text>
           <Text style={styles.selectionDate}>{selectedDateLabel}</Text>
           <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
             {selectionHint}
           </Text>
+          {!preview ? (
+            <Text style={styles.selectionHint}>
+              이 세션에서 저장한 일기만 표시해요. 서버 일기의 날짜·전체 목록
+              조회는 아직 지원하지 않아요.
+            </Text>
+          ) : null}
+          {summary.data ? (
+            <Text
+              numberOfLines={4}
+              style={[
+                typography.body,
+                { color: '#494442', alignSelf: 'stretch', marginBottom: 12 },
+              ]}
+            >
+              {summary.data}
+            </Text>
+          ) : null}
           {diaryNotice || notice ? (
             <Text
               accessibilityRole="alert"
@@ -274,7 +340,10 @@ export default function CalendarScreen() {
           {diaryNotice ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => refetch()}
+              onPress={() => {
+                if (preview) void refetch();
+                if (selectedHasDiary) void summary.refetch();
+              }}
               style={styles.retryButton}
             >
               <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
@@ -285,7 +354,9 @@ export default function CalendarScreen() {
             accessibilityLabel={
               selectedHasDiary
                 ? '선택한 날짜의 일기 보기'
-                : '선택한 날짜의 일기 생성하기'
+                : hasDraft
+                  ? '작성하던 일기 이어 쓰기'
+                  : '선택한 날짜의 일기 작성하기'
             }
             disabled={loadingDiaries || !!diaryNotice}
             onPress={() =>
@@ -294,6 +365,10 @@ export default function CalendarScreen() {
                 params: {
                   date: diaryDateKey(selected),
                   mode: selectedHasDiary ? 'view' : 'create',
+                  id:
+                    !preview && selectedHasDiary
+                      ? String(knownIds[diaryDateKey(selected)])
+                      : undefined,
                 },
               })
             }
@@ -308,13 +383,15 @@ export default function CalendarScreen() {
                 ? '불러오는 중...'
                 : selectedHasDiary
                   ? '일기 보기'
-                  : '일기 생성하기'}
+                  : hasDraft
+                    ? '작성하던 일기 이어 쓰기'
+                    : '일기 작성하기'}
             </Text>
           </Pressable>
         </View>
       </ScrollView>
       <BottomNavigation
-        active="캘린더"
+        active="기록"
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
         onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
@@ -385,13 +462,12 @@ const styles = StyleSheet.create({
   weekdays: { flexDirection: 'row', marginTop: 2, marginBottom: 4 },
   weekday: {
     flex: 1,
-    fontFamily: 'Jua',
-    fontSize: 13,
+    ...typography.caption,
     lineHeight: 16,
     textAlign: 'center',
     color: '#73737D',
   },
-  weekend: { color: '#D26A5C' },
+  weekend: { color: '#A84D40' },
   weeks: { marginTop: 8, gap: 2 },
   week: { flexDirection: 'row' },
   day: {
@@ -410,7 +486,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#4F4F4F',
   },
-  outsideDay: { color: '#B8B8C1' },
+  outsideDay: { color: '#756A65' },
   todayDay: { borderColor: '#B25447' },
   selectedDay: { backgroundColor: '#B25447', borderColor: '#B25447' },
   selectedDayText: { color: '#FFFFFF' },
@@ -426,8 +502,7 @@ const styles = StyleSheet.create({
   legendDot: { color: '#D26A5C' },
   diaryLegend: {
     marginTop: 10,
-    fontFamily: 'Jua',
-    fontSize: 12,
+    ...typography.caption,
     lineHeight: 16,
     color: '#73737D',
   },
@@ -449,8 +524,7 @@ const styles = StyleSheet.create({
     borderColor: '#F0DED6',
   },
   selectionEyebrow: {
-    fontFamily: 'Jua',
-    fontSize: 12,
+    ...typography.caption,
     lineHeight: 16,
     color: '#8D594E',
   },
@@ -463,8 +537,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   selectionHint: {
-    fontFamily: 'Jua',
-    fontSize: 13,
+    ...typography.caption,
     lineHeight: 18,
     color: '#756A65',
     marginTop: 6,
@@ -491,8 +564,7 @@ const styles = StyleSheet.create({
   },
   notice: {
     marginBottom: 12,
-    fontFamily: 'Jua',
-    fontSize: 14,
+    ...typography.label,
     lineHeight: 20,
     color: '#D26A5C',
     textAlign: 'center',

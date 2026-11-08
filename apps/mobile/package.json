@@ -41,7 +41,8 @@
     "test:env": "node tests/env.mjs",
     "test:env:ui": "node tests/env-ui.mjs",
     "test:diary:typography": "node tests/diary-typography.mjs",
-    "test:chat:polish": "node tests/chat-polish.mjs"
+    "test:chat:polish": "node tests/chat-polish.mjs",
+    "test:ux": "node tests/diary-navigation.mjs && node tests/activity-journey.mjs && node tests/diary-result.mjs && node tests/session-isolation.mjs && node tests/diary-limit.mjs && node tests/diary-panels.mjs && node tests/header-entry.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

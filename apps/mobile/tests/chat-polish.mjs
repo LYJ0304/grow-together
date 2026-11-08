@@ -60,11 +60,11 @@ try {
     /Jua/,
     'Writing uses the existing readable body font',
   );
-  assert.equal(await cards.count(), 4);
+  assert.equal(await cards.count(), 3);
   await page.getByText('이런 질문으로 시작해보세요', { exact: true }).waitFor();
   const preview = cards
     .first()
-    .getByText('아이의 월령과 움직임을 함께 적어보세요.', { exact: true });
+    .getByText('지금 여유 있는 시간과 준비물을 적어보세요.', { exact: true });
   const colors = await preview.evaluate((node) => ({
     text: getComputedStyle(node).color,
     background: getComputedStyle(node.closest('[role="button"]'))
@@ -119,11 +119,16 @@ try {
   });
   await fits(400);
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
-  await page.getByRole('button', { name: '상담 설정', exact: true }).click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page.waitForURL('**/mypage');
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
+  await input.waitFor();
   await fits(400);
   await page.screenshot({ path: `${artifacts}/chat-large-text.png` });
   console.log(
-    'PASS: readable typography, contrast, focus, four cards, multiline send alignment, narrow/short/large-text layout.',
+    'PASS: readable typography, contrast, focus, three cards, multiline send alignment, narrow/short/large-text layout.',
   );
 } finally {
   await browser.close();

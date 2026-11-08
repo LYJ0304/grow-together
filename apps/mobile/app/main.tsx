@@ -1,39 +1,31 @@
-import { StatusBar } from 'expo-status-bar';
-import { Image } from 'expo-image';
-import { typography } from '../src/components/typography';
-import { useChildProfile } from '../src/lib/use-child-profile';
-import { router, useFocusEffect } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { HomeQuestionEntry } from '../src/components/home-question-entry';
+import { useCallback, useRef, useState } from 'react';
 import {
   AppState,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useFocusEffect } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { StatusBar } from 'expo-status-bar';
 import { BottomNavigation } from '../src/components/bottom-navigation';
-import { RoutineProgress } from '../src/components/routine-progress';
+import { AppHeader } from '../src/components/app-header';
+import { ActionButton } from '../src/components/action-button';
+import { RecommendationOptions } from '../src/components/recommendation-options';
+import { typography } from '../src/components/typography';
 import { useAuth } from '../src/components/auth-provider';
+import { useChildProfile } from '../src/lib/use-child-profile';
 import { createTodoApi } from '../src/lib/features/todo/todoApi';
+import { diaryDateKey } from '../src/lib/diary-storage';
+import { useSessionStore } from '../src/lib/session-state';
 
-function localDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
+const localDateKey = diaryDateKey;
 export default function MainScreen() {
-  const insets = useSafeAreaInsets();
-  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
-  useEffect(() => setHydrated(true), []);
   const scroll = useRef<ScrollView>(null);
-  const [notice, setNotice] = useState('');
   const { client, status } = useAuth();
   const profile = useChildProfile();
   const queryClient = useQueryClient();
@@ -44,6 +36,7 @@ export default function MainScreen() {
     enabled: status === 'authenticated',
     retry: false,
   });
+  const values = useSessionStore((state) => state.values);
   useFocusEffect(
     useCallback(() => {
       if (status !== 'authenticated' && status !== 'preview') return;
@@ -74,349 +67,212 @@ export default function MainScreen() {
       };
     }, [queryClient, status]),
   );
+
   const schedules = [...(todos.data ?? [])].sort((a, b) =>
     a.scheduledTime.localeCompare(b.scheduledTime),
   );
-  const completedCount = schedules.filter((todo) => todo.completed).length;
-  const progress =
-    schedules.length === 0
-      ? 0
-      : Math.round((completedCount / schedules.length) * 100);
-  const available = status === 'authenticated' && todos.isSuccess;
-
-  useEffect(() => {
-    if (notice) scroll.current?.scrollToEnd({ animated: true });
-  }, [notice]);
-
+  const now = new Date().toTimeString().slice(0, 8);
+  const next =
+    schedules.find((todo) => !todo.completed && todo.scheduledTime >= now) ??
+    schedules.find((todo) => !todo.completed);
+  const hasDraft = Object.entries(values).some(
+    ([key, value]) =>
+      key.startsWith(`diary:${today}:`) &&
+      key.endsWith(':dirty') &&
+      value === true,
+  );
+  const diaryLabel = hasDraft
+    ? '작성하던 일기 이어 쓰기'
+    : schedules.some((todo) => todo.completed)
+      ? '오늘 함께한 일을 일기로 남겨볼까요?'
+      : '오늘의 순간을 남겨볼까요?';
+  const add = () =>
+    router.push({ pathname: '/todo', params: { date: today, add: 'true' } });
   return (
-    <SafeAreaView
-      testID={hydrated ? 'main-screen' : undefined}
-      edges={['top', 'left', 'right']}
-      style={styles.container}
-    >
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <ScrollView
-        ref={scroll}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: Math.max(24, 48 - insets.top) },
-        ]}
-      >
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>
-            {new Date(`${today}T12:00:00`).toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
-          </Text>
-          {profile.isPending ? (
-            <Text style={styles.supporting} accessibilityLiveRegion="polite">
-              아이 정보를 불러오고 있어요.
+      <AppHeader />
+      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+        <Text style={styles.meta}>
+          {new Date(`${today}T12:00:00`).toLocaleDateString('ko-KR', {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long',
+          })}
+        </Text>
+        <HomeQuestionEntry />
+        {profile.isPending ? (
+          <Text style={styles.body}>아이 정보를 불러오고 있어요.</Text>
+        ) : profile.isError ? (
+          <View style={styles.card}>
+            <Text accessibilityRole="alert" style={styles.body}>
+              아이 정보를 불러오지 못했어요.
             </Text>
-          ) : profile.isError ? (
-            <>
-              <Text style={styles.supporting} accessibilityRole="alert">
-                아이 정보를 불러오지 못했어요.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void profile.refetch()}
-                style={styles.textButton}
-              >
-                <Text style={styles.link}>아이 정보 다시 시도</Text>
-              </Pressable>
-            </>
-          ) : profile.data ? (
-            <View
-              accessible
-              accessibilityRole="header"
-              accessibilityLabel={`${profile.data.name}, 함께한 지 +${elapsedDays(profile.data.birthday, today)}일`}
-              style={styles.titleRow}
-            >
-              <Text style={styles.title}>{profile.data.name}의 하루</Text>
-              <Text style={styles.elapsed}>
-                함께한 지 +{elapsedDays(profile.data.birthday, today)}일
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text accessibilityRole="header" style={styles.title}>
-                아이와 함께하는 첫 기록
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/children')}
-                style={styles.textButton}
-              >
-                <Text style={styles.link}>아이 정보 등록하기</Text>
-              </Pressable>
-            </>
-          )}
-        </View>
-
-        <View style={styles.diaryCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.kicker}>작은 순간도 소중한 이야기로</Text>
-            <Image
-              source={require('../assets/images/diary-book.svg')}
-              style={styles.book}
-              accessible={false}
-              contentFit="contain"
+            <ActionButton
+              label="아이 정보 다시 시도"
+              onPress={() => void profile.refetch()}
+              secondary
             />
           </View>
+        ) : profile.data ? (
           <Text accessibilityRole="header" style={styles.title}>
-            오늘의 이야기를 남겨보세요
+            {profile.data.name}의 하루 ·{' '}
+            {ageMonths(profile.data.birthday, today)}개월
           </Text>
-          <Text style={styles.supporting}>
-            함께한 활동과 기억하고 싶은 순간을{'\n'}한 편의 육아 일기로
-            담아보세요.
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace('/calendar')}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>일기 작성하기</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.cardTitle}>
-              오늘의 루틴
+        ) : (
+          <View style={styles.card}>
+            <Text accessibilityRole="header" style={styles.title}>
+              아이와 함께하는 첫 기록
             </Text>
-            {available ? (
-              <Text style={styles.caption}>
-                {completedCount} / {schedules.length} 완료
-              </Text>
-            ) : null}
+            <ActionButton
+              label="아이 정보 등록하기"
+              onPress={() => router.push('/children')}
+            />
           </View>
-          {available ? (
-            <RoutineProgress progress={progress} />
-          ) : (
-            <Text style={styles.supporting}>
-              오늘의 루틴{' '}
-              {status === 'preview'
-                ? '미리보기'
-                : todos.isError
-                  ? '조회 불가'
-                  : '불러오는 중'}
+        )}
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.title}>
+            다음에 할 활동
+          </Text>
+          {status === 'preview' ? (
+            <Text style={styles.body}>
+              미리보기에서는 서버 일정을 이용할 수 없어요.
             </Text>
+          ) : todos.isPending ? (
+            <Text style={styles.body}>일정을 불러오고 있어요.</Text>
+          ) : todos.isError ? (
+            <>
+              <Text accessibilityRole="alert" style={styles.body}>
+                일정을 불러오지 못했어요.
+              </Text>
+              <ActionButton
+                label="일정 다시 불러오기"
+                onPress={() => void todos.refetch()}
+              />
+            </>
+          ) : next ? (
+            <>
+              <Text style={styles.title}>{next.planName}</Text>
+              <Text style={styles.body}>
+                {next.scheduledTime.slice(0, 5)} ·{' '}
+                {next.scheduledTime < now ? '시간이 지난 미완료 일정' : '예정'}
+              </Text>
+              {next.content ? (
+                <Text style={styles.body}>{next.content}</Text>
+              ) : null}
+              <ActionButton
+                label="일정 확인하고 실행하기"
+                onPress={() =>
+                  router.push({ pathname: '/todo', params: { date: today } })
+                }
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.body}>
+                {schedules.length
+                  ? '오늘 계획한 활동을 마쳤어요. 다음 활동은 가볍게 골라보세요.'
+                  : '등록된 일정이 없어요. 오늘 함께할 활동을 정해볼까요?'}
+              </Text>
+              <ActionButton
+                label="직접 일정 추가"
+                onPress={add}
+                disabled={status !== 'authenticated'}
+              />
+              <RecommendationOptions onDirect={add} />
+            </>
           )}
         </View>
-
         <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.cardTitle}>
-              오늘의 일정
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.replace('/todo')}
-              style={({ pressed }) => [
-                styles.textButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.link}>전체 보기 →</Text>
-            </Pressable>
-          </View>
-          <View style={styles.schedule}>
-            {status === 'preview' ? (
-              <Text style={styles.supporting}>
-                미리보기에서는 서버 일정을 이용할 수 없어요.
+          <Text accessibilityRole="header" style={styles.title}>
+            오늘 일정 요약
+          </Text>
+          {status === 'authenticated' && todos.isSuccess ? (
+            <>
+              <Text style={styles.body}>
+                예정 {schedules.filter((todo) => !todo.completed).length}개 ·
+                완료 {schedules.filter((todo) => todo.completed).length}개
               </Text>
-            ) : todos.isPending ? (
-              <Text style={styles.supporting}>일정을 불러오고 있어요.</Text>
-            ) : todos.isError ? (
-              <>
-                <Text style={styles.supporting} accessibilityRole="alert">
-                  일정을 불러오지 못했어요.
+              {schedules.slice(0, 3).map((todo) => (
+                <Text key={todo.id} style={styles.body}>
+                  {todo.scheduledTime.slice(0, 5)} · {todo.planName} ·{' '}
+                  {todo.completed ? '완료' : '예정'}
                 </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.secondaryButton}
-                  onPress={() => void todos.refetch()}
-                >
-                  <Text style={styles.buttonText}>다시 시도</Text>
-                </Pressable>
-              </>
-            ) : schedules.length === 0 ? (
-              <Text style={styles.supporting}>등록된 일정이 없어요.</Text>
-            ) : (
-              schedules.slice(0, 4).map((todo) => (
-                <View
-                  key={todo.id}
-                  style={styles.scheduleRow}
-                  accessible
-                  accessibilityLabel={`${todo.scheduledTime.slice(0, 5)} ${todo.planName}, ${todo.completed ? '완료' : '예정'}`}
-                >
-                  <Text style={styles.scheduleTime}>
-                    {todo.scheduledTime.slice(0, 5)}
-                  </Text>
-                  <Text style={styles.scheduleText}>{todo.planName}</Text>
-                  <Text
-                    style={[
-                      styles.scheduleState,
-                      todo.completed && styles.completed,
-                    ]}
-                  >
-                    {todo.completed ? '완료' : '예정'}
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
+              ))}
+            </>
+          ) : (
+            <Text style={styles.meta}>
+              {todos.isError
+                ? '조회 실패 · 다시 불러와 주세요.'
+                : '일정 확인 후 요약을 보여드려요.'}
+            </Text>
+          )}
+          <ActionButton
+            label="전체 일정 보기"
+            onPress={() =>
+              router.push({ pathname: '/todo', params: { date: today } })
+            }
+            secondary
+          />
         </View>
-
-        <View style={styles.memories}>
-          <Text accessibilityRole="header" style={styles.cardTitle}>
-            기록 돌아보기
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.title}>
+            {diaryLabel}
           </Text>
-          <Text style={styles.supporting}>
-            차곡차곡 쌓인 우리 아이의 하루를 만나보세요.
+          <Text style={styles.body}>
+            함께한 활동과 기억하고 싶은 순간을 직접 다듬어 남겨보세요.
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <ActionButton
+            label={hasDraft ? '작성하던 일기 이어 쓰기' : '일기 작성하기'}
+            onPress={() =>
+              router.push({ pathname: '/diary', params: { date: today } })
+            }
+            secondary
+          />
+          <ActionButton
+            label="기록 캘린더 보기"
             onPress={() => router.replace('/calendar')}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.buttonText}>캘린더에서 돌아보기</Text>
-          </Pressable>
+            secondary
+          />
         </View>
-        {notice ? (
-          <Text
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-            style={styles.notice}
-          >
-            {notice}
-          </Text>
-        ) : null}
       </ScrollView>
-
       <BottomNavigation
-        active="홈"
+        active="오늘"
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
     </SafeAreaView>
   );
 }
 
-// Compare calendar dates in UTC so a local 23/25-hour DST day is still one day.
-function elapsedDays(birthday: string, today: string) {
-  return Math.round((Date.parse(today) - Date.parse(birthday)) / 86_400_000);
+function ageMonths(birthday: string, today: string) {
+  const born = new Date(`${birthday}T12:00:00`),
+    date = new Date(`${today}T12:00:00`);
+  return Math.max(
+    0,
+    (date.getFullYear() - born.getFullYear()) * 12 +
+      date.getMonth() -
+      born.getMonth() -
+      (date.getDate() < born.getDate() ? 1 : 0),
+  );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  screen: { flex: 1, backgroundColor: '#FAF9F9' },
   content: {
+    padding: 20,
+    gap: 18,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 28,
-    gap: 20,
-  },
-  header: { gap: 8, paddingHorizontal: 4, paddingBottom: 4 },
-  eyebrow: { ...typography.caption, color: '#706C69' },
-  titleRow: { gap: 4 },
-  title: { ...typography.title, color: '#292929', flexShrink: 1 },
-  elapsed: { ...typography.title, color: '#B25447' },
-  diaryCard: {
-    backgroundColor: '#FFF1EC',
-    borderWidth: 1,
-    borderColor: '#F3DDD4',
-    borderRadius: 24,
-    padding: 20,
-    gap: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    columnGap: 12,
-    rowGap: 4,
-  },
-  kicker: { ...typography.caption, color: '#914C41', flexShrink: 1 },
-  book: { width: 32, height: 32 },
-  supporting: { ...typography.label, color: '#625A56' },
-  caption: { ...typography.caption, color: '#706C69' },
-  primaryButton: {
-    minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#B25447',
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-    textAlign: 'center',
   },
   card: {
     padding: 20,
+    gap: 14,
     backgroundColor: '#FFFFFF',
-    borderColor: '#EEE8E5',
-    borderWidth: 1,
     borderRadius: 20,
-    gap: 12,
+    borderWidth: 1,
+    borderColor: '#EEE8E5',
   },
-  cardTitle: { ...typography.section, color: '#292929', flexShrink: 1 },
-  schedule: { gap: 4 },
-  scheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EEE8E5',
-  },
-  scheduleTime: {
-    ...typography.label,
-    fontVariant: ['tabular-nums'],
-    color: '#706C69',
-  },
-  scheduleText: {
-    ...typography.label,
-    color: '#292929',
-    flex: 1,
-    minWidth: 80,
-  },
-  scheduleState: { ...typography.caption, color: '#706C69' },
-  completed: { color: '#914C41' },
-  textButton: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingVertical: 10,
-    alignSelf: 'flex-start',
-  },
-  link: { ...typography.label, color: '#914C41' },
-  secondaryButton: {
-    minHeight: 44,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3EEEB',
-    borderRadius: 12,
-  },
-  buttonText: { ...typography.button, color: '#62524C', textAlign: 'center' },
-  memories: { paddingHorizontal: 4, paddingVertical: 4, gap: 12 },
-  pressed: { opacity: 0.75 },
-  notice: { ...typography.label, color: '#B25447', textAlign: 'center' },
+  title: { ...typography.title, color: '#433C39', flexShrink: 1 },
+  body: { ...typography.body, color: '#494442' },
+  meta: { ...typography.caption, color: '#625B57' },
 });

@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DiarySourceRecords } from './diary-generation';
 
-const prefix = '@growtogether/diary/v1/';
+// Preview only. Preserve unowned v1 records without assigning them to an account.
+const prefix = '@growtogether/diary/preview/v2/';
 
 export type SavedDiary = {
   date: string;

@@ -14,7 +14,7 @@ import { LaunchTransitionProvider } from '../src/components/launch-transition';
 const queryClient = new QueryClient();
 
 function AuthenticatedStack() {
-  const { client, status, notice } = useAuth();
+  const { client, status, notice, epoch } = useAuth();
   if (
     status === 'restoring' ||
     status === 'restoreError' ||
@@ -54,7 +54,10 @@ function AuthenticatedStack() {
   const hasAccess = status === 'authenticated' || status === 'preview';
   return (
     <View style={styles.root}>
-      <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+      <Stack
+        key={hasAccess ? epoch : 'signed-out'}
+        screenOptions={{ headerShown: false, animation: 'none' }}
+      >
         <Stack.Protected guard={!hasAccess}>
           <Stack.Screen name="login" />
           <Stack.Screen name="signup" />

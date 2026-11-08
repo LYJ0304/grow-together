@@ -28,12 +28,12 @@ try {
   assert.ok(await send.isDisabled());
   await page
     .getByRole('button', {
-      name: '질문 입력: 아직 안 걷는데 괜찮나요?',
+      name: '질문 입력: 오늘 집에서 할 놀이를 추천해줘',
       exact: true,
     })
     .click();
   assert.ok(await input.evaluate((el) => el === document.activeElement));
-  assert.equal(await input.inputValue(), '아직 안 걷는데 괜찮나요?');
+  assert.equal(await input.inputValue(), '오늘 집에서 할 놀이를 추천해줘');
   const box = await send.boundingBox();
   assert.ok(box.width >= 44 && box.height >= 44);
   await input.fill('첫 줄');

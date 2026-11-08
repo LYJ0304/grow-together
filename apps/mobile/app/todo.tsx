@@ -1,8 +1,14 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { RecommendationOptions } from '../src/components/recommendation-options';
+import { ActionButton } from '../src/components/action-button';
+import { typography } from '../src/components/typography';
+import { useSessionValue } from '../src/lib/session-state';
+import { AppHeader } from '../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { parseDiaryDate } from '../src/lib/diary-storage';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -40,11 +46,25 @@ function getWeek(date: Date) {
 
 export default function TodoScreen() {
   const insets = useSafeAreaInsets();
+  const { client, status } = useAuth();
   const scroll = useRef<ScrollView>(null);
-  const [selectedDate, setSelectedDate] = useState(() => {
+  const [selectedDate, setSelectedDate] = useSessionValue('todoDate', () => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
+  const params = useLocalSearchParams<{ date?: string; add?: string }>();
+  const [reactionTodo, setReactionTodo] = useState<TodoResponse | null>(null);
+  const [recommendations, setRecommendations] = useState(false);
+  useEffect(() => {
+    const fromRoute = parseDiaryDate(params.date);
+    if (fromRoute)
+      setSelectedDate((current) =>
+        localDateKey(current) === params.date ? current : fromRoute,
+      );
+    if (params.add === 'true' && status === 'authenticated')
+      setForm({ date: fromRoute ?? selectedDate });
+    if (params.date || params.add) router.setParams({ date: '', add: '' });
+  }, [params.date, params.add, status, selectedDate, setSelectedDate]);
   const [view, setView] = useState<'시간' | '할 일'>('시간');
   const [notice, setNotice] = useState('');
   const [form, setForm] = useState<{ date: Date; todo?: TodoResponse } | null>(
@@ -56,7 +76,6 @@ export default function TodoScreen() {
   const deleting = useRef(false);
   const completing = useRef(false);
   const [completionError, setCompletionError] = useState('');
-  const { client, status } = useAuth();
   const api = createTodoApi(client);
   const queryClient = useQueryClient();
   const save = useMutation({
@@ -106,7 +125,8 @@ export default function TodoScreen() {
     completing.current = true;
     setCompletionError('');
     try {
-      await completion.mutateAsync(todo);
+      const updated = await completion.mutateAsync(todo);
+      if (updated.completed) setReactionTodo(updated);
     } catch {
       setCompletionError(
         '완료 상태를 저장하지 못했어요. 목록 새로고침으로 상태를 확인한 뒤 다시 시도해 주세요.',
@@ -163,6 +183,7 @@ export default function TodoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
+      <AppHeader />
       <View style={styles.scheduleContent}>
         <ScrollView
           ref={scroll}
@@ -200,7 +221,7 @@ export default function TodoScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.addLabel}>＋ 계획 추가</Text>
+              <Text style={styles.addLabel}>＋ 직접 추가</Text>
             </Pressable>
           </View>
 
@@ -273,6 +294,13 @@ export default function TodoScreen() {
             </View>
           </View>
 
+          <View style={{ margin: 18 }}>
+            <ActionButton
+              label="활동 추천받기"
+              secondary
+              onPress={() => setRecommendations(true)}
+            />
+          </View>
           <View style={styles.timeline}>
             {status === 'preview' ? (
               <Text>미리보기에서는 서버 일정을 이용할 수 없어요.</Text>
@@ -321,7 +349,7 @@ export default function TodoScreen() {
                 )}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${task.time} ${task.title}`}
+                  accessibilityLabel={`${task.title} 메뉴`}
                   onPress={() => setManagedTodo(task.todo)}
                   style={({ pressed }) => [
                     styles.taskCard,
@@ -329,33 +357,20 @@ export default function TodoScreen() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <View style={styles.taskIcon}>
-                    <Text style={[styles.taskIconText, styles.futureText]}>
-                      ▤
-                    </Text>
-                  </View>
                   <View style={styles.taskCopy}>
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.taskTitle, styles.futureText]}
-                    >
-                      {task.title}
+                    <Text style={styles.taskTitle}>{task.title}</Text>
+                    {task.description ? (
+                      <Text style={styles.taskDescription}>
+                        {task.description}
+                      </Text>
+                    ) : null}
+                    <Text style={[typography.caption, { color: '#625B57' }]}>
+                      {task.todo.completed ? '완료' : '예정'}
                     </Text>
-                    <Text style={[styles.taskDescription, styles.futureText]}>
-                      {task.description}
+                    <Text style={[typography.caption, { color: '#A84D40' }]}>
+                      수정 · 삭제
                     </Text>
                   </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${task.title} 메뉴`}
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      setManagedTodo(task.todo);
-                    }}
-                    hitSlop={8}
-                  >
-                    <Text style={styles.more}>⋮</Text>
-                  </Pressable>
                 </Pressable>
                 <Pressable
                   accessibilityRole="checkbox"
@@ -388,35 +403,129 @@ export default function TodoScreen() {
             </Text>
           ) : null}
         </ScrollView>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="AI로 일정 생성하기"
-          onPress={() =>
-            Alert.alert(
-              'AI로 일정 생성하기',
-              'AI 일정 생성 기능은 준비 중입니다.',
-            )
-          }
-          style={({ pressed }) => [
-            styles.aiScheduleButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.aiScheduleLabel}>AI로 일정 생성하기</Text>
-        </Pressable>
       </View>
 
       <BottomNavigation
-        active="투두"
+        active="일정"
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
         onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />
+      {reactionTodo ? (
+        <Modal
+          transparent
+          animationType="slide"
+          onRequestClose={() => setReactionTodo(null)}
+        >
+          <SafeAreaView
+            style={[styles.menuOverlay, { justifyContent: 'flex-end' }]}
+          >
+            <ScrollView
+              style={{
+                maxHeight: '90%',
+                width: '100%',
+                maxWidth: 440,
+                alignSelf: 'center',
+              }}
+              contentContainerStyle={[styles.menuSheet, { gap: 14 }]}
+              accessibilityViewIsModal
+            >
+              <Text accessibilityRole="header" style={styles.menuTitle}>
+                아이의 반응은 어땠나요?
+              </Text>
+              <Text style={typography.body}>
+                완료는 저장됐어요. 반응 선택과 사진 저장은 아직 연결 준비
+                중이에요.
+              </Text>
+              <Text style={typography.body}>
+                좋아했어요 · 보통이에요 · 어려워했어요
+              </Text>
+              <Text style={typography.caption}>
+                지금은 기존 일정 메모에 관찰한 내용을 남길 수 있어요. 보호자의
+                감정과 아이의 반응은 구분해 적어주세요.
+              </Text>
+              <ActionButton
+                label="일정 메모에 한 줄 남기기"
+                secondary
+                onPress={() => {
+                  setForm({
+                    date: new Date(`${reactionTodo.scheduledDate}T00:00:00`),
+                    todo: reactionTodo,
+                  });
+                  setReactionTodo(null);
+                }}
+              />
+              <ActionButton
+                label="반응 안내 닫기"
+                onPress={() => setReactionTodo(null)}
+              />
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      ) : null}
+      {recommendations ? (
+        <Modal
+          transparent
+          animationType="slide"
+          onRequestClose={() => setRecommendations(false)}
+        >
+          <SafeAreaView
+            style={[styles.menuOverlay, { justifyContent: 'flex-end' }]}
+          >
+            <ScrollView
+              style={{
+                maxHeight: '90%',
+                width: '100%',
+                maxWidth: 440,
+                alignSelf: 'center',
+              }}
+              contentContainerStyle={[styles.menuSheet, { gap: 16 }]}
+              accessibilityViewIsModal
+            >
+              <Text accessibilityRole="header" style={styles.menuTitle}>
+                활동 추천받기
+              </Text>
+              <RecommendationOptions
+                onDirect={() => {
+                  setRecommendations(false);
+                  if (status === 'authenticated')
+                    setForm({ date: selectedDate });
+                  else
+                    setNotice('직접 일정 추가는 로그인 후 이용할 수 있어요.');
+                }}
+              />
+              <ActionButton
+                label="추천 안내 닫기"
+                secondary
+                onPress={() => setRecommendations(false)}
+              />
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      ) : null}
       {managedTodo ? (
         <Modal transparent animationType="fade" onRequestClose={closeMenu}>
-          <View style={styles.menuOverlay}>
-            <View style={styles.menuSheet} accessibilityViewIsModal>
+          <SafeAreaView style={styles.menuOverlay}>
+            <ScrollView
+              style={{
+                maxHeight: '90%',
+                width: '100%',
+                maxWidth: 440,
+                alignSelf: 'center',
+              }}
+              contentContainerStyle={styles.menuSheet}
+              accessibilityViewIsModal
+            >
               <Text accessibilityRole="header" style={styles.menuTitle}>
                 {confirmDelete ? '계획을 삭제할까요?' : managedTodo.planName}
+              </Text>
+              <Text
+                style={[
+                  typography.caption,
+                  { marginTop: 12, color: '#625B57' },
+                ]}
+              >
+                예정·완료로 관리해요. 미룸·건너뜀 상태는 아직 지원하지 않아요.
+                시간을 바꾸려면 수정을 눌러주세요.
               </Text>
               {deleteError ? (
                 <Text accessibilityRole="alert" style={styles.notice}>
@@ -468,8 +577,8 @@ export default function TodoScreen() {
               >
                 <Text>취소</Text>
               </Pressable>
-            </View>
-          </View>
+            </ScrollView>
+          </SafeAreaView>
         </Modal>
       ) : null}
       {form ? (
@@ -526,20 +635,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scheduleContent: { flex: 1 },
   content: { paddingBottom: 88 },
-  aiScheduleButton: {
-    position: 'absolute',
-    right: 20,
-    bottom: 16,
-    minHeight: 48,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 24,
-    backgroundColor: '#D26A5C',
-    boxShadow: '0px 4px 12px rgba(84, 87, 92, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiScheduleLabel: { fontFamily: 'Jua', fontSize: 16, color: '#FFFFFF' },
   dateHeader: {
     minHeight: 96,
     paddingHorizontal: 24,
@@ -596,8 +691,7 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     marginTop: 3,
-    fontFamily: 'Jua',
-    fontSize: 14,
+    ...typography.label,
     lineHeight: 18,
     color: '#4F4F4F',
   },
@@ -644,8 +738,7 @@ const styles = StyleSheet.create({
     width: 47,
     paddingTop: 17,
     textAlign: 'center',
-    fontFamily: 'Jua',
-    fontSize: 14,
+    ...typography.label,
     color: '#4E3A30',
   },
   timeSpacer: { width: 47 },
@@ -660,28 +753,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   future: { backgroundColor: '#F6F6F5' },
-  taskIcon: { width: 20, alignItems: 'center' },
-  taskIconText: { fontSize: 19, color: '#D26A5C' },
   taskCopy: { flex: 1, minWidth: 0, gap: 5 },
-  taskTitle: {
-    fontFamily: 'Jua',
-    fontSize: 15,
-    lineHeight: 19,
-    color: '#D26A5C',
-  },
-  taskDescription: {
-    fontFamily: 'Jua',
-    fontSize: 11,
-    lineHeight: 14,
-    color: '#88889D',
-  },
-  futureText: { color: '#88889D' },
-  more: { marginTop: -3, color: '#88889D', fontSize: 19, lineHeight: 20 },
+  taskTitle: { ...typography.button, color: '#433C39' },
+  taskDescription: { ...typography.label, color: '#625B57' },
   notice: {
     margin: 18,
     textAlign: 'center',
-    fontFamily: 'Jua',
-    fontSize: 13,
+    ...typography.caption,
     color: '#D26A5C',
   },
   listAction: { minHeight: 44, justifyContent: 'center' },

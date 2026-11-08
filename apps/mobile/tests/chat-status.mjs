@@ -8,6 +8,9 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/children/me', (route) =>
+    route.fulfill({ status: 404, json: {} }),
+  );
   const requests = [];
   page.on('request', (request) => {
     if (request.url().includes('/api/')) requests.push(request.url());
@@ -23,9 +26,7 @@ try {
     0,
     'No fake online status',
   );
-  assert.ok(
-    await page.getByText('상담 연결 준비 중', { exact: true }).isVisible(),
-  );
+  assert.ok(await page.getByText('연결 준비 중', { exact: true }).isVisible());
   assert.equal(
     await page.getByRole('button', { name: '음성 입력', exact: true }).count(),
     0,
@@ -34,7 +35,9 @@ try {
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   const notice = page.getByRole('alert');
   assert.ok(
-    (await notice.innerText()).includes('AI 상담 연결은 아직 준비 중이에요.'),
+    (await notice.innerText()).includes(
+      '육아 도우미 연결은 아직 준비 중이에요.',
+    ),
   );
   assert.equal(await input.inputValue(), '질문을 작성했습니다');
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
@@ -42,12 +45,19 @@ try {
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   await input.press('Enter');
   assert.ok(
-    (await notice.innerText()).includes('AI 상담 연결은 아직 준비 중이에요.'),
+    (await notice.innerText()).includes(
+      '육아 도우미 연결은 아직 준비 중이에요.',
+    ),
   );
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
-  await page.getByRole('button', { name: '상담 설정', exact: true }).click();
-  assert.ok((await notice.innerText()).includes('설정 기능은 준비 중이에요.'));
-  await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
+  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page.waitForURL('**/mypage');
+  await page.getByRole('heading', { name: '설정', exact: true }).waitFor();
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
+  await page.waitForURL('**/chat');
+  await input.focus();
   assert.equal(await input.inputValue(), '질문을 작성했습니다');
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   await page.setViewportSize({ width: 320, height: 360 });
@@ -62,12 +72,17 @@ try {
     ),
   );
   assert.equal(
-    requests.filter((url) => !url.endsWith('/auth/refresh')).length,
+    requests.filter(
+      (url) =>
+        !['/api/v1/auth/refresh', '/api/v1/children/me'].includes(
+          new URL(url).pathname,
+        ),
+    ).length,
     0,
     'No fake chat/voice API call',
   );
   console.log(
-    'PASS: honest readiness, visible accessible send/settings notices, dismiss/focus, preserved draft, no voice button or fake chat requests.',
+    'PASS: honest readiness, accessible send notice/settings navigation, dismiss/focus, preserved draft, no voice button or fake chat requests.',
   );
 } finally {
   await browser.close();

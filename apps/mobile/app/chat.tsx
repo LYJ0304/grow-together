@@ -1,6 +1,8 @@
+import { AppHeader } from '../src/components/app-header';
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -21,24 +23,21 @@ import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
 
 const suggestions = [
   {
-    question: '아직 안 걷는데 괜찮나요?',
-    preview: '아이의 월령과 움직임을 함께 적어보세요.',
+    question: '오늘 집에서 할 놀이를 추천해줘',
+    preview: '지금 여유 있는 시간과 준비물을 적어보세요.',
   },
   {
-    question: '이 시기에 말을 안 해도 되나요?',
-    preview: '평소 내는 소리와 반응을 알려주세요.',
+    question: '어제 좋아했던 활동을 이어서 하고 싶어',
+    preview: '어떤 활동을 좋아했는지 알려주세요.',
   },
   {
-    question: '밤에 자주 깨요 왜죠?',
-    preview: '잠드는 시간과 깨는 패턴을 적어보세요.',
-  },
-  {
-    question: '편식이 심한데 어쩌죠?',
-    preview: '식사 습관과 어려운 순간을 알려주세요.',
+    question: '아이의 이런 반응을 어떻게 이해하면 좋을까?',
+    preview: '함께한 상황과 아이의 반응을 적어보세요.',
   },
 ];
 
 export default function CounselorChatScreen() {
+  const { compose } = useLocalSearchParams<{ compose?: string }>();
   const scroll = useRef<ScrollView>(null);
   const input = useRef<TextInput>(null);
   const { width, height } = useWindowDimensions();
@@ -64,9 +63,22 @@ export default function CounselorChatScreen() {
     setInputHeight(height);
   }, [draft, width, inputMaxHeight]);
 
+  useEffect(() => {
+    if (notice) scroll.current?.scrollToEnd({ animated: false });
+  }, [notice]);
+
+  useEffect(() => {
+    if (compose === 'true') {
+      input.current?.focus();
+      router.setParams({ compose: '' });
+    }
+  }, [compose]);
+
   const send = () => {
     if (!draft.trim()) return;
-    setNotice('AI 상담 연결은 아직 준비 중이에요.');
+    setNotice(
+      '육아 도우미 연결은 아직 준비 중이에요. 질문 초안은 이 세션에서 유지돼요.',
+    );
     input.current?.focus();
   };
 
@@ -87,41 +99,11 @@ export default function CounselorChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
-        <View style={styles.header}>
-          <View style={styles.avatar} accessible={false}>
-            <Image
-              source={require('../assets/images/brand/emblem.svg')}
-              style={styles.avatarImage}
-              contentFit="contain"
-              accessible={false}
-            />
-          </View>
-          <View style={styles.headerCopy}>
-            <Text accessibilityRole="header" style={styles.personaName}>
-              차분한 상담선생님
-            </Text>
-            <Text style={styles.connectionStatus}>상담 연결 준비 중</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="상담 설정"
-            onPress={() => setNotice('설정 기능은 준비 중이에요.')}
-            style={({ pressed }) => [
-              styles.settingsButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image
-              source={require('../assets/images/chat/settings.svg')}
-              style={styles.settingsIcon}
-              contentFit="contain"
-              accessible={false}
-            />
-          </Pressable>
-        </View>
+        <AppHeader title="육아 도우미" subtitle="연결 준비 중" />
 
         <ScrollView
           ref={scroll}
+          style={{ flex: 1, minHeight: 0 }}
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
@@ -159,24 +141,24 @@ export default function CounselorChatScreen() {
               </Pressable>
             ))}
           </View>
+          {notice !== '' && (
+            <View accessibilityRole="alert" style={styles.notice}>
+              <Text style={styles.noticeText}>{notice}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="안내 닫기"
+                onPress={() => {
+                  setNotice('');
+                  input.current?.focus();
+                }}
+                style={styles.dismissNotice}
+              >
+                <Text accessible={false}>×</Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
 
-        {notice !== '' && (
-          <View accessibilityRole="alert" style={styles.notice}>
-            <Text style={styles.noticeText}>{notice}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="안내 닫기"
-              onPress={() => {
-                setNotice('');
-                input.current?.focus();
-              }}
-              style={styles.dismissNotice}
-            >
-              <Text accessible={false}>×</Text>
-            </Pressable>
-          </View>
-        )}
         <View style={[styles.composer, inputFocused && styles.composerFocused]}>
           <TextInput
             ref={input}
@@ -266,45 +248,6 @@ export default function CounselorChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F9' },
   keyboard: { flex: 1, minHeight: 0 },
-  header: {
-    minHeight: 72,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 12,
-    flexShrink: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EAE6E4',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FDEDE6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: { width: 32, height: 28 },
-  headerCopy: { flex: 1, minWidth: 0, gap: 3 },
-  personaName: {
-    fontFamily: 'Jua',
-    fontSize: 17,
-    lineHeight: 24,
-    color: '#A44F43',
-  },
-  connectionStatus: { ...typography.caption, color: '#706A67' },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#EAE6E4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsIcon: { width: 22, height: 22 },
   messages: {
     flexGrow: 1,
     paddingHorizontal: 20,
