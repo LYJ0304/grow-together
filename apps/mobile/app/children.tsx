@@ -1,3 +1,4 @@
+import { typography } from '../src/components/typography';
 import { router, useNavigation } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -468,8 +469,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E8',
     borderRadius: 12,
     padding: 14,
-    fontFamily: 'Jua',
-    fontSize: 16,
+    ...typography.body,
     color: '#4F4F4F',
     backgroundColor: '#FAF9F9',
   },

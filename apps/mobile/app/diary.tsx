@@ -1,151 +1,132 @@
-import { Image } from 'expo-image';
-import { typography } from '../src/components/typography';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigation, usePreventRemove } from '@react-navigation/native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { usePreventRemove } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { useAuth } from '../src/components/auth-provider';
+import { BottomNavigation } from '../src/components/bottom-navigation';
+import { ProfileEntry } from '../src/components/profile-entry';
+import { ActionButton } from '../src/components/action-button';
 import {
-  deleteDiary,
-  diaryDateKey,
-  parseDiaryDate,
-  readDiary,
-  saveDiary,
-  updateDiary,
-} from '../src/lib/diary-storage';
-
-import {
-  DiaryGeneratingView,
   DiaryResultView,
+  DiaryGeneratingView,
 } from '../src/components/diary/diary-result';
+import { typography } from '../src/components/typography';
+import { clearSessionValues, useSessionValue } from '../src/lib/session-state';
 import {
   generateDiary,
   type DiaryGenerationResult,
   type DiarySourceRecords,
 } from '../src/lib/diary-generation';
-
-const activityOptions = [
-  {
-    time: '07:00',
-    title: '기상 & 기저귀 갈기',
-  },
-  {
-    time: '07:30',
-    title: '아침 이유식',
-  },
-  {
-    time: '09:00',
-    title: '놀이 & 탐색',
-  },
-  {
-    time: '10:00',
-    title: '낮잠 (1~1.5시간)',
-  },
-  {
-    time: '12:30',
-    title: '산책 & 외부 활동',
-  },
-  {
-    time: '14:00',
-    title: '책 읽기 & 놀이',
-  },
-  {
-    time: '15:00',
-    title: '낮잠 (1시간)',
-  },
-  {
-    time: '17:30',
-    title: '산책 / 외부 활동',
-  },
-  {
-    time: '18:00',
-    title: '저녁 이유식',
-  },
-  {
-    time: '19:30',
-    title: '책 읽기 & 차분한 놀이',
-  },
-  {
-    time: '20:00',
-    title: '취침 준비',
-  },
-  {
-    time: '21:00',
-    title: '취침',
-  },
-];
-const growthTags = ['#성취/시도', '#언어/표현', '#감정'];
-type DiaryStep = 'activities' | 'notes' | 'generating' | 'result' | 'saved';
+import {
+  diaryDateKey,
+  parseDiaryDate,
+  readDiary,
+  saveDiary,
+  updateDiary,
+  deleteDiary,
+  type SavedDiary,
+} from '../src/lib/diary-storage';
+import { createTodoApi } from '../src/lib/features/todo/todoApi';
+import { createDiaryApi } from '../src/lib/features/diary/diaryApi';
+import { ApiError } from '../src/lib/api/errors';
 
 export default function DiaryScreen() {
-  const { date, mode } = useLocalSearchParams<{
+  const { date, mode, id } = useLocalSearchParams<{
     date?: string;
     mode?: string;
+    id?: string;
   }>();
-  return <DiaryEditor key={`${date}:${mode}`} />;
+  return <DiaryEditor key={`${date}:${mode}:${id}`} />;
 }
 
 function DiaryEditor() {
-  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
-  useEffect(() => setHydrated(true), []);
-  const { date: dateParam, mode } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     date?: string;
     mode?: string;
+    id?: string;
   }>();
+  const { client, status, epoch } = useAuth();
+  const preview = status === 'preview';
   const queryClient = useQueryClient();
-  const viewing = mode === 'view';
-  const [date] = useState(() => parseDiaryDate(dateParam) ?? new Date());
+  const [date] = useState(() => parseDiaryDate(params.date) ?? new Date());
   const dateKey = diaryDateKey(date);
-  const [step, setStep] = useState<DiaryStep>(viewing ? 'saved' : 'activities');
-  const savedQuery = useQuery({
-    queryKey: ['savedDiary', dateKey],
-    queryFn: () => readDiary(dateKey),
-    enabled: viewing,
-    retry: false,
-  });
-  const [selectedRecordTimes, setSelectedRecordTimes] = useState<string[]>([]);
-  const selectedRecords = activityOptions.filter((record) =>
-    selectedRecordTimes.includes(record.time),
+  const [, setCalendarDate] = useSessionValue('calendarDate', date);
+  const [, setCalendarMonth] = useSessionValue(
+    'calendarMonth',
+    () => new Date(date.getFullYear(), date.getMonth(), 1),
   );
-  const [growthNote, setGrowthNote] = useState('');
-  const [selectedGrowthTags, setSelectedGrowthTags] = useState<string[]>([]);
-  const [photoUris, setPhotoUris] = useState<string[]>([]);
-  const photoUri = photoUris[0] ?? null;
-  const [photoNotice, setPhotoNotice] = useState('');
-  const [preparingPhotos, setPreparingPhotos] = useState(false);
-  const [result, setResult] = useState<DiaryGenerationResult | null>(null);
-  const [sourceRecords, setSourceRecords] = useState<DiarySourceRecords>();
-  const [draft, setDraft] = useState('');
-  const [editingText, setEditingText] = useState<string | null>(null);
-  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
-  const generatingRef = useRef(false);
-  const savingRef = useRef(false);
-  const [saved, setSaved] = useState(false);
-  const navigation = useNavigation();
-  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
-  const [regenerationsRemaining, setRegenerationsRemaining] = useState(3);
-  const [saving, setSaving] = useState(false);
-  const [saveNotice, setSaveNotice] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleted, setDeleted] = useState(false);
-  const [deleteNotice, setDeleteNotice] = useState('');
-  const deletingRef = useRef(false);
+  useEffect(() => {
+    setCalendarDate(date);
+    setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+  }, [date, setCalendarDate, setCalendarMonth]);
+  const [knownIds, setKnownIds] = useSessionValue<Record<string, number>>(
+    'diaryIds',
+    {},
+  );
+  const id =
+    params.id &&
+    /^[1-9]\d*$/.test(params.id) &&
+    Number.isSafeInteger(Number(params.id))
+      ? Number(params.id)
+      : knownIds[dateKey];
+  const viewing = params.mode === 'view' || !!params.id || !!id;
+  const prefix = `diary:${dateKey}:${viewing ? (id ?? 'preview') : 'new'}:`;
+  const [step, setStep] = useSessionValue<'materials' | 'result'>(
+    prefix + 'step',
+    'materials',
+  );
+  const [selected, setSelected] = useSessionValue<number[]>(
+    prefix + 'selected',
+    [],
+  );
+  const [note, setNote] = useSessionValue(prefix + 'note', '');
+  const [photos, setPhotos] = useSessionValue<string[]>(prefix + 'photos', []);
+  const [draft, setDraft] = useSessionValue(prefix + 'body', '');
+  const [editing, setEditing] = useSessionValue<string | null>(
+    prefix + 'editing',
+    null,
+  );
+  const [source, setSource] = useSessionValue<DiarySourceRecords | undefined>(
+    prefix + 'source',
+    undefined,
+  );
+  const [sourceIds, setSourceIds] = useSessionValue<number[]>(
+    prefix + 'sourceIds',
+    [],
+  );
+  const [result, setResult] = useSessionValue<DiaryGenerationResult | null>(
+    prefix + 'result',
+    null,
+  );
+  const [, setDirty] = useSessionValue(prefix + 'dirty', false);
+  const [generating, setGenerating] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [confirm, setConfirm] = useState<'regenerate' | 'delete' | null>(null);
+  const [completion, setCompletion] = useState<'saved' | 'deleted' | null>(
+    null,
+  );
+  const saved = completion !== null;
+  const [uncertain, setUncertain] = useSessionValue(
+    prefix + 'uncertain',
+    false,
+  );
+  const pending = useRef(false);
   const active = useRef(true);
   useEffect(() => {
     active.current = true;
@@ -153,1181 +134,670 @@ function DiaryEditor() {
       active.current = false;
     };
   }, []);
-  const dirty = viewing
-    ? editingText !== null && editingText !== savedQuery.data?.content
-    : !viewing &&
-      !saved &&
-      (selectedRecordTimes.length > 0 ||
-        !!growthNote.trim() ||
-        selectedGrowthTags.length > 0 ||
-        photoUris.length > 0 ||
-        !!draft);
-  usePreventRemove(dirty || saving || deleting, ({ data }) => {
-    if (savingRef.current || deletingRef.current) return;
-    setLeaveAction(() => () => navigation.dispatch(data.action));
+  const stillActive = () =>
+    active.current && client.getSnapshot().epoch === epoch;
+  usePreventRemove(busy || generating || preparing, () => {});
+  useEffect(() => {
+    if (completion && !busy && client.getSnapshot().epoch === epoch)
+      router.dismissTo({
+        pathname: '/calendar',
+        params: {
+          date: dateKey,
+          saved: completion === 'saved' ? 'true' : '',
+          deleted: completion === 'deleted' ? 'true' : '',
+        },
+      });
+  }, [completion, busy, client, epoch, dateKey]);
+  const api = createDiaryApi(client);
+  const savedKey = [
+    'savedDiary',
+    preview ? 'preview' : epoch,
+    preview ? dateKey : id,
+  ];
+  const savedQuery = useQuery({
+    queryKey: savedKey,
+    enabled: viewing && (preview || !!id),
+    retry: false,
+    queryFn: async () => {
+      if (preview) return readDiary(dateKey);
+      const diary = await api.getDiary(id!);
+      return {
+        date: dateKey,
+        content: diary.content ?? '',
+        photoUris: diary.diaryFiles.map((file) => file.imageUrl),
+        emotions: [],
+        growthPoints: [],
+        sourceRecords: {
+          activities: diary.todos.map((todo) => todo.planName),
+          note: '',
+          tags: [],
+        },
+      } satisfies SavedDiary;
+    },
   });
-
+  const todos = useQuery({
+    queryKey: ['todos', dateKey],
+    queryFn: () => createTodoApi(client).getTodos(dateKey),
+    enabled: !viewing && status === 'authenticated',
+    retry: false,
+  });
+  const completed = (todos.data ?? []).filter((todo) => todo.completed);
+  const materials = completed.filter((todo) => selected.includes(todo.id));
+  const dirty =
+    !saved &&
+    (viewing
+      ? editing !== null && editing !== savedQuery.data?.content
+      : !!draft ||
+        !!editing ||
+        !!note ||
+        selected.length > 0 ||
+        photos.length > 0);
+  useEffect(() => setDirty(dirty), [dirty, setDirty]);
   useEffect(() => {
-    if (!deleted || deleting) return;
-    router.dismissTo({
-      pathname: '/calendar',
-      params: { date: dateKey, deleted: 'true', saved: '' },
-    });
-  }, [deleted, deleting, dateKey]);
-
-  useEffect(() => {
-    if ((!deleting && !saving && !dirty) || Platform.OS !== 'web') return;
-    const preventUnload = (event: BeforeUnloadEvent) => {
+    if (!dirty || Platform.OS !== 'web') return;
+    const prevent = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
-    // Block traversal before Expo Router receives a popstate and changes its history.
-    const webNavigation = (window as Window & { navigation?: EventTarget })
-      .navigation;
-    const preventNavigation = (event: Event) => event.preventDefault();
-    if (deleting || saving)
-      webNavigation?.addEventListener('navigate', preventNavigation);
-    window.addEventListener('beforeunload', preventUnload);
-    return () => {
-      webNavigation?.removeEventListener('navigate', preventNavigation);
-      window.removeEventListener('beforeunload', preventUnload);
-    };
-  }, [deleting, saving, dirty]);
-
-  const removeDiary = async () => {
-    if (deletingRef.current || savingRef.current || editingText !== null)
-      return;
-    deletingRef.current = true;
-    setDeleting(true);
-    setDeleteNotice('');
-    try {
-      await deleteDiary(dateKey);
-      await queryClient.cancelQueries({ queryKey: ['savedDiary', dateKey] });
-      await queryClient.cancelQueries({ queryKey: ['savedDiaryDates'] });
-      queryClient.setQueryData(['savedDiary', dateKey], null);
-      queryClient.setQueryData<string[]>(['savedDiaryDates'], (dates) =>
-        dates?.filter((date) => date !== dateKey),
-      );
-      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
-      setDeleted(true);
-    } catch (error) {
-      setDeleteNotice(
-        error instanceof Error
-          ? error.message
-          : '일기를 삭제하지 못했어요. 다시 시도해주세요.',
-      );
-    } finally {
-      deletingRef.current = false;
-      setDeleting(false);
-    }
-  };
-  const displayedDraft = viewing ? (savedQuery.data?.content ?? '') : draft;
-  const displayedPhotos = viewing
-    ? (savedQuery.data?.photoUris ?? [])
-    : photoUris;
-  const emotions = viewing
-    ? (savedQuery.data?.emotions ?? [])
-    : (result?.emotions ?? []);
-  const growthPoints = viewing
-    ? (savedQuery.data?.growthPoints ?? [])
-    : (result?.growthPoints ?? []);
-
-  const returnToCalendar = (saved = false) =>
+    window.addEventListener('beforeunload', prevent);
+    return () => window.removeEventListener('beforeunload', prevent);
+  }, [dirty]);
+  const back = () =>
     router.dismissTo({
       pathname: '/calendar',
-      params: { date: dateKey, saved: saved ? 'true' : '', deleted: '' },
+      params: { date: dateKey, saved: '', deleted: '' },
     });
-
-  const goBack = () => {
-    if (savingRef.current || deletingRef.current) return;
-    Keyboard.dismiss();
-    if (viewing) returnToCalendar();
-    else if (editingText !== null)
-      setSaveNotice('수정을 완료하거나 취소한 후 이동해주세요.');
-    else if (step === 'generating') return;
-    else if (step === 'result') setStep('notes');
-    else if (step === 'notes') setStep('activities');
-    else if (router.canGoBack()) router.back();
-    else returnToCalendar();
-  };
-
-  const backButton = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="뒤로가기"
-      disabled={saving || deleting || step === 'generating'}
-      onPress={goBack}
-      style={({ pressed }) => [
-        styles.backButton,
-        (pressed || saving || deleting) && styles.pressed,
-      ]}
-    >
-      <Text style={styles.backIcon}>‹</Text>
-    </Pressable>
-  );
-
-  const persistSavedEdits = async () => {
+  const makeSource = (): DiarySourceRecords => ({
+    activities: materials.map((todo) => todo.planName),
+    note: note.trim(),
+    tags: [],
+  });
+  const prepare = async (manual = false, replace = false) => {
+    if (pending.current) return;
     if (
-      savingRef.current ||
-      deletingRef.current ||
-      editingText === null ||
-      !editingText.trim() ||
-      !savedQuery.data
-    )
-      return;
-    savingRef.current = true;
-    setSaving(true);
-    setSaveNotice('');
-    try {
-      const diary = await updateDiary(dateKey, editingText);
-      if (!active.current) return;
-      await queryClient.cancelQueries({ queryKey: ['savedDiary', dateKey] });
-      if (!active.current) return;
-      queryClient.setQueryData(['savedDiary', dateKey], diary);
-      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
-      setEditingText(null);
-      setSaveNotice('변경사항을 저장했어요.');
-      Keyboard.dismiss();
-    } catch (error) {
-      if (active.current)
-        setSaveNotice(
-          error instanceof Error
-            ? error.message
-            : '변경사항을 저장하지 못했어요. 다시 시도해주세요.',
-        );
-    } finally {
-      savingRef.current = false;
-      if (active.current) setSaving(false);
-    }
-  };
-
-  const persistDiary = async () => {
-    if (
-      savingRef.current ||
-      saved ||
-      generatingRef.current ||
-      editingText !== null ||
-      !draft.trim()
-    )
-      return;
-    savingRef.current = true;
-    setSaving(true);
-    setSaveNotice('');
-    try {
-      const diary = {
-        date: dateKey,
-        content: draft.trim(),
-        emotions,
-        growthPoints,
-        tomorrowTip: result?.tomorrowTip,
-        sourceRecords,
-        photoUris,
-      };
-      await saveDiary(diary);
-      queryClient.setQueryData(['savedDiary', dateKey], diary);
-      void queryClient.invalidateQueries({ queryKey: ['savedDiaryDates'] });
-      setSaved(true);
-    } catch (error) {
-      setSaveNotice(
-        error instanceof Error
-          ? error.message
-          : '일기를 저장하지 못했어요. 다시 시도해주세요.',
-      );
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    if (saved && !saving) {
-      router.dismissTo({
-        pathname: '/calendar',
-        params: { date: dateKey, saved: 'true', deleted: '' },
-      });
-    }
-  }, [saved, saving, dateKey]);
-
-  const createPreview = async (regenerate = false) => {
-    if (
-      generatingRef.current ||
-      savingRef.current ||
-      (result && regenerationsRemaining === 0)
-    )
-      return;
-    if (
-      result &&
-      (draft !== result.content || editingText !== null) &&
-      !regenerate
+      !manual &&
+      (draft.trim() || editing?.trim()) &&
+      (!result || draft !== result.content || editing !== null) &&
+      !replace
     ) {
-      setConfirmRegenerate(true);
+      setConfirm('regenerate');
       return;
     }
-    generatingRef.current = true;
-    const previousStep = step;
-    const source = {
-      activities: selectedRecords.map((record) => record.title),
-      note: growthNote.trim(),
-      tags: [...selectedGrowthTags],
-    };
-    Keyboard.dismiss();
-    setSaveNotice('');
-    setStep('generating');
+    pending.current = true;
+    setNotice('');
+    const records = makeSource();
     try {
-      const generated = await generateDiary(date, source);
-      setResult(generated);
-      setSourceRecords(source);
-      setDraft(generated.content);
-      setEditingText(null);
-      if (result) setRegenerationsRemaining((remaining) => remaining - 1);
+      if (!manual) setGenerating(true);
+      const generated = manual
+        ? { content: draft, emotions: [], growthPoints: [] }
+        : await generateDiary(date, records);
+      if (!stillActive()) return;
+      setSource(records);
+      setSourceIds(materials.map((todo) => todo.id));
+      if (!manual) {
+        setResult(generated);
+        setDraft(generated.content);
+        setEditing(null);
+      } else setEditing(draft);
       setStep('result');
     } catch (error) {
-      setSaveNotice(
-        error instanceof Error
-          ? error.message
-          : '일기를 만들지 못했어요. 다시 시도해주세요.',
-      );
-      setStep(previousStep);
+      if (stillActive())
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : '초안을 정리하지 못했어요. 직접 작성하거나 다시 시도해주세요.',
+        );
     } finally {
-      generatingRef.current = false;
+      pending.current = false;
+      if (stillActive()) setGenerating(false);
     }
   };
-
-  const requestRegeneration = () => {
-    if (
-      generatingRef.current ||
-      savingRef.current ||
-      regenerationsRemaining === 0
-    )
+  const persist = async () => {
+    const content = viewing ? editing : draft;
+    if (pending.current || !content?.trim() || uncertain) return;
+    if (!preview && content.trim().length > 1000) {
+      setNotice(
+        '서버 일기 본문은 1000자 이내로 작성해주세요. 내용은 유지돼요.',
+      );
       return;
-    if (result && (draft !== result.content || editingText !== null))
-      setConfirmRegenerate(true);
-    else void createPreview(true);
-  };
-
-  const toggleRecord = (time: string) => {
-    setSelectedRecordTimes((current) =>
-      current.includes(time)
-        ? current.filter((item) => item !== time)
-        : [...current, time],
-    );
-  };
-
-  const toggleGrowthTag = (tag: string) => {
-    setSelectedGrowthTags((current) =>
-      current.includes(tag)
-        ? current.filter((item) => item !== tag)
-        : [...current, tag],
-    );
-  };
-
-  const selectPhoto = async () => {
-    setPhotoNotice('');
+    }
+    pending.current = true;
+    setBusy(true);
+    setNotice('');
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
+      let savedId = id;
+      if (preview) {
+        if (viewing) await updateDiary(dateKey, content);
+        else
+          await saveDiary({
+            date: dateKey,
+            content: content.trim(),
+            photoUris: photos,
+            emotions: [],
+            growthPoints: [],
+            sourceRecords: source,
+          });
+      } else if (viewing) {
+        // Keep image URLs and todo associations supplied by the server when editing the body.
+        const original = await api.getDiary(id!);
+        if (!stillActive()) return;
+        await api.updateDiary(id!, {
+          content: content.trim(),
+          todoIds: original.todos.map((todo) => todo.id),
+          diaryFiles: original.diaryFiles.map((file) => ({
+            imageUrl: file.imageUrl,
+          })),
+        });
+      } else {
+        const created = await api.createDiary({
+          content: content.trim(),
+          todoIds: sourceIds,
+          diaryFiles: [],
+        });
+        savedId = created.id;
+      }
+      if (!stillActive()) return;
+      if (!preview && savedId)
+        setKnownIds((current) => ({ ...current, [dateKey]: savedId! }));
+      setCompletion('saved');
+      clearSessionValues(prefix);
+      void queryClient.invalidateQueries({ queryKey: ['savedDiary'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['savedDiaryDates', 'preview'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['diarySummary'] });
+    } catch (error) {
+      if (!stillActive()) return;
+      const unknown =
+        !preview &&
+        !viewing &&
+        error instanceof ApiError &&
+        (error.status === 0 || error.status >= 500);
+      setUncertain(unknown);
+      setNotice(
+        unknown
+          ? '저장 여부를 확인하지 못했어요. 날짜별 서버 조회가 아직 없어 재시도하면 일기가 중복될 수 있어요.'
+          : error instanceof Error
+            ? error.message
+            : '저장하지 못했어요. 작성 내용은 유지돼요. 다시 시도해주세요.',
+      );
+    } finally {
+      pending.current = false;
+      if (stillActive()) setBusy(false);
+    }
+  };
+  const remove = async () => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      if (preview) await deleteDiary(dateKey);
+      else await api.deleteDiary(id!);
+      if (!stillActive()) return;
+      setKnownIds((current) => {
+        const next = { ...current };
+        delete next[dateKey];
+        return next;
+      });
+      setCompletion('deleted');
+      clearSessionValues(prefix);
+      setConfirm(null);
+      void queryClient.invalidateQueries({ queryKey: ['savedDiary'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['savedDiaryDates', 'preview'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['diarySummary'] });
+    } catch (error) {
+      if (stillActive())
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : '삭제하지 못했어요. 다시 시도해주세요.',
+        );
+    } finally {
+      pending.current = false;
+      if (stillActive()) setBusy(false);
+    }
+  };
+  const pickPhotos = async () => {
+    if (preparing || pending.current) return;
+    setPreparing(true);
+    setNotice('');
+    try {
+      const selection = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
         selectionLimit: 3,
         quality: 0.8,
       });
-      if (!result.canceled) {
-        setPreparingPhotos(true);
+      if (selection.canceled) return;
+      const encoded: string[] = [];
+      for (const asset of selection.assets.slice(0, 3)) {
+        const context = ImageManipulator.manipulate(asset.uri);
         try {
-          const photos: string[] = [];
-          for (const asset of result.assets.slice(0, 3)) {
-            const context = ImageManipulator.manipulate(asset.uri);
-            try {
-              const scale = Math.min(
-                1,
-                960 / Math.max(asset.width, asset.height),
-              );
-              context.resize({
-                width: Math.max(1, Math.round(asset.width * scale)),
-                height: Math.max(1, Math.round(asset.height * scale)),
-              });
-              const image = await context.renderAsync();
-              try {
-                const encoded = await image.saveAsync({
-                  format: SaveFormat.JPEG,
-                  compress: 0.6,
-                  base64: true,
-                });
-                if (!encoded.base64) throw new Error('Missing image data');
-                photos.push(`data:image/jpeg;base64,${encoded.base64}`);
-              } finally {
-                image.release();
-              }
-            } finally {
-              context.release();
-            }
+          const scale = Math.min(1, 960 / Math.max(asset.width, asset.height));
+          context.resize({
+            width: Math.max(1, Math.round(asset.width * scale)),
+            height: Math.max(1, Math.round(asset.height * scale)),
+          });
+          const image = await context.renderAsync();
+          try {
+            const output = await image.saveAsync({
+              format: SaveFormat.JPEG,
+              compress: 0.6,
+              base64: true,
+            });
+            if (!output.base64) throw new Error('사진 변환 실패');
+            encoded.push(`data:image/jpeg;base64,${output.base64}`);
+          } finally {
+            image.release();
           }
-          setPhotoUris(photos);
         } finally {
-          setPreparingPhotos(false);
-          if (Platform.OS === 'web')
-            result.assets.forEach((asset) => URL.revokeObjectURL(asset.uri));
+          context.release();
+          if (Platform.OS === 'web') URL.revokeObjectURL(asset.uri);
         }
       }
+      if (stillActive()) setPhotos(encoded);
     } catch {
-      setPhotoNotice('사진을 선택하지 못했어요. 다시 시도해주세요.');
+      if (stillActive())
+        setNotice('사진을 선택하지 못했어요. 다시 시도해주세요.');
+    } finally {
+      if (stillActive()) setPreparing(false);
     }
   };
-
-  if (!hydrated || (viewing && !savedQuery.data)) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="dark" />
-        <View style={styles.recordHeader}>{backButton}</View>
-        <View style={styles.readStatus}>
-          <Text accessibilityLiveRegion="polite" style={styles.readStatusText}>
-            {!hydrated || savedQuery.isPending
-              ? '저장된 일기를 불러오는 중이에요.'
-              : savedQuery.error instanceof Error
-                ? savedQuery.error.message
-                : '이 날짜에 저장된 일기가 없어요.'}
-          </Text>
-          {savedQuery.isError ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => savedQuery.refetch()}
-              style={styles.readStatusButton}
-            >
-              <Text style={styles.readStatusButtonLabel}>다시 불러오기</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => returnToCalendar()}
-            style={styles.readStatusButton}
-          >
-            <Text style={styles.readStatusButtonLabel}>캘린더로 돌아가기</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  const display = viewing ? (savedQuery.data?.content ?? '') : draft;
+  const unavailable = viewing && !preview && !id;
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right', 'bottom']}
-      style={[styles.container, styles.recordContainer]}
-    >
-      <StatusBar style="dark" />
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <View style={styles.recordHeader}>
-          <View style={styles.headerRow}>
-            {backButton}
-            <Text style={styles.dateLabel}>
-              {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
-            </Text>
-          </View>
-          <Text accessibilityRole="header" style={styles.recordHeading}>
-            {viewing
-              ? '육아 일기'
-              : step === 'result'
-                ? '하루의 이야기가 완성됐어요'
-                : step === 'generating'
-                  ? '오늘을 한 편의 이야기로'
-                  : 'AI 육아 일기 생성'}
-          </Text>
-          <Text style={styles.recordHint}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ProfileEntry disabled={busy || generating || preparing} />
+          <ActionButton
+            label="기록으로 돌아가기"
+            secondary
+            disabled={busy || generating || preparing}
+            onPress={back}
+          />
+          <Text style={styles.meta}>
+            {viewing && !params.date && !knownIds[dateKey]
+              ? '날짜 정보 미지원'
+              : dateKey}{' '}
+            ·{' '}
             {viewing
               ? '저장된 일기'
-              : step === 'activities'
-                ? '오늘 직접 한 활동을 골라주세요. 선택한 활동만 일기에 담아요.'
-                : step === 'result'
-                  ? '오늘의 기록을 한 편의 일기로 정리했어요.'
-                  : '작은 시도와 웃음, 기억하고 싶은 순간을 적어주세요.'}
+              : step === 'materials'
+                ? '1. 오늘의 재료 확인'
+                : '3. 수정하고 저장'}
           </Text>
-        </View>
-
-        {step === 'activities' && (
-          <>
-            <ScrollView
-              style={styles.recordScroll}
-              contentContainerStyle={styles.recordList}
-              keyboardShouldPersistTaps="handled"
-            >
-              {activityOptions.map((record) => {
-                const selected = selectedRecordTimes.includes(record.time);
-                return (
-                  <Pressable
-                    key={record.time}
-                    accessibilityRole="checkbox"
-                    accessibilityLabel={`${record.time} ${record.title}`}
-                    aria-checked={selected}
-                    onPress={() => toggleRecord(record.time)}
-                    style={({ pressed }) => [
-                      styles.recordCard,
-                      selected && styles.recordSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View style={styles.recordCopy}>
-                      <View style={styles.recordTitleRow}>
-                        <Text style={styles.recordTime}>{record.time}</Text>
-                        <Text style={styles.recordTitle}>{record.title}</Text>
-                      </View>
-                    </View>
-                    <View
-                      style={[
-                        styles.recordCheck,
-                        selected && styles.recordCheckSelected,
-                      ]}
-                    >
-                      {selected ? (
-                        <Text style={styles.recordCheckLabel}>✓</Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.recordFooter}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setStep('notes')}
-                style={({ pressed }) => [
-                  styles.recordNext,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.recordNextLabel}>다음으로</Text>
-              </Pressable>
+          <Text accessibilityRole="header" style={styles.title}>
+            {viewing ? '육아 일기' : '오늘의 순간을 남겨요'}
+          </Text>
+          <Text style={styles.meta}>
+            {preview
+              ? '미리보기 · 이 기기에만 저장돼요. 과거 소유자 미확인 기록은 별도로 보존돼 있어요.'
+              : '초안은 이 로그인 세션에서 유지돼요. 앱을 종료하면 저장하지 않은 내용은 사라져요.'}
+          </Text>
+          {unavailable ? (
+            <View style={styles.card}>
+              <Text style={styles.body}>
+                날짜로 서버 일기를 찾는 기능은 연결 준비 중이에요. 일기 ID가
+                있는 링크로 조회할 수 있어요.
+              </Text>
             </View>
-          </>
-        )}
-
-        {step === 'notes' && (
-          <>
-            <ScrollView
-              style={styles.recordScroll}
-              contentContainerStyle={styles.growthContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.growthCard}>
-                <Text accessibilityRole="header" style={styles.growthTitle}>
-                  오늘의 성장 한 줄 기록
-                </Text>
-                <Text style={styles.growthSubtitle}>
-                  오늘 아이에게 어떤 변화가 있었나요?
-                </Text>
-                <TextInput
-                  accessibilityLabel="오늘의 성장 한 줄 기록"
-                  placeholder="예: 오늘은 혼자서 숟가락을 잡으려 했어요."
-                  placeholderTextColor="#858585"
-                  multiline
-                  maxLength={1000}
-                  value={growthNote}
-                  onChangeText={setGrowthNote}
-                  textAlignVertical="top"
-                  style={styles.growthInput}
-                />
-                <View style={styles.growthTags}>
-                  {growthTags.map((tag) => (
-                    <Pressable
-                      key={tag}
-                      accessibilityRole="button"
-                      aria-pressed={selectedGrowthTags.includes(tag)}
-                      onPress={() => toggleGrowthTag(tag)}
-                      style={({ pressed }) => [
-                        styles.growthTag,
-                        {
-                          flex:
-                            tag === '#감정'
-                              ? 0.8
-                              : tag === '#언어/표현'
-                                ? 1.1
-                                : 1,
-                        },
-                        selectedGrowthTags.includes(tag) &&
-                          styles.growthTagSelected,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={styles.growthTagLabel}>{tag}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.growthHint}>
-                  지금은 입력한 기록을 엮는 미리보기예요. AI 분석은 제공하지
-                  않아요.
-                </Text>
-                <View style={styles.growthDivider} />
-                <Text style={styles.photoLabel}>
-                  {preparingPhotos ? '사진 준비 중...' : '사진 첨부 (선택)'}
-                </Text>
-                <View style={styles.photoRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      photoUri ? '첨부 사진 변경' : '사진 첨부'
-                    }
-                    onPress={selectPhoto}
-                    disabled={preparingPhotos}
-                    style={({ pressed }) => [
-                      styles.photoButton,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    {photoUri ? (
-                      <Image
-                        source={{ uri: photoUri }}
-                        style={styles.attachedPhoto}
-                        contentFit="cover"
-                        accessibilityLabel="첨부 사진"
-                      />
-                    ) : (
-                      <Text style={styles.photoPlus}>+</Text>
-                    )}
-                    {photoUris.length > 1 ? (
-                      <View style={styles.photoCount}>
-                        <Text style={styles.photoCountLabel}>
-                          {photoUris.length}장
-                        </Text>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                  {photoUri ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="첨부 사진 삭제"
-                      onPress={() => setPhotoUris([])}
-                      style={styles.photoRemove}
-                    >
-                      <Text style={styles.photoRemoveLabel}>삭제</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-                {photoNotice ? (
-                  <Text accessibilityRole="alert" style={styles.photoNotice}>
-                    {photoNotice}
-                  </Text>
-                ) : null}
-              </View>
-            </ScrollView>
-            <View style={styles.recordFooter}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void createPreview()}
-                disabled={
-                  preparingPhotos || (!!result && regenerationsRemaining === 0)
-                }
-                style={({ pressed }) => [
-                  styles.recordNext,
-                  preparingPhotos && styles.pressed,
-                  pressed && styles.pressed,
-                ]}
+          ) : viewing && !savedQuery.data ? (
+            <View style={styles.card}>
+              <Text
+                accessibilityRole={savedQuery.isError ? 'alert' : undefined}
+                style={styles.body}
               >
-                <Text style={styles.recordNextLabel}>일기 생성하기</Text>
-              </Pressable>
-              {result ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setStep('result')}
-                  style={styles.quietAction}
-                >
-                  <Text style={styles.regenerateLabel}>
-                    작성 중인 일기로 돌아가기
-                  </Text>
-                </Pressable>
+                {savedQuery.isError
+                  ? '일기를 불러오지 못했어요.'
+                  : savedQuery.isPending
+                    ? '일기를 불러오고 있어요.'
+                    : '저장된 일기가 없어요.'}
+              </Text>
+              {savedQuery.isError ? (
+                <ActionButton
+                  label="일기 다시 불러오기"
+                  onPress={() => void savedQuery.refetch()}
+                />
               ) : null}
             </View>
-          </>
-        )}
-
-        {step === 'generating' ? (
-          <ScrollView
-            style={styles.recordScroll}
-            contentContainerStyle={styles.resultContent}
-          >
-            <DiaryGeneratingView />
-          </ScrollView>
-        ) : null}
-        {(step === 'result' || step === 'saved') && (
-          <>
-            <ScrollView
-              style={styles.recordScroll}
-              contentContainerStyle={styles.resultContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            >
+          ) : generating ? (
+            <>
+              <Text style={styles.meta}>
+                2. 초안 만들기 · 입력한 기록 정리 중
+              </Text>
+              <DiaryGeneratingView />
+            </>
+          ) : !viewing && step === 'materials' ? (
+            <>
+              <View style={styles.card}>
+                <Text accessibilityRole="header" style={styles.section}>
+                  함께한 활동 선택
+                </Text>
+                {preview ? (
+                  <Text style={styles.body}>
+                    미리보기에서는 실제 활동을 불러오지 않아요. 관찰 메모로
+                    시작해보세요.
+                  </Text>
+                ) : todos.isPending ? (
+                  <Text style={styles.body}>활동을 불러오고 있어요.</Text>
+                ) : todos.isError ? (
+                  <>
+                    <Text accessibilityRole="alert" style={styles.body}>
+                      활동을 불러오지 못했어요. 메모만으로 직접 작성할 수도
+                      있어요.
+                    </Text>
+                    <ActionButton
+                      label="활동 다시 불러오기"
+                      secondary
+                      onPress={() => void todos.refetch()}
+                    />
+                  </>
+                ) : completed.length === 0 ? (
+                  <Text style={styles.body}>
+                    완료한 일정이 없어요. 메모만으로 작성해도 괜찮아요.
+                  </Text>
+                ) : (
+                  completed.map((todo) => (
+                    <Pressable
+                      key={todo.id}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={`${todo.scheduledTime.slice(0, 5)} ${todo.planName}`}
+                      accessibilityState={{
+                        checked: selected.includes(todo.id),
+                      }}
+                      onPress={() =>
+                        setSelected((current) =>
+                          current.includes(todo.id)
+                            ? current.filter((value) => value !== todo.id)
+                            : [...current, todo.id],
+                        )
+                      }
+                      style={styles.record}
+                    >
+                      <Text style={styles.body}>
+                        {selected.includes(todo.id) ? '☑' : '☐'}{' '}
+                        {todo.scheduledTime.slice(0, 5)} · {todo.planName}
+                      </Text>
+                      {todo.content ? (
+                        <Text style={styles.meta}>
+                          일정 메모: {todo.content}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  ))
+                )}
+                <Text style={styles.meta}>
+                  선택한 완료 활동만 일기에 포함돼요. 일정 메모는 계획일 수도
+                  있으니 실제 관찰은 아래에 직접 적어주세요.
+                </Text>
+              </View>
+              <View style={styles.card}>
+                <Text accessibilityRole="header" style={styles.section}>
+                  관찰 메모 (선택)
+                </Text>
+                <TextInput
+                  accessibilityLabel="추가 관찰 메모"
+                  placeholder="함께한 상황과 아이의 반응을 적어주세요"
+                  placeholderTextColor="#706A67"
+                  multiline
+                  maxLength={1000}
+                  value={note}
+                  onChangeText={setNote}
+                  style={styles.input}
+                  textAlignVertical="top"
+                />
+                <Text style={styles.meta}>
+                  아이의 반응과 보호자의 감정을 구분해 적어주세요.
+                </Text>
+                {preview ? (
+                  <>
+                    <ActionButton
+                      label={
+                        preparing
+                          ? '사진 준비 중…'
+                          : photos.length
+                            ? '첨부 사진 변경'
+                            : '사진 첨부'
+                      }
+                      secondary
+                      disabled={preparing}
+                      onPress={() => void pickPhotos()}
+                    />
+                    {photos.length ? (
+                      <>
+                        <Text style={styles.meta}>
+                          사진 {photos.length}장 · 미리보기 기기 저장 전용
+                        </Text>
+                        <ActionButton
+                          label="첨부 사진 삭제"
+                          secondary
+                          onPress={() => setPhotos([])}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={styles.meta}>
+                    사진 업로드와 활동별 반응 저장은 연결 준비 중이에요.
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.meta}>
+                2. 초안 만들기 · 실제 AI 연결 없이 선택한 활동과 메모를 문장으로
+                정리해요.
+              </Text>
+              <ActionButton
+                label="입력한 기록으로 초안 정리"
+                disabled={preparing}
+                onPress={() => void prepare()}
+              />
+              <ActionButton
+                label="직접 작성하기"
+                secondary
+                disabled={preparing}
+                onPress={() => void prepare(true)}
+              />
+            </>
+          ) : (
+            <>
               <DiaryResultView
                 result={{
-                  content: displayedDraft,
-                  emotions,
-                  growthPoints,
-                  tomorrowTip: viewing
-                    ? savedQuery.data?.tomorrowTip
-                    : result?.tomorrowTip,
+                  ...(result ?? { emotions: [], growthPoints: [] }),
+                  content: display,
                 }}
-                photos={displayedPhotos}
-                source={
-                  viewing ? savedQuery.data?.sourceRecords : sourceRecords
-                }
-                editingText={editingText}
+                photos={viewing ? (savedQuery.data?.photoUris ?? []) : photos}
+                source={viewing ? savedQuery.data?.sourceRecords : source}
+                editingText={editing}
                 persisted={viewing}
-                busy={saving || deleting}
-                onChangeText={setEditingText}
-                onEdit={
-                  !saving && !deleting
-                    ? () => {
-                        setSaveNotice('');
-                        setEditingText(displayedDraft);
-                      }
-                    : undefined
-                }
-                onCancel={() => {
-                  setSaveNotice('');
-                  Keyboard.dismiss();
-                  setEditingText(null);
-                }}
+                busy={busy}
+                onChangeText={setEditing}
+                onEdit={() => setEditing(display)}
+                onCancel={() => setEditing(null)}
                 onComplete={() => {
-                  if (viewing) {
-                    void persistSavedEdits();
-                    return;
+                  if (viewing) void persist();
+                  else if (editing?.trim()) {
+                    setDraft(editing.trim());
+                    setEditing(null);
                   }
-                  if (editingText?.trim()) {
-                    setDraft(editingText.trim());
-                    setEditingText(null);
-                    Keyboard.dismiss();
+                }}
+              />
+              {editing === null ? (
+                !viewing ? (
+                  <>
+                    <ActionButton
+                      label={busy ? '저장 중…' : '이 일기 저장하기'}
+                      disabled={busy || !draft.trim() || uncertain}
+                      onPress={() => void persist()}
+                    />
+                    {!preview ? (
+                      <Text style={styles.meta}>
+                        본문과 선택한 활동을 서버에 저장해요. 날짜 정보·관찰
+                        메모 원본·초안 재료는 서버 일기 계약에 별도로 저장되지
+                        않아요.
+                      </Text>
+                    ) : null}
+                    <ActionButton
+                      label="재료 다시 확인"
+                      secondary
+                      disabled={busy}
+                      onPress={() => setStep('materials')}
+                    />
+                    <ActionButton
+                      label="초안 다시 정리"
+                      secondary
+                      disabled={busy}
+                      onPress={() => void prepare()}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <ActionButton
+                      label="일기 삭제"
+                      secondary
+                      disabled={busy}
+                      onPress={() => setConfirm('delete')}
+                    />
+                  </>
+                )
+              ) : null}
+            </>
+          )}
+          {notice ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {notice}
+            </Text>
+          ) : null}
+          {uncertain ? (
+            <ActionButton
+              label="중복 가능성을 확인하고 다시 저장"
+              secondary
+              onPress={() => {
+                setUncertain(false);
+                setNotice(
+                  '본문은 유지됐어요. 저장 여부를 확인한 후 다시 저장해주세요.',
+                );
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+      <BottomNavigation
+        disabled={busy || generating || preparing}
+        active="기록"
+        onReselect={back}
+      />
+      {confirm !== null ? (
+        <Modal
+          transparent
+          visible
+          onRequestClose={() => {
+            if (!pending.current) setConfirm(null);
+          }}
+          animationType="fade"
+        >
+          <SafeAreaView style={styles.overlay}>
+            <ScrollView
+              style={{
+                maxHeight: '90%',
+                width: '100%',
+                maxWidth: 560,
+                alignSelf: 'center',
+              }}
+              contentContainerStyle={styles.card}
+              accessibilityViewIsModal
+            >
+              <Text accessibilityRole="header" style={styles.title}>
+                {confirm === 'delete'
+                  ? '일기를 삭제할까요?'
+                  : '수정한 본문을 새 초안으로 바꿀까요?'}
+              </Text>
+              <Text style={styles.body}>
+                {confirm === 'delete'
+                  ? '삭제한 일기는 복구할 수 없어요.'
+                  : '취소하면 수정한 본문이 유지돼요. 새 초안은 선택한 활동과 메모로 정리돼요.'}
+              </Text>
+              {notice ? (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {notice}
+                </Text>
+              ) : null}
+              <ActionButton
+                label="취소"
+                secondary
+                disabled={busy}
+                onPress={() => setConfirm(null)}
+              />
+              <ActionButton
+                label={
+                  busy
+                    ? '처리 중…'
+                    : confirm === 'delete'
+                      ? '삭제'
+                      : '교체하고 다시 정리'
+                }
+                disabled={busy}
+                onPress={() => {
+                  if (confirm === 'delete') void remove();
+                  else {
+                    setConfirm(null);
+                    void prepare(false, true);
                   }
                 }}
               />
             </ScrollView>
-            <View style={styles.resultFooter}>
-              {saveNotice ? (
-                <Text accessibilityRole="alert" style={styles.saveNotice}>
-                  {saveNotice}
-                </Text>
-              ) : null}
-              {editingText !== null ? (
-                <Text style={styles.recordHint}>
-                  {viewing
-                    ? '변경사항 저장을 누르면 기존 일기에 반영돼요.'
-                    : '본문에서 수정을 완료한 후 저장해주세요.'}
-                </Text>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={saving || deleting || (!viewing && !draft.trim())}
-                  onPress={() =>
-                    viewing ? returnToCalendar() : void persistDiary()
-                  }
-                  style={({ pressed }) => [
-                    styles.resultSave,
-                    (pressed || saving || deleting) && styles.pressed,
-                  ]}
-                >
-                  <Text
-                    accessibilityLiveRegion="polite"
-                    style={styles.resultSaveLabel}
-                  >
-                    {viewing
-                      ? '캘린더로 돌아가기'
-                      : saving
-                        ? '저장 중...'
-                        : '이 일기 저장하기'}
-                  </Text>
-                </Pressable>
-              )}
-              {viewing ? (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={deleting || saving || editingText !== null}
-                  onPress={() => {
-                    if (savingRef.current || editingText !== null) return;
-                    setDeleteNotice('');
-                    setConfirmDelete(true);
-                  }}
-                  style={styles.quietAction}
-                >
-                  <Text style={styles.deleteLabel}>일기 삭제</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`다시 생성하기, 남은 횟수 ${regenerationsRemaining}회`}
-                  disabled={regenerationsRemaining === 0 || saving}
-                  onPress={requestRegeneration}
-                  style={({ pressed }) => [
-                    styles.quietAction,
-                    (pressed || regenerationsRemaining === 0 || saving) &&
-                      styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.regenerateLabel}>
-                    다시 생성하기 · 이번 작성에서 {regenerationsRemaining}회
-                    남음
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </>
-        )}
-        {step === 'notes' && saveNotice ? (
-          <Text accessibilityRole="alert" style={styles.saveNotice}>
-            {saveNotice}
-          </Text>
-        ) : null}
-      </KeyboardAvoidingView>
-      <Modal
-        visible={confirmDelete}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!deletingRef.current) setConfirmDelete(false);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <ScrollView
-            accessibilityViewIsModal
-            style={styles.confirmationCard}
-            contentContainerStyle={styles.confirmationContent}
-          >
-            <Text accessibilityRole="header" style={styles.confirmationTitle}>
-              일기를 삭제할까요?
-            </Text>
-            <Text style={styles.recordStep}>
-              {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
-            </Text>
-            <Text style={styles.recordHint}>
-              삭제한 일기는 복구할 수 없어요.
-            </Text>
-            {deleteNotice ? (
-              <Text accessibilityRole="alert" style={styles.saveNotice}>
-                {deleteNotice}
-              </Text>
-            ) : null}
-            <View style={styles.deleteActions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={deleting}
-                onPress={() => setConfirmDelete(false)}
-                style={[styles.regenerateButton, deleting && styles.pressed]}
-              >
-                <Text style={styles.deleteLabel}>취소</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={deleting}
-                onPress={removeDiary}
-                style={[styles.resultSave, deleting && styles.pressed]}
-              >
-                <Text
-                  accessibilityLiveRegion="polite"
-                  style={styles.resultSaveLabel}
-                >
-                  {deleting ? '삭제 중...' : '삭제'}
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-      <Modal
-        visible={confirmRegenerate || leaveAction !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setConfirmRegenerate(false);
-          setLeaveAction(null);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <ScrollView
-            accessibilityViewIsModal
-            style={styles.confirmationCard}
-            contentContainerStyle={styles.confirmationContent}
-          >
-            <Text accessibilityRole="header" style={styles.confirmationTitle}>
-              {leaveAction
-                ? '작성을 마칠까요?'
-                : '수정한 일기를 다시 생성할까요?'}
-            </Text>
-            <Text style={styles.recordHint}>
-              {leaveAction
-                ? '저장하지 않은 기록은 사라져요.'
-                : '수정한 본문이 새 초안으로 바뀌어요. 활동과 메모, 사진은 유지돼요.'}
-            </Text>
-            <View style={styles.deleteActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setConfirmRegenerate(false);
-                  setLeaveAction(null);
-                }}
-                style={styles.regenerateButton}
-              >
-                <Text style={styles.deleteLabel}>취소</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  if (leaveAction) {
-                    const leave = leaveAction;
-                    setLeaveAction(null);
-                    leave();
-                  } else {
-                    setConfirmRegenerate(false);
-                    void createPreview(true);
-                  }
-                }}
-                style={styles.resultSave}
-              >
-                <Text style={styles.resultSaveLabel}>
-                  {leaveAction ? '나가기' : '다시 생성'}
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+          </SafeAreaView>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
-  flex: { flex: 1 },
-  recordContainer: { backgroundColor: '#FAF9F9' },
-  recordHeader: {
+  screen: { flex: 1, backgroundColor: '#FAF9F9' },
+  content: {
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    paddingTop: 8,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    gap: 8,
+    padding: 20,
+    gap: 16,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
-  recordHeading: {
-    ...typography.title,
-    color: '#D26A5C',
-  },
-  recordStep: {
-    ...typography.label,
-    marginTop: 18,
-    color: '#4F4F4F',
-  },
-  recordHint: {
-    ...typography.caption,
-    color: '#777574',
-  },
-  recordScroll: { backgroundColor: '#FAF9F9' },
-  recordList: {
-    width: '100%',
-    maxWidth: 430,
-    alignSelf: 'center',
-    paddingLeft: 18,
-    paddingRight: 25,
-    paddingTop: 24,
-    paddingBottom: 24,
-    gap: 20,
-  },
-  recordCard: {
-    minHeight: 64,
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingVertical: 12,
+  card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, gap: 14 },
+  title: { ...typography.title, color: '#433C39' },
+  section: { ...typography.section, color: '#433C39' },
+  body: { ...typography.body, color: '#494442' },
+  meta: { ...typography.caption, color: '#625B57' },
+  error: { ...typography.body, color: '#A03C30' },
+  input: {
+    ...typography.body,
+    color: '#433C39',
+    minHeight: 130,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  recordSelected: { borderColor: '#D26A5C', backgroundColor: '#FFF5F2' },
-  recordCopy: { flex: 1 },
-  recordTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  recordTime: {
-    ...typography.label,
-    minWidth: 44,
-    color: '#4F4F4F',
-  },
-  recordTitle: {
-    ...typography.label,
-    flex: 1,
-    color: '#4F4F4F',
-  },
-  recordCheck: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: '#D26A5C',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordCheckSelected: { backgroundColor: '#D26A5C' },
-  recordCheckLabel: { fontSize: 12, lineHeight: 16, color: '#FFFFFF' },
-  recordFooter: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    borderColor: '#D3C4BC',
+    borderRadius: 12,
     backgroundColor: '#FAF9F9',
   },
-  recordNext: {
-    width: '100%',
-    maxWidth: 350,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 51,
-    borderRadius: 14,
-    backgroundColor: '#B25447',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordNextLabel: {
-    ...typography.button,
-    color: '#FFFFFF',
-  },
-  growthContent: {
-    width: '100%',
-    maxWidth: 430,
-    alignSelf: 'center',
-    paddingHorizontal: 21.5,
-    paddingTop: 18,
-    paddingBottom: 24,
-  },
-  growthCard: {
-    paddingHorizontal: 18,
-    paddingTop: 23,
-    paddingBottom: 30,
-    borderWidth: 1,
-    borderColor: '#D9D9D9',
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-  },
-  growthTitle: {
-    ...typography.section,
-    color: '#4F4F4F',
-  },
-  growthSubtitle: {
-    ...typography.caption,
-    marginTop: 5,
-    color: '#4F4F4F',
-  },
-  growthInput: {
-    ...typography.body,
-    minHeight: 144,
-    marginTop: 14,
-    paddingHorizontal: 12,
-    paddingTop: 14,
-    paddingBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    borderRadius: 12,
-    color: '#4F4F4F',
-  },
-  growthTags: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  growthTag: {
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: 5,
-    borderWidth: 1,
-    borderColor: '#FFE4DE',
-    borderRadius: 12,
-    backgroundColor: '#FFF5F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  growthTagSelected: { borderColor: '#D26A5C', backgroundColor: '#FDEDE6' },
-  growthTagLabel: {
-    ...typography.caption,
-    color: '#4F4F4F',
-  },
-  growthHint: {
-    ...typography.caption,
-    marginTop: 13,
-    color: '#4F4F4F',
-  },
-  growthDivider: {
-    marginTop: 26,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  photoLabel: {
-    ...typography.caption,
-    marginTop: 14,
-    marginBottom: 8,
-    color: '#4F4F4F',
-  },
-  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  photoButton: {
-    width: 102,
-    height: 81,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    borderRadius: 12,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoPlus: { fontSize: 23, fontWeight: '700', color: '#D26A5C' },
-  attachedPhoto: { width: '100%', height: '100%' },
-  photoCount: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#D26A5C',
-  },
-  photoCountLabel: {
-    ...typography.caption,
-    color: '#FFFFFF',
-  },
-  photoRemove: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  photoRemoveLabel: {
-    ...typography.button,
-    color: '#D26A5C',
-  },
-  photoNotice: {
-    ...typography.caption,
-    marginTop: 8,
-    color: '#D26A5C',
-  },
-  confirmationCard: {
-    width: '100%',
-    maxWidth: 350,
-    maxHeight: '90%',
-    flexGrow: 0,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 8px 30px rgba(84, 87, 92, 0.12)',
-  },
-  confirmationContent: {
-    paddingTop: 24,
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-  },
-  confirmationTitle: {
-    ...typography.section,
-    color: '#D26A5C',
-  },
-  resultContent: {
-    width: '100%',
-    maxWidth: 600,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-    gap: 20,
-  },
-  resultFooter: {
-    width: '100%',
-    maxWidth: 600,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EEE8E5',
-    backgroundColor: '#FAF9F9',
-    gap: 4,
-  },
-  quietAction: {
-    minHeight: 44,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateLabel: {
-    ...typography.caption,
-    color: '#777574',
-    flex: 1,
-  },
-  saveNotice: {
-    ...typography.caption,
-    color: '#C9534A',
-    backgroundColor: '#FFFFFF',
-    padding: 8,
-    borderRadius: 8,
-  },
-  readStatus: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-    gap: 18,
-  },
-  readStatusText: {
-    ...typography.body,
-    color: '#4F4F4F',
-    textAlign: 'center',
-  },
-  readStatusButton: {
+  record: {
     minHeight: 48,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FDEDE6',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E9D2C8',
     borderRadius: 12,
+    gap: 6,
   },
-  readStatusButtonLabel: {
-    ...typography.button,
-    color: '#D26A5C',
-  },
-  regenerateButton: {
+  overlay: {
     flex: 1,
-    minHeight: 49,
-    borderWidth: 2,
-    borderColor: '#C2C3CB',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
-    paddingHorizontal: 5,
-    paddingVertical: 5,
+    padding: 20,
   },
-  regenerateLabel: {
-    ...typography.button,
-    color: '#777574',
-    textAlign: 'center',
-  },
-  resultSave: {
-    minHeight: 50,
-    flexShrink: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#B25447',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resultSaveLabel: {
-    ...typography.button,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(40, 35, 35, 0.36)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  deleteLabel: {
-    ...typography.button,
-    color: '#C9534A',
-  },
-  pressed: { opacity: 0.78 },
 });

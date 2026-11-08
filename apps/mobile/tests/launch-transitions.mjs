@@ -319,7 +319,7 @@ try {
         .find(node => node.textContent.trim() === '인증 없이 미리보기 진입').click();
     `);
     await waitFor(
-      `location.pathname === "/main" && document.querySelector('[data-testid="main-screen"]')`,
+      `location.pathname === "/main" && document.querySelector('[role="tablist"]')`,
     );
     await waitFor(`
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
@@ -332,7 +332,7 @@ try {
       return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
     assert(main.text.includes('+378일'));
-    assert(main.text.includes('오늘의 루틴 미리보기'));
+    assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
     assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
     assert(main.text.includes('오늘의 일정') && main.text.includes('AI 일기'));
     assert.equal(

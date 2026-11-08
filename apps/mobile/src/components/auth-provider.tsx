@@ -1,3 +1,4 @@
+import { resetSessionState } from '../lib/session-state';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () =>
       new AuthSession(tokenStorage, () => {
         queryClient.clear();
+        resetSessionState();
         setDraft('');
       }),
   );

@@ -68,7 +68,7 @@ try {
     'Width/orientation changes do not imply a keyboard',
   );
   await resize({ height: 852, scale: 1, width: 393 });
-  await tabs.getByRole('tab', { name: '홈', exact: true }).click();
+  await tabs.getByRole('tab', { name: '오늘', exact: true }).click();
   await page.waitForURL('**/main');
   await resize({ height: 390 });
   assert.ok(await tabs.isVisible(), 'Other screens keep their navigation');

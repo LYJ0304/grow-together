@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { typography } from './typography';
 import { ApiError } from '../lib/api/errors';
 import {
   KeyboardAvoidingView,
@@ -89,6 +90,7 @@ export function AddPlanModal({
           <View style={styles.sheet} accessibilityViewIsModal>
             <ScrollView
               keyboardShouldPersistTaps="handled"
+              style={{ flexShrink: 1 }}
               contentContainerStyle={styles.content}
             >
               <View style={styles.header}>
@@ -116,7 +118,7 @@ export function AddPlanModal({
               <TextInput
                 accessibilityLabel="계획명"
                 placeholder="예: 아이와 공원 산책"
-                placeholderTextColor="#88889D"
+                placeholderTextColor="#706A67"
                 value={title}
                 editable={!pending}
                 onChangeText={setTitle}
@@ -127,7 +129,7 @@ export function AddPlanModal({
               <TextInput
                 accessibilityLabel="계획 시간"
                 placeholder="09:30"
-                placeholderTextColor="#88889D"
+                placeholderTextColor="#706A67"
                 value={time}
                 editable={!pending}
                 onChangeText={setTime}
@@ -142,7 +144,7 @@ export function AddPlanModal({
               <TextInput
                 accessibilityLabel="계획 메모"
                 placeholder="기억하고 싶은 내용을 적어 주세요"
-                placeholderTextColor="#88889D"
+                placeholderTextColor="#706A67"
                 value={description}
                 editable={!pending}
                 onChangeText={setDescription}
@@ -151,6 +153,8 @@ export function AddPlanModal({
                 textAlignVertical="top"
                 style={[styles.input, styles.memo]}
               />
+            </ScrollView>
+            <View style={styles.footer}>
               {error ? (
                 <Text
                   accessibilityRole="alert"
@@ -193,7 +197,7 @@ export function AddPlanModal({
                   </Text>
                 </Pressable>
               </View>
-            </ScrollView>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -227,10 +231,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: { fontSize: 28, color: '#88889D' },
-  date: { fontFamily: 'Jua', fontSize: 14, color: '#D26A5C', marginBottom: 8 },
+  date: { ...typography.label, color: '#D26A5C', marginBottom: 8 },
   label: {
-    fontFamily: 'Jua',
-    fontSize: 16,
+    ...typography.label,
     color: '#4F4F4F',
     marginTop: 20,
     marginBottom: 8,
@@ -240,15 +243,15 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E8',
     borderRadius: 12,
     padding: 14,
-    fontFamily: 'Jua',
-    fontSize: 15,
+    ...typography.body,
     color: '#4F4F4F',
     backgroundColor: '#FAF9F9',
   },
   memo: { minHeight: 100 },
-  hint: { marginTop: 8, fontFamily: 'Jua', fontSize: 12, color: '#88889D' },
-  error: { marginTop: 16, fontFamily: 'Jua', fontSize: 13, color: '#D26A5C' },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  hint: { marginTop: 8, ...typography.caption, color: '#706A67' },
+  error: { marginTop: 16, ...typography.caption, color: '#A84D40' },
+  footer: { paddingHorizontal: 24, paddingBottom: 20 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   button: {
     flex: 1,
     minHeight: 48,
@@ -258,7 +261,7 @@ const styles = StyleSheet.create({
   },
   cancel: { backgroundColor: '#F6F6F5' },
   submit: { backgroundColor: '#D26A5C' },
-  cancelText: { fontFamily: 'Jua', fontSize: 16, color: '#88889D' },
-  submitText: { fontFamily: 'Jua', fontSize: 16, color: '#FFFFFF' },
+  cancelText: { ...typography.button, color: '#625B57' },
+  submitText: { ...typography.button, color: '#FFFFFF' },
   pressed: { opacity: 0.75 },
 });

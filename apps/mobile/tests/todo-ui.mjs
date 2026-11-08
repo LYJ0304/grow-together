@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
@@ -66,7 +67,9 @@ await page.route('**/api/v1/todos**', async (route) => {
   const method = request.method();
   const token = request.headers().authorization;
   assert.ok(
-    ['Bearer ui-test-access', 'Bearer ui-test-access-b'].includes(token),
+    token === 'Bearer ui-test-access-b' ||
+      (token?.startsWith('Bearer eyJ') &&
+        JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).sub === '1'),
   );
   if (method === 'GET') {
     reads++;
@@ -128,7 +131,7 @@ await page.route('**/api/v1/todos**', async (route) => {
 const button = (name) => page.getByRole('button', { name, exact: true });
 const text = (value) => page.getByText(value, { exact: true });
 async function openForm() {
-  await button('＋ 계획 추가').click();
+  await button('＋ 직접 추가').click();
   await page.getByRole('textbox', { name: '계획명', exact: true }).waitFor();
 }
 async function fill(name, time = '09:30', memo = '준비물') {
@@ -214,12 +217,12 @@ try {
       .evaluateAll((nodes) =>
         nodes
           .map((node) => node.getAttribute('aria-label'))
-          .filter((label) => /^\d{2}:\d{2} /.test(label ?? '')),
+          .filter((label) => label?.endsWith(' 메뉴')),
       );
     assert.deepEqual(labels, [
-      '08:00 서버 아침',
-      '09:30 공원 산책',
-      '10:00 서버 산책',
+      '서버 아침 메뉴',
+      '공원 산책 메뉴',
+      '서버 산책 메뉴',
     ]);
     if (phase === 'save') {
       console.log(
@@ -322,29 +325,33 @@ try {
       await button('목록 새로고침').click();
       await oldRequest;
       const beforeLogout = reads;
-      await page.getByRole('tab', { name: '마이', exact: true }).click();
+      await page
+        .getByRole('button', { name: '프로필과 설정', exact: true })
+        .click();
       await button('로그아웃').click();
       await page
         .getByRole('heading', { name: '다시 만났네요!', exact: true })
         .waitFor();
       await button('인증 없이 미리보기 진입').click();
-      await page.getByRole('tab', { name: '투두', exact: true }).click();
+      await page.getByRole('tab', { name: '일정', exact: true }).click();
       await text('미리보기에서는 서버 일정을 이용할 수 없어요.').waitFor();
       assert.equal(await text('서버 아침').count(), 0);
       finishOldAccount();
       assert.equal(reads, beforeLogout);
       assert.equal(
-        await button('＋ 계획 추가').getAttribute('aria-disabled'),
+        await button('＋ 직접 추가').getAttribute('aria-disabled'),
         'true',
       );
-      await page.getByRole('tab', { name: '마이', exact: true }).click();
+      await page
+        .getByRole('button', { name: '프로필과 설정', exact: true })
+        .click();
       await button('미리보기 종료').click();
       await page
         .getByRole('textbox', { name: '이메일', exact: true })
         .fill('second@example.com');
       await page.getByLabel('비밀번호', { exact: true }).fill('password123');
       await button('로그인').click();
-      await page.getByRole('tab', { name: '투두', exact: true }).click();
+      await page.getByRole('tab', { name: '일정', exact: true }).click();
       await text('두번째 계정 일정').waitFor();
       assert.equal(await text('서버 아침').count(), 0);
       assert.equal(await text('응답 유실 일정').count(), 0);

@@ -21,8 +21,8 @@ const input = page.getByRole('textbox', {
   name: '상담 질문 입력',
   exact: true,
 });
-const settings = page.getByRole('button', { name: '상담 설정', exact: true });
-const heading = page.getByRole('heading', { name: '차분한 상담선생님' });
+const settings = page.getByRole('button', { name: '도우미 설정', exact: true });
+const heading = page.getByRole('heading', { name: '육아 도우미' });
 const tabs = page.getByRole('tablist');
 const questionTab = tabs.getByRole('tab', { name: '질문', exact: true });
 
@@ -30,7 +30,7 @@ async function checkChat() {
   await input.waitFor();
   assert.equal(new URL(page.url()).pathname, '/chat');
   assert.equal(await questionTab.getAttribute('aria-selected'), 'true');
-  assert.equal(await tabs.getByRole('tab').count(), 5);
+  assert.equal(await tabs.getByRole('tab').count(), 4);
   assert.equal(
     await page
       .getByRole('heading', { name: '누구랑 같이 키워볼까요?' })
@@ -73,7 +73,7 @@ try {
     await checkLayout(height);
     await settings.locator('img').waitFor();
     await page.waitForFunction(() => {
-      const icon = document.querySelector('[aria-label="상담 설정"] img');
+      const icon = document.querySelector('[aria-label="도우미 설정"] img');
       return icon?.complete && icon.naturalWidth > 0;
     });
     assert.equal(await settings.innerText(), '');
@@ -82,7 +82,7 @@ try {
     });
 
     await input.fill('');
-    const suggestion = '편식이 심한데 어쩌죠?';
+    const suggestion = '아이의 이런 반응을 어떻게 이해하면 좋을까?';
     await page
       .getByRole('button', { name: `질문 입력: ${suggestion}` })
       .click();
@@ -118,10 +118,9 @@ try {
 
   await page.setViewportSize({ width: 393, height: 852 });
   for (const [label, route] of [
-    ['홈', '/main'],
-    ['캘린더', '/calendar'],
-    ['투두', '/todo'],
-    ['마이', '/mypage'],
+    ['오늘', '/main'],
+    ['기록', '/calendar'],
+    ['일정', '/todo'],
   ]) {
     await tabs.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
@@ -137,9 +136,7 @@ try {
     await page.getByRole('button', { name: /페르소나 선택$/ }).count(),
     3,
   );
-  await page
-    .getByRole('button', { name: '차분한 상담선생님 페르소나 선택' })
-    .click();
+  await page.getByRole('button', { name: '육아 도우미 페르소나 선택' }).click();
   await checkChat();
 
   // Probe the installed safe-area provider without claiming device notch coverage.

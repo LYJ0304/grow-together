@@ -90,7 +90,7 @@ export function DiaryResultView({
             오늘의 일기
           </Text>
           {onEdit && editingText === null ? (
-            <Action label="수정" onPress={onEdit} />
+            <Action label="내용 수정" onPress={onEdit} />
           ) : null}
         </View>
         {editingText === null ? (
@@ -154,7 +154,7 @@ export function DiaryResultView({
           {result.growthPoints.length ? (
             <View style={styles.section}>
               <Text accessibilityRole="header" style={styles.title}>
-                오늘 발견한 성장 순간
+                오늘 관찰한 순간
               </Text>
               {result.growthPoints.map((point, index) => (
                 <Text key={index} style={styles.observation}>
@@ -166,7 +166,11 @@ export function DiaryResultView({
           {result.emotions.length ? (
             <View style={styles.section}>
               <Text accessibilityRole="header" style={styles.title}>
-                기록 속 감정
+                기록에서 추정한 감정
+              </Text>
+              <Text style={styles.meta}>
+                기록을 바탕으로 한 추정이에요. 아이와 보호자의 실제 감정과 다를
+                수 있어요.
               </Text>
               <View style={styles.chips}>
                 {result.emotions.map((emotion, index) => (
@@ -194,7 +198,7 @@ export function DiaryResultView({
         <View style={styles.sources}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="이 일기에 사용된 기록 확인"
+            accessibilityLabel="사용한 기록 보기"
             accessibilityState={{ expanded }}
             onPress={() => setExpanded(!expanded)}
             style={({ pressed }) => [
@@ -202,9 +206,7 @@ export function DiaryResultView({
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.meta, styles.grow]}>
-              이 일기에 사용된 기록 확인
-            </Text>
+            <Text style={[styles.meta, styles.grow]}>사용한 기록 보기</Text>
             <Text style={styles.meta}>{expanded ? '−' : '+'}</Text>
           </Pressable>
           {expanded ? (
@@ -244,6 +246,8 @@ function DiaryPhotoGallery({ photos }: { photos: string[] }) {
           source={{ uri }}
           contentFit="cover"
           style={styles.photo}
+          accessible
+          accessibilityRole="image"
           accessibilityLabel={`일기 사진 ${index + 1}, 총 ${Math.min(3, photos.length)}장`}
         />
       ))}

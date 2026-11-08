@@ -37,7 +37,7 @@ try {
   });
   await input.fill('우리 아이 질문 초안');
   const suggestion = page.getByRole('button', {
-    name: '질문 입력: 아직 안 걷는데 괜찮나요?',
+    name: '질문 입력: 오늘 집에서 할 놀이를 추천해줘',
     exact: true,
   });
   await suggestion.click();
@@ -58,15 +58,14 @@ try {
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
   await input.fill('   ');
   await suggestion.click();
-  assert.equal(await input.inputValue(), '아직 안 걷는데 괜찮나요?');
+  assert.equal(await input.inputValue(), '오늘 집에서 할 놀이를 추천해줘');
   assert.equal(await notice.count(), 0);
   await input.fill('우리 아이 질문 초안');
   const tabs = page.getByRole('tablist');
   for (const [label, route] of [
-    ['홈', '/main'],
-    ['캘린더', '/calendar'],
-    ['투두', '/todo'],
-    ['마이', '/mypage'],
+    ['오늘', '/main'],
+    ['기록', '/calendar'],
+    ['일정', '/todo'],
   ]) {
     await tabs.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
@@ -83,7 +82,9 @@ try {
     '우리 아이 질문 초안',
     'Unsent draft survives preparation notice',
   );
-  await tabs.getByRole('tab', { name: '마이', exact: true }).click();
+  await page
+    .getByRole('button', { name: '프로필과 설정', exact: true })
+    .click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('textbox', { name: '이메일', exact: true })
@@ -99,7 +100,9 @@ try {
     'Another account never receives the old draft',
   );
   await input.fill('다른 사용자의 초안');
-  await page.getByRole('tab', { name: '마이', exact: true }).click();
+  await page
+    .getByRole('button', { name: '프로필과 설정', exact: true })
+    .click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
@@ -111,7 +114,9 @@ try {
     'Preview never receives an account draft',
   );
   await input.fill('미리보기 초안');
-  await page.getByRole('tab', { name: '마이', exact: true }).click();
+  await page
+    .getByRole('button', { name: '프로필과 설정', exact: true })
+    .click();
   await page
     .getByRole('button', { name: '미리보기 종료', exact: true })
     .click();

@@ -129,7 +129,7 @@ export default function MyPageScreen() {
       </ScrollView>
 
       <BottomNavigation
-        active="마이"
+        active={null}
         onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
         onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
       />

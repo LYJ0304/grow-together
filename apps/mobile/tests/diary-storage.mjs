@@ -66,7 +66,24 @@ assert.equal(parseDiaryDate('2026-02-31'), null);
 assert.equal(parseDiaryDate('2026-13-01'), null);
 assert.equal(parseDiaryDate('invalid'), null);
 assert.equal(diaryDateKey(parseDiaryDate('2028-02-29')), '2028-02-29');
-assert.equal(await readDiary('2026-10-10'), null);
+const legacy = JSON.stringify({
+  date: '2026-10-10',
+  content: '소유자 미확인 과거 기록',
+  emotions: [],
+  growthPoints: [],
+  photoUris: [],
+});
+values.set('@growtogether/diary/v1/2026-10-10', legacy);
+assert.equal(
+  await readDiary('2026-10-10'),
+  null,
+  'Unowned legacy records must not enter preview or account records',
+);
+assert.equal(
+  values.get('@growtogether/diary/v1/2026-10-10'),
+  legacy,
+  'Legacy data is preserved',
+);
 
 const diary = {
   date: '2026-10-10',
@@ -156,7 +173,7 @@ await assert.rejects(
   /사진 용량/,
 );
 
-const prefix = [...values.keys()][0].slice(0, -10);
+const prefix = '@growtogether/diary/preview/v2/';
 values.set(prefix + '2026-10-12', '{broken');
 await assert.rejects(readDiary('2026-10-12'), /불러오지 못했어요/);
 assert.equal(

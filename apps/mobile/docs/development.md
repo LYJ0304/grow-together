@@ -112,15 +112,16 @@ Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://loc
 
 ## 홈·일기 UI 검증
 
-홈은 기존 아이 프로필과 Todo 조회를 사용한다. 아이 정보 → 일기 작성 → 루틴 요약 → 일정 → 기록 돌아보기 순서이며, 일기 작성과 돌아보기는 기존 캘린더로 이동한다. 날짜와 경과일은 로컬 달력 날짜를 기준으로 갱신한다. 미리보기에서는 로컬 아이 프로필만 읽고 보호된 API를 호출하지 않는다.
+홈은 아이 이름·월령과 날짜 → 다음 활동 → 일정 요약 → 기록 순서다. 일정과 아이 정보는 기존 API를 사용하며, 미리보기에서는 보호된 API를 호출하지 않는다. 네 메뉴는 오늘·일정·기록·질문이며 프로필과 설정은 상단 버튼으로 연다. 날짜와 초안은 로그인 세션 안에서 보존한다.
 
-홈과 일기는 `src/components/typography.ts`의 역할별 스타일을 공유한다. 화면·섹션 제목은 Jua, 본문·입력·버튼은 플랫폼 시스템 글꼴이다. 본문 읽기와 수정은 같은 16px/27px 규칙을 사용한다. 장식용 기호는 별도로 표시한다.
+홈과 일기는 `src/components/typography.ts`의 역할별 스타일을 공유한다. 짧은 제목은 Jua, 본문·입력·버튼은 플랫폼 시스템 글꼴이다. 본문 읽기와 수정은 같은 16px/27px 규칙을 사용한다.
 
-Expo web export와 확장자 없는 경로를 제공하는 정적 서버를 준비한 뒤, `apps/mobile`에서 실행한다. 아래 주소와 브라우저 경로는 환경에 맞게 바꾼다.
+실행 방법과 실제 저장 범위·미연결 계약은 [기록과 일기 작성](diary-editing.md)을 참고한다. 환경 변수를 변경했다면 export에 `--clear`를 사용해 이전 Metro 변환 캐시를 제거한다.
 
 ```bash
-MAIN_URL=http://localhost:8149 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:main:ui
-CHROME_PATH=/usr/bin/google-chrome npm run test:diary:typography -- http://localhost:8149
+MAIN_URL=http://localhost:8156 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:main:ui
+MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:diary:typography
+MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:ux
 ```
 
-홈 검사는 실제 프로필·로딩·미등록·오류·재시도·계정 전환·생일 당일·서머타임·자정·복귀, 일정과 진행률, 반응형 화면과 움직임 줄이기를 확인한다. 일기 글꼴 검사는 로드된 폰트와 실제 computed style, 단계/모달의 역할별 규칙, 본문 읽기/수정의 일치, 큰 글씨와 작은 편집 영역을 확인한다. API 응답은 가로채므로 실서버 연결을 증명하지 않으며, 네이티브 폰트 fallback·키보드·OS 글씨 확대는 기기에서 별도로 확인한다.
+홈 검사는 프로필·월령·미등록·오류·재시도·자정·복귀·다음 활동과 반응형을 확인한다. 일기 검사는 완료 재료 선택·직접 작성·초안/편집본 보존·저장 실패·수정/삭제·타이포그래피를 확인한다. API 응답은 가로채므로 실서버 연결을 증명하지 않으며 네이티브 키보드·사진 권한·OS 글씨 확대는 기기에서 별도로 확인한다.

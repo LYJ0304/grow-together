@@ -241,7 +241,9 @@ try {
   await page.goto(`${url}/login`);
   await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
   await page.waitForURL('**/main');
-  await page.getByRole('tab', { name: '마이', exact: true }).click();
+  await page
+    .getByRole('button', { name: '프로필과 설정', exact: true })
+    .click();
   await page.getByRole('button', { name: /아이 프로필/ }).click();
   await page
     .getByText('이 기기에 저장되는 미리보기용 아이 정보예요.')

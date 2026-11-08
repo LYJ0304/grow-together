@@ -24,7 +24,7 @@ try {
     'No fake online status',
   );
   assert.ok(
-    await page.getByText('상담 연결 준비 중', { exact: true }).isVisible(),
+    await page.getByText('답변 연결 준비 중', { exact: true }).isVisible(),
   );
   assert.equal(
     await page.getByRole('button', { name: '음성 입력', exact: true }).count(),
@@ -34,7 +34,9 @@ try {
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   const notice = page.getByRole('alert');
   assert.ok(
-    (await notice.innerText()).includes('AI 상담 연결은 아직 준비 중이에요.'),
+    (await notice.innerText()).includes(
+      '육아 도우미 연결은 아직 준비 중이에요.',
+    ),
   );
   assert.equal(await input.inputValue(), '질문을 작성했습니다');
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
@@ -42,10 +44,12 @@ try {
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   await input.press('Enter');
   assert.ok(
-    (await notice.innerText()).includes('AI 상담 연결은 아직 준비 중이에요.'),
+    (await notice.innerText()).includes(
+      '육아 도우미 연결은 아직 준비 중이에요.',
+    ),
   );
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
-  await page.getByRole('button', { name: '상담 설정', exact: true }).click();
+  await page.getByRole('button', { name: '도우미 설정', exact: true }).click();
   assert.ok((await notice.innerText()).includes('설정 기능은 준비 중이에요.'));
   await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
   assert.equal(await input.inputValue(), '질문을 작성했습니다');

@@ -1,221 +1,139 @@
-import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { chromium, webkit } from 'playwright-core';
-
-// Run against an Expo web export served at MAIN_URL.
-const url = process.env.MAIN_URL ?? 'http://localhost:8098';
-const artifacts = process.env.ARTIFACT_DIR ?? '/tmp/grow-main-68';
-const engine = process.env.BROWSER === 'webkit' ? webkit : chromium;
-await mkdir(artifacts, { recursive: true });
-const browser = await engine.launch({
-  executablePath: process.env.BROWSER_EXECUTABLE_PATH,
+import { chromium } from 'playwright-core';
+import { authenticatedSessionFixture } from './auth-fixture.mjs';
+const browser = await chromium.launch({
+  executablePath:
+    process.env.BROWSER_EXECUTABLE_PATH ?? '/usr/bin/google-chrome',
   headless: true,
   args: ['--no-sandbox'],
 });
-const page = await browser.newPage({
-  viewport: { width: 393, height: 852 },
-  reducedMotion: 'no-preference',
-});
-await page.addInitScript(authenticatedSessionFixture);
-await page.route('**/api/v1/children/me', (route) =>
-  route.fulfill({ json: { name: '하늘', birthday: '2026-10-01' } }),
-);
-await page.route('**/api/v1/todos**', (route) =>
-  route.fulfill({
-    json: Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      planName: `일정 ${i + 1}`,
-      scheduledDate: '2026-10-31',
-      scheduledTime: '09:00:00',
-      completed: i < 7,
-    })),
-  }),
-);
-const errors = [];
-page.on('pageerror', (error) => errors.push(error.message));
-const progress = page.getByRole('progressbar', { name: '오늘의 루틴' });
-const character = page.getByTestId('routine-character');
-async function open() {
-  await page.goto(`${url}/main`);
-  await page.getByTestId('main-screen').waitFor();
-  await progress.waitFor();
-  await page.waitForFunction(
-    () =>
-      document
-        .querySelector('[role="progressbar"]')
-        ?.getAttribute('aria-valuenow') === '70',
-  );
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    [...document.images].every(
-      (image) => image.complete && image.naturalWidth > 0,
-    ),
-  );
-}
-async function samples() {
-  return character.evaluate(
-    (element) =>
-      new Promise((resolve) => {
-        const values = [];
-        const start = performance.now();
-        function sample() {
-          values.push(
-            new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
-          );
-          if (performance.now() - start < 5300) requestAnimationFrame(sample);
-          else resolve(values);
-        }
-        requestAnimationFrame(sample);
-      }),
-  );
-}
+await mkdir('/tmp/growtogether-156', { recursive: true });
 try {
-  for (const width of [320, 375, 393, 430, 768, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
-    await open();
-    assert.equal(await progress.getAttribute('aria-valuenow'), '70');
-    assert.match(await progress.innerText(), /70\s*%/);
-    assert.equal(await progress.getAttribute('aria-valuemax'), '100');
-    assert.equal(await progress.getAttribute('aria-valuetext'), '70퍼센트');
-    const schedule = page.getByRole('heading', { name: '오늘의 일정' });
-    const diary = page.getByRole('heading', {
-      name: '오늘의 이야기를 남겨보세요',
-    });
-    const a = await schedule.boundingBox();
-    const b = await diary.boundingBox();
-    assert.ok(b.y < a.y, 'Diary action precedes the full-width schedule');
-    assert.equal(Math.round(a.x), Math.round(b.x));
-    for (const name of ['전체 보기 →', '일기 작성하기']) {
-      const button = page.getByRole('button', { name, exact: true });
-      await button.scrollIntoViewIfNeeded();
-      const box = await button.boundingBox();
-      const nav = await page.getByRole('tablist').boundingBox();
-      assert.ok(box.height >= 44 && box.y + box.height <= nav.y);
-    }
-    assert.ok(
-      await page.evaluate(() =>
-        [...document.querySelectorAll('div')]
-          .filter((node) => getComputedStyle(node).overflowX === 'auto')
-          .every((node) => node.scrollWidth <= node.clientWidth + 1),
-      ),
-    );
-    await page.screenshot({
-      path: `${artifacts}/${engine.name()}-${width}-bottom.png`,
-    });
-    const card = await progress.boundingBox();
-    assert.ok(card.width < 600);
-    await page.getByRole('tab', { name: '홈', exact: true }).click();
-    await page.waitForTimeout(350);
-    await page.screenshot({
-      path: `${artifacts}/${engine.name()}-${width}.png`,
-    });
-  }
-  await page.setViewportSize({ width: 393, height: 852 });
-  await open();
-  const moving = await samples();
-  assert.ok(
-    Math.max(...moving) - Math.min(...moving) > 1.7,
-    'Idle floats subtly',
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/children/me', (r) =>
+    r.fulfill({
+      json: {
+        name: '아주아주긴아이이름으로화면넘침확인',
+        birthday: '2025-01-01',
+      },
+    }),
   );
-  assert.ok(moving.every((value) => value >= -2.01 && value <= 0.01));
-  assert.ok(
-    moving
-      .slice(1)
-      .every((value, index) => Math.abs(value - moving[index]) < 0.35),
-    'No loop boundary snap',
+  await page.route('**/api/v1/todos**', (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: 1,
+          planName:
+            '함께 책장을 넘겨 보며 좋아하는 그림을 찾아보는 긴 이름의 활동',
+          content: '준비한 그림책을 함께 펼쳐요. '.repeat(8),
+          scheduledDate: '2026-11-08',
+          scheduledTime: '09:00:00',
+          completed: true,
+        },
+      ],
+    }),
   );
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.waitForTimeout(100);
-  const still = await samples();
-  assert.ok(
-    still.every((value) => Math.abs(value) < 0.01),
-    'Live reduced motion stops idle',
-  );
-  await open();
-  const initiallyStill = await samples();
-  assert.ok(
-    initiallyStill.every((value) => Math.abs(value) < 0.01),
-    'Initial reduced motion stays static',
-  );
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  const resumed = await samples();
-  assert.ok(
-    Math.max(...resumed) - Math.min(...resumed) > 1.7,
-    'Idle resumes after changing startup reduced-motion preference',
-  );
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      value: 'hidden',
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
-  });
-  await page.waitForTimeout(100);
-  const background = await samples();
-  assert.ok(
-    background.every((value) => Math.abs(value) < 0.01),
-    'Background stops idle',
-  );
-  await open();
-  await page.getByRole('button', { name: '전체 보기 →', exact: true }).click();
-  await page.waitForURL('**/todo');
-  assert.equal(await character.count(), 0);
-  await page.getByRole('tab', { name: '홈', exact: true }).click();
-  await page
-    .getByRole('button', { name: '일기 작성하기', exact: true })
-    .click();
-  await page.waitForURL('**/calendar');
-  for (const [label, route] of [
-    ['투두', 'todo'],
-    ['홈', 'main'],
-    ['질문', 'chat'],
-    ['마이', 'mypage'],
-    ['캘린더', 'calendar'],
-  ]) {
-    await page.getByRole('tab', { name: label, exact: true }).click();
-    await page.waitForURL(`**/${route}`);
-    assert.equal(
-      await page
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
+    for (const route of [
+      'main',
+      'todo',
+      'calendar',
+      'chat',
+      'diary?date=2026-11-08',
+    ]) {
+      await page.goto(
+        `${process.env.MOBILE_URL ?? 'http://localhost:8156'}/${route}`,
+        { waitUntil: 'commit', timeout: 120000 },
+      );
+      await page.getByRole('tablist').waitFor();
+      assert.equal(await page.getByRole('tablist').getByRole('tab').count(), 4);
+      const expected = {
+        main: '오늘',
+        todo: '일정',
+        calendar: '기록',
+        chat: '질문',
+        diary: '기록',
+      }[route.split('?')[0]];
+      assert.equal(
+        await page
+          .getByRole('tablist')
+          .getByRole('tab', { selected: true })
+          .getAttribute('aria-label'),
+        expected,
+      );
+      for (const tab of await page
         .getByRole('tablist')
-        .getByRole('tab', { selected: true })
-        .getAttribute('aria-label'),
-      label,
-    );
+        .getByRole('tab')
+        .all()) {
+        const box = await tab.boundingBox();
+        assert(box.height >= 44 && box.width >= 44);
+      }
+      assert(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        'No horizontal overflow',
+      );
+      await page.screenshot({
+        path: `/tmp/growtogether-156/${width}-${route.split('?')[0]}.png`,
+      });
+    }
   }
-  await open();
-  await page.setViewportSize({ width: 320, height: 568 });
+  await page
+    .getByRole('button', { name: '직접 작성하기', exact: true })
+    .click();
+  const editor = page.getByRole('textbox', {
+    name: '일기 본문 수정',
+    exact: true,
+  });
+  await editor.fill('긴 본문을 작성하고 있어요.\n'.repeat(80));
+  await page.setViewportSize({ width: 320, height: 360 });
+  await editor.focus();
+  await page
+    .getByRole('button', { name: '수정 완료', exact: true })
+    .scrollIntoViewIfNeeded();
+  const done = await page
+    .getByRole('button', { name: '수정 완료', exact: true })
+    .boundingBox();
+  const nav = await page.getByRole('tablist').boundingBox();
+  assert(done.y + done.height <= nav.y + 1);
+  await page.getByRole('button', { name: '수정 완료', exact: true }).click();
   await page.addStyleTag({
     content:
-      '[dir="auto"] { font-size: 24px !important; line-height: 36px !important; } [role="heading"][aria-label] * { font-size: 48px !important; line-height: 64px !important; }',
+      '[dir="auto"] {font-size:24px !important; line-height:36px !important;}',
   });
-  assert.ok(
-    await page
-      .getByRole('heading', { name: /^하늘, 함께한 지/ })
-      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
-  );
   await page
-    .getByRole('button', { name: '일기 작성하기', exact: true })
+    .getByRole('button', { name: '이 일기 저장하기', exact: true })
     .scrollIntoViewIfNeeded();
-  await page.waitForTimeout(400);
-  const largeAction = await page
-    .getByRole('button', { name: '일기 작성하기', exact: true })
-    .boundingBox();
-  const largeNav = await page.getByRole('tablist').boundingBox();
-  assert.ok(
-    largeAction.y >= 0 && largeAction.y + largeAction.height <= largeNav.y,
-  );
-  assert.ok(
+  assert(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
   await page.screenshot({
-    path: `${artifacts}/${engine.name()}-large-text.png`,
+    path: '/tmp/growtogether-156/large-text-long-diary.png',
   });
+  await page
+    .getByRole('button', { name: '초안 다시 정리', exact: true })
+    .click();
+  for (const label of ['취소', '교체하고 다시 정리']) {
+    const action = page.getByRole('button', { name: label, exact: true });
+    await action.scrollIntoViewIfNeeded();
+    const bounds = await action.boundingBox();
+    assert(
+      bounds.y >= 0 && bounds.y + bounds.height <= 360,
+      'Large text modal actions remain reachable',
+    );
+  }
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   assert.deepEqual(errors, []);
   console.log(
-    `PASS: ${engine.name()} main responsive layouts, exact ring/accessibility, runtime idle/reduced motion/background, actions and all tabs. Screenshots: ${artifacts}`,
+    'PASS 320/390 layouts, touch targets, long names/body, large text and reduced keyboard viewport; screenshots /tmp/growtogether-156',
   );
 } finally {
   await browser.close();
