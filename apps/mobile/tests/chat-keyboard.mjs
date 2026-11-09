@@ -45,7 +45,7 @@ try {
     'Small browser chrome changes do not imply a keyboard',
   );
   await resize({ height: 390, offsetTop: 24 });
-  assert.equal(await tabs.count(), 0, 'Keyboard hides chat tabs');
+  assert.equal(await tabs.isVisible(), false, 'Keyboard hides chat tabs');
   const field = await input.boundingBox();
   assert.ok(
     field.y >= 24 && field.y + field.height <= 414,

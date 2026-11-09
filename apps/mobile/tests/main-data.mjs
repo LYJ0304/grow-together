@@ -62,28 +62,37 @@ try {
   await text('일정을 불러오고 있어요.').waitFor();
   hold = undefined;
   release();
-  await text('예정 1개 · 완료 1개').waitFor();
+  await text('완료 1개 / 전체 2개').waitFor();
   await text('09:00 · 시간이 지난 미완료 일정').waitFor();
   await page
-    .getByRole('heading', {
-      name: '오늘 함께한 일을 일기로 남겨볼까요?',
-      exact: true,
-    })
+    .getByRole('heading', { name: '오늘의 일정', exact: true })
     .waitFor();
-  const next = await page
-    .getByRole('heading', { name: '다음에 할 활동', exact: true })
-    .boundingBox();
-  const summary = await page
-    .getByRole('heading', { name: '오늘 일정 요약', exact: true })
-    .boundingBox();
-  assert(next.y < summary.y);
-  assert.equal(await page.getByRole('progressbar').count(), 0);
+  const progress = page.getByRole('progressbar', { name: '오늘 일정 완료율' });
+  assert.equal(await progress.getAttribute('aria-valuenow'), '50');
+  assert.equal(
+    await page
+      .getByRole('heading', { name: '다음에 할 활동', exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page
+      .getByRole('heading', { name: '오늘 일정 요약', exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page
+      .getByRole('button', { name: '일기 작성하기', exact: true })
+      .count(),
+    0,
+  );
   failure = true;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await text('일정을 불러오지 못했어요.').waitFor();
   assert.equal(
     await page
-      .getByRole('button', { name: '직접 일정 추가', exact: true })
+      .getByRole('button', { name: '일정 만들기', exact: true })
       .count(),
     0,
     'Failure is not empty',
@@ -92,12 +101,8 @@ try {
   empty = true;
   await click('일정 다시 불러오기');
   await page
-    .getByRole('button', { name: '직접 일정 추가', exact: true })
+    .getByRole('button', { name: '일정 만들기', exact: true })
     .waitFor();
-  await click('5분 정도');
-  await text(
-    '활동 추천 연결 준비 중이에요. 5분 정도 선택은 아직 추천 요청으로 전송되지 않아요.',
-  ).waitFor();
   await page.clock.fastForward(601000);
   await text('11월 1일 일요일').waitFor();
   assert.equal(reads.at(-1), '2026-11-01');
@@ -106,7 +111,7 @@ try {
   await text('11월 2일 월요일').waitFor();
   assert.equal(reads.at(-1), '2026-11-02');
   console.log(
-    'PASS home loading, next action order, full summary, completion-aware diary CTA, error/empty distinction, optional recommendation and midnight/foreground refresh',
+    'PASS home loading, integrated schedule/progress, removed duplicate cards, error/empty distinction and midnight/foreground refresh',
   );
 } finally {
   await browser.close();

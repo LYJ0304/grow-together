@@ -1,3 +1,5 @@
+import { useChatKeyboard } from '../../../src/lib/use-chat-keyboard';
+import { useTabInteraction } from '../../../src/components/tab-interaction';
 import { usePreventRemove } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -16,21 +18,23 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { useAuth } from '../src/components/auth-provider';
-import { BottomNavigation } from '../src/components/bottom-navigation';
-import { AppHeader } from '../src/components/app-header';
-import { ActionButton } from '../src/components/action-button';
+import { useAuth } from '../../../src/components/auth-provider';
+import { AppHeader } from '../../../src/components/app-header';
+import { ActionButton } from '../../../src/components/action-button';
 import {
   DiaryResultView,
   DiaryGeneratingView,
-} from '../src/components/diary/diary-result';
-import { typography } from '../src/components/typography';
-import { clearSessionValues, useSessionValue } from '../src/lib/session-state';
+} from '../../../src/components/diary/diary-result';
+import { typography } from '../../../src/components/typography';
+import {
+  clearSessionValues,
+  useSessionValue,
+} from '../../../src/lib/session-state';
 import {
   generateDiary,
   type DiaryGenerationResult,
   type DiarySourceRecords,
-} from '../src/lib/diary-generation';
+} from '../../../src/lib/diary-generation';
 import {
   diaryDateKey,
   parseDiaryDate,
@@ -39,10 +43,10 @@ import {
   updateDiary,
   deleteDiary,
   type SavedDiary,
-} from '../src/lib/diary-storage';
-import { createTodoApi } from '../src/lib/features/todo/todoApi';
-import { createDiaryApi } from '../src/lib/features/diary/diaryApi';
-import { ApiError } from '../src/lib/api/errors';
+} from '../../../src/lib/diary-storage';
+import { createTodoApi } from '../../../src/lib/features/todo/todoApi';
+import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
+import { ApiError } from '../../../src/lib/api/errors';
 
 export default function DiaryScreen() {
   const { date, mode, id } = useLocalSearchParams<{
@@ -137,6 +141,8 @@ function DiaryEditor() {
   const stillActive = () =>
     active.current && client.getSnapshot().epoch === epoch;
   usePreventRemove(busy || generating || preparing, () => {});
+  const keyboard = useChatKeyboard();
+  useTabInteraction(busy || generating || preparing, keyboard.visible);
   useEffect(() => {
     if (completion && !busy && client.getSnapshot().epoch === epoch)
       router.dismissTo({
@@ -409,7 +415,17 @@ function DiaryEditor() {
   const display = viewing ? (savedQuery.data?.content ?? '') : draft;
   const unavailable = viewing && !preview && !id;
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[
+        styles.screen,
+        keyboard.viewport && {
+          flex: 0,
+          height: keyboard.viewport.height,
+          transform: [{ translateY: keyboard.viewport.offsetTop }],
+        },
+      ]}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -691,11 +707,6 @@ function DiaryEditor() {
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
-      <BottomNavigation
-        disabled={busy || generating || preparing}
-        active="기록"
-        onReselect={back}
-      />
       {confirm !== null ? (
         <Modal
           transparent

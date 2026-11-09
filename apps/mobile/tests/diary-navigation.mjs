@@ -28,6 +28,9 @@ try {
   ]);
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
   await page.getByRole('tab', { name: '일정', exact: true }).click();
   const dateButtons = page.locator('[aria-pressed]');
   const other = dateButtons.nth(1);

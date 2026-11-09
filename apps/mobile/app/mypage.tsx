@@ -1,18 +1,15 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/components/auth-provider';
-import { BottomNavigation } from '../src/components/bottom-navigation';
 import { typography } from '../src/components/typography';
 import { useChildProfile } from '../src/lib/use-child-profile';
 
 export default function MyPageScreen() {
   const { client, status } = useAuth();
   const profile = useChildProfile();
-  const scroll = useRef<ScrollView>(null);
   const profileLabel = profile.isError
     ? '아이 정보 조회 실패'
     : profile.isPending
@@ -21,7 +18,10 @@ export default function MyPageScreen() {
         ? `${profile.data.name} · ${profile.data.birthday}`
         : '등록된 아이가 없어요';
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+    <SafeAreaView
+      edges={['top', 'bottom', 'left', 'right']}
+      style={styles.screen}
+    >
       <StatusBar style="dark" />
       <View style={styles.header}>
         <Pressable
@@ -38,7 +38,7 @@ export default function MyPageScreen() {
           설정
         </Text>
       </View>
-      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.section}>
             계정
@@ -81,10 +81,6 @@ export default function MyPageScreen() {
           </Text>
         </View>
       </ScrollView>
-      <BottomNavigation
-        active={null}
-        onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-      />
     </SafeAreaView>
   );
 }

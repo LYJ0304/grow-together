@@ -1,8 +1,12 @@
-import { useAuth } from '../src/components/auth-provider';
-import { useSessionStore, useSessionValue } from '../src/lib/session-state';
-import { typography } from '../src/components/typography';
-import { createDiaryApi } from '../src/lib/features/diary/diaryApi';
-import { AppHeader } from '../src/components/app-header';
+import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
+import { useAuth } from '../../../src/components/auth-provider';
+import {
+  useSessionStore,
+  useSessionValue,
+} from '../../../src/lib/session-state';
+import { typography } from '../../../src/components/typography';
+import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
+import { AppHeader } from '../../../src/components/app-header';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -17,14 +21,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomNavigation } from '../src/components/bottom-navigation';
-import { calendarDays } from '../src/lib/calendar';
+import { calendarDays } from '../../../src/lib/calendar';
 import {
   diaryDateKey,
   parseDiaryDate,
   savedDiaryDates,
   readDiary,
-} from '../src/lib/diary-storage';
+} from '../../../src/lib/diary-storage';
 
 export default function CalendarScreen() {
   const { status, client, epoch } = useAuth();
@@ -43,6 +46,7 @@ export default function CalendarScreen() {
     deleted?: string;
   }>();
   const scroll = useRef<ScrollView>(null);
+  useTabScrollToTop(scroll);
   const [initialDate] = useState(() => {
     const fromRoute = parseDiaryDate(dateParam);
     if (fromRoute) return fromRoute;
@@ -175,7 +179,7 @@ export default function CalendarScreen() {
             ]}
           >
             <Image
-              source={require('../assets/images/calendar/previous.svg')}
+              source={require('../../../assets/images/calendar/previous.svg')}
               style={styles.arrow}
               contentFit="contain"
               accessible={false}
@@ -196,7 +200,7 @@ export default function CalendarScreen() {
             ]}
           >
             <Image
-              source={require('../assets/images/calendar/next.svg')}
+              source={require('../../../assets/images/calendar/next.svg')}
               style={[styles.arrow, styles.nextArrow]}
               contentFit="contain"
               accessible={false}
@@ -390,11 +394,6 @@ export default function CalendarScreen() {
           </Pressable>
         </View>
       </ScrollView>
-      <BottomNavigation
-        active="기록"
-        onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
-      />
     </SafeAreaView>
   );
 }

@@ -1,5 +1,11 @@
 import { useRef, useState } from 'react';
 import { typography } from './typography';
+import { colors } from '../theme/colors';
+import { radius } from '../theme/radius';
+import { spacing } from '../theme/spacing';
+import { useReduceMotion } from '../theme/motion';
+import { successFeedback } from '../lib/haptics';
+import { useChatKeyboard } from '../lib/use-chat-keyboard';
 import { ApiError } from '../lib/api/errors';
 import {
   KeyboardAvoidingView,
@@ -12,7 +18,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 type PlanInput = { title: string; time: string; description: string };
 
@@ -33,6 +42,20 @@ export function AddPlanModal({
     initialValues?.description ?? '',
   );
   const [error, setError] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
+  const reduced = useReduceMotion();
+  const insets = useSafeAreaInsets();
+  const keyboard = useChatKeyboard();
+  const titleInput = useRef<TextInput>(null);
+  const dirty =
+    title !== (initialValues?.title ?? '') ||
+    time !== (initialValues?.time ?? '') ||
+    description !== (initialValues?.description ?? '');
+  const requestClose = () => {
+    if (submitting.current) return;
+    if (dirty) setConfirmClose(true);
+    else onClose();
+  };
 
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
@@ -60,6 +83,7 @@ export function AddPlanModal({
         time: time.trim(),
         description: description.trim(),
       });
+      successFeedback();
     } catch (error) {
       setError(
         error instanceof ApiError && (error.status === 0 || error.status >= 500)
@@ -77,17 +101,42 @@ export function AddPlanModal({
   return (
     <Modal
       transparent
-      animationType="fade"
-      onRequestClose={() => {
-        if (!submitting.current) onClose();
-      }}
+      animationType={
+        reduced ? 'none' : Platform.OS === 'web' ? 'fade' : 'slide'
+      }
+      onShow={() => titleInput.current?.focus()}
+      onRequestClose={requestClose}
     >
-      <SafeAreaView style={styles.overlay}>
+      <SafeAreaView
+        edges={['top', 'left', 'right']}
+        style={[
+          styles.overlay,
+          keyboard.viewport && {
+            flex: 0,
+            height: keyboard.viewport.height,
+            transform: [{ translateY: keyboard.viewport.offsetTop }],
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityLabel="일정 입력 창 닫기"
+          accessibilityRole="button"
+          style={StyleSheet.absoluteFill}
+          disabled={pending}
+          onPress={requestClose}
+        />
         <KeyboardAvoidingView
+          pointerEvents="box-none"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboard}
         >
-          <View style={styles.sheet} accessibilityViewIsModal>
+          <View
+            style={[
+              styles.sheet,
+              { paddingBottom: keyboard.visible ? 0 : insets.bottom },
+            ]}
+            accessibilityViewIsModal
+          >
             <ScrollView
               keyboardShouldPersistTaps="handled"
               style={{ flexShrink: 1 }}
@@ -104,7 +153,7 @@ export function AddPlanModal({
                   }
                   hitSlop={8}
                   disabled={pending}
-                  onPress={onClose}
+                  onPress={requestClose}
                   style={styles.close}
                 >
                   <Text style={styles.closeText}>×</Text>
@@ -116,9 +165,10 @@ export function AddPlanModal({
               </Text>
               <Text style={styles.label}>계획명</Text>
               <TextInput
+                ref={titleInput}
                 accessibilityLabel="계획명"
                 placeholder="예: 아이와 공원 산책"
-                placeholderTextColor="#706A67"
+                placeholderTextColor={colors.muted}
                 value={title}
                 editable={!pending}
                 onChangeText={setTitle}
@@ -129,7 +179,7 @@ export function AddPlanModal({
               <TextInput
                 accessibilityLabel="계획 시간"
                 placeholder="09:30"
-                placeholderTextColor="#706A67"
+                placeholderTextColor={colors.muted}
                 value={time}
                 editable={!pending}
                 onChangeText={setTime}
@@ -144,7 +194,7 @@ export function AddPlanModal({
               <TextInput
                 accessibilityLabel="계획 메모"
                 placeholder="기억하고 싶은 내용을 적어 주세요"
-                placeholderTextColor="#706A67"
+                placeholderTextColor={colors.muted}
                 value={description}
                 editable={!pending}
                 onChangeText={setDescription}
@@ -155,6 +205,30 @@ export function AddPlanModal({
               />
             </ScrollView>
             <View style={styles.footer}>
+              {confirmClose ? (
+                <View accessibilityRole="alert" style={styles.confirm}>
+                  <Text style={styles.label}>작성 중인 내용을 버릴까요?</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setConfirmClose(false);
+                      titleInput.current?.focus();
+                    }}
+                    style={styles.button}
+                  >
+                    <Text style={styles.cancelText}>계속 작성</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      if (!submitting.current) onClose();
+                    }}
+                    style={styles.button}
+                  >
+                    <Text style={styles.cancelText}>내용 버리기</Text>
+                  </Pressable>
+                </View>
+              ) : null}
               {error ? (
                 <Text
                   accessibilityRole="alert"
@@ -168,7 +242,7 @@ export function AddPlanModal({
                 <Pressable
                   accessibilityRole="button"
                   disabled={pending}
-                  onPress={onClose}
+                  onPress={requestClose}
                   style={({ pressed }) => [
                     styles.button,
                     styles.cancel,
@@ -207,61 +281,74 @@ export function AddPlanModal({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' },
-  keyboard: { flex: 1, justifyContent: 'center', padding: 20 },
+  keyboard: {
+    flex: 1,
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    padding: Platform.OS === 'web' ? 20 : 0,
+  },
   sheet: {
     maxHeight: '100%',
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    borderBottomLeftRadius: Platform.OS === 'web' ? radius.sheet : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? radius.sheet : 0,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  content: { padding: 24 },
+  content: { padding: spacing.section },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  heading: { fontFamily: 'Jua', fontSize: 24, color: '#4F4F4F' },
+  heading: { fontFamily: 'Jua', fontSize: 24, color: colors.text },
   close: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { fontSize: 28, color: '#88889D' },
-  date: { ...typography.label, color: '#D26A5C', marginBottom: 8 },
+  closeText: { fontSize: 28, color: colors.muted },
+  date: { ...typography.label, color: colors.primary, marginBottom: 8 },
   label: {
     ...typography.label,
-    color: '#4F4F4F',
+    color: colors.text,
     marginTop: 20,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E5E5E8',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     ...typography.body,
-    color: '#4F4F4F',
-    backgroundColor: '#FAF9F9',
+    color: colors.text,
+    backgroundColor: colors.background,
   },
   memo: { minHeight: 100 },
-  hint: { marginTop: 8, ...typography.caption, color: '#706A67' },
-  error: { marginTop: 16, ...typography.caption, color: '#A84D40' },
+  hint: { marginTop: 8, ...typography.caption, color: colors.muted },
+  error: { marginTop: 16, ...typography.caption, color: colors.primary },
   footer: { paddingHorizontal: 24, paddingBottom: 20 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   button: {
     flex: 1,
     minHeight: 48,
-    borderRadius: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancel: { backgroundColor: '#F6F6F5' },
-  submit: { backgroundColor: '#D26A5C' },
-  cancelText: { ...typography.button, color: '#625B57' },
-  submitText: { ...typography.button, color: '#FFFFFF' },
+  cancel: { backgroundColor: colors.tint },
+  submit: { backgroundColor: colors.primary },
+  cancelText: { ...typography.button, color: colors.muted },
+  submitText: { ...typography.button, color: colors.surface },
   pressed: { opacity: 0.75 },
+  confirm: {
+    gap: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    paddingBottom: 12,
+  },
 });

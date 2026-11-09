@@ -23,7 +23,9 @@ try {
   await heading('하늘의 하루 · 11개월').waitFor();
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
-  await page.getByRole('tab', { name: '오늘', exact: true }).click();
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
   profile = { name: '바다', birthday: '2025-11-08' };
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   // Profile reload is tied to screen focus, not arbitrary window focus.
@@ -49,7 +51,7 @@ try {
   await heading('바다의 하루 · 12개월').waitFor();
   status = 404;
   await page.reload();
-  await heading('아이와 함께하는 첫 기록').waitFor();
+  await page.getByText('아이와 함께하는 첫 기록', { exact: true }).waitFor();
   await page
     .getByRole('button', { name: '아이 정보 등록하기', exact: true })
     .click();

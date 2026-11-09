@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { typography } from './typography';
+import { colors } from '../theme/colors';
 
 export function AppHeader({
   disabled = false,
@@ -20,12 +21,16 @@ export function AppHeader({
         disabled={disabled}
         accessibilityState={{ disabled }}
         onPress={() => router.push('/children')}
-        style={styles.button}
+        style={({ pressed }) => [
+          styles.button,
+          disabled && { opacity: 0.55 },
+          pressed && { opacity: 0.7 },
+        ]}
       >
         <Image
           source={require('../../assets/images/main/user.svg')}
           style={styles.icon}
-          tintColor="#A84D40"
+          tintColor={colors.primary}
           accessible={false}
         />
         {!title ? <Text style={styles.label}>아이 프로필</Text> : null}
@@ -46,12 +51,16 @@ export function AppHeader({
         disabled={disabled}
         accessibilityState={{ disabled }}
         onPress={() => router.push('/mypage')}
-        style={styles.button}
+        style={({ pressed }) => [
+          styles.button,
+          disabled && { opacity: 0.55 },
+          pressed && { opacity: 0.7 },
+        ]}
       >
         <Image
           source={require('../../assets/images/chat/settings.svg')}
           style={styles.icon}
-          tintColor="#A84D40"
+          tintColor={colors.primary}
           accessible={false}
         />
         {!title ? <Text style={styles.label}>설정</Text> : null}
@@ -70,7 +79,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF9F9',
+    backgroundColor: colors.background,
     flexShrink: 0,
   },
   button: {
@@ -83,8 +92,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: { width: 24, height: 24 },
-  label: { ...typography.label, color: '#A84D40', flexShrink: 1 },
+  label: { ...typography.label, color: colors.primary, flexShrink: 1 },
   copy: { flex: 1, minWidth: 0, gap: 2 },
-  title: { ...typography.section, color: '#A44F43' },
-  subtitle: { ...typography.caption, color: '#625B57' },
+  title: { ...typography.section, color: colors.text },
+  subtitle: { ...typography.caption, color: colors.muted },
 });

@@ -129,7 +129,10 @@ await page.route('**/api/v1/todos**', async (route) => {
       });
 });
 const button = (name) => page.getByRole('button', { name, exact: true });
-const text = (value) => page.getByText(value, { exact: true });
+const text = (value) =>
+  page
+    .getByText(value, { exact: true })
+    .and(page.locator(':not([aria-hidden="true"] *)'));
 async function openForm() {
   await button('＋ 직접 추가').click();
   await page.getByRole('textbox', { name: '계획명', exact: true }).waitFor();
@@ -286,6 +289,7 @@ try {
       );
       loseResponse = false;
       await button('취소').click();
+      await button('내용 버리기').click();
       await button('목록 새로고침').click();
       await text('응답 유실 일정').waitFor();
       await text('같은 시간 일정').waitFor();
@@ -358,6 +362,7 @@ try {
       await openForm();
       await fill('취소한 계획');
       await button('취소').click();
+      await button('내용 버리기').click();
       await openForm();
       assert.equal(
         await page

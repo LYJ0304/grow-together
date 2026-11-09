@@ -89,6 +89,13 @@ try {
     .fill('내가 다듬은 오늘의 기록');
   await page.getByRole('tab', { name: '질문', exact: true }).click();
   await page.getByRole('tab', { name: '기록', exact: true }).click();
+  // A mounted records stack resumes its editor immediately after a tab round trip.
+  await page
+    .getByRole('textbox', { name: '일기 본문 수정', exact: true })
+    .waitFor();
+  await page
+    .getByRole('button', { name: '기록으로 돌아가기', exact: true })
+    .click();
   await page
     .getByRole('button', { name: '작성하던 일기 이어 쓰기', exact: true })
     .click();

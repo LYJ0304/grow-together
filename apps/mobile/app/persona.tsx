@@ -1,10 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { BottomNavigation } from '../src/components/bottom-navigation';
 
 const personas = [
   {
@@ -32,12 +30,22 @@ const personas = [
 ] as const;
 
 export default function PersonaScreen() {
-  const scroll = useRef<ScrollView>(null);
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView
+      edges={['top', 'bottom', 'left', 'right']}
+      style={styles.container}
+    >
       <StatusBar style="dark" />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="질문으로 돌아가기"
+        onPress={() => router.dismissTo('/chat')}
+        style={{ minHeight: 44, padding: 12 }}
+      >
+        <Text>‹ 육아 도우미</Text>
+      </Pressable>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
           <Text accessibilityRole="header" style={styles.title}>
@@ -74,7 +82,7 @@ export default function PersonaScreen() {
                   aria-pressed={selected}
                   onPress={() => {
                     setSelectedPersona(persona.id);
-                    if (persona.id === 'counselor') router.push('/chat');
+                    if (persona.id === 'counselor') router.dismissTo('/chat');
                   }}
                   style={({ pressed }) => [
                     styles.chooseButton,
@@ -91,10 +99,6 @@ export default function PersonaScreen() {
           })}
         </View>
       </ScrollView>
-      <BottomNavigation
-        active="질문"
-        onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-      />
     </SafeAreaView>
   );
 }
