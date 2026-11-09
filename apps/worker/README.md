@@ -39,3 +39,41 @@ the model but does not guarantee model compliance or medical accuracy.
 This endpoint does not persist profiles or automatically fetch them from the
 Spring API. Its FastAPI-generated OpenAPI describes the optional field; the
 external Spring API contract in `contracts/openapi.yaml` is unchanged.
+
+## Chat diary context
+
+`POST /internal/v1/chat/generate` also accepts optional caller-supplied diary
+excerpts alongside `child_context`:
+
+```json
+{
+  "message": "요즘 아이가 잠을 잘 못 자는데 어떻게 하면 좋을까요?",
+  "history": [],
+  "child_context": {"age_months": 18},
+  "diary_context": [
+    {"diary_id": 42, "content": "낮잠을 늦게 잤고 밤에도 자주 깼다."}
+  ]
+}
+```
+
+Omitting `diary_context` or passing `[]` preserves the existing chat behavior.
+The field is an array, not nullable, with at most 5 entries. Each entry requires
+`diary_id` (a positive integer, without string/boolean coercion) and `content`
+(1–1,000 characters after trimming surrounding whitespace). Unknown entry fields
+are rejected. Invalid requests return 422 before generation. Authentication and
+502/504 error responses remain unchanged.
+
+Diaries are serialized as a separate user-role JSON background message after
+nonempty child context and before history and the current question. Diary text
+is reference data, never system instructions. The prompt asks the model to use
+relevant recorded observations, identify their source, and avoid inventing dates,
+child associations, or a complete history from a limited selection. Prompt
+separation does not guarantee model compliance or answer quality.
+
+The caller must select records and verify access before sending them. The worker
+does not query the database, validate diary ownership, persist excerpts, or infer
+that a diary belongs to the supplied child. No automatic recency selection,
+images, attachment URLs, Todo data, search, or summarization is included.
+Spring API and mobile integration are separate work; this change alone does not
+make saved diaries available automatically. The external Spring OpenAPI contract
+is unchanged; the internal request is described by FastAPI-generated OpenAPI.

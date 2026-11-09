@@ -22,6 +22,14 @@ class ChatService:
                     "role": "user",
                     "content": json.dumps({"child_context": context}, ensure_ascii=False),
                 })
+        if request.diary_context:
+            messages.append({
+                "role": "user",
+                "content": json.dumps(
+                    {"diary_context": [entry.model_dump() for entry in request.diary_context]},
+                    ensure_ascii=False,
+                ),
+            })
         messages.extend(message.model_dump() for message in request.history)
         messages.append({"role": "user", "content": request.message})
 

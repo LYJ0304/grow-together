@@ -53,7 +53,9 @@ def test_registered_chat_route_returns_response(post_chat, chat_service) -> None
         "output_tokens": None,
     }
     chat_service.generate.assert_awaited_once()
-    assert chat_service.generate.call_args.args[0].model_dump(exclude_none=True) == payload
+    assert chat_service.generate.call_args.args[0].model_dump(exclude_none=True) == {
+        **payload, "diary_context": [],
+    }
 
 
 @pytest.mark.parametrize("headers", [{}, {"X-API-Key": "wrong"}, {"X-API-Key": ""}])
@@ -167,3 +169,48 @@ def test_openapi_describes_optional_child_context(worker_app) -> None:
     assert age["maximum"] == 47
     assert context["interests"]["maxItems"] == 10
     assert context["concerns"]["maxItems"] == 10
+
+
+def test_route_diaries_reach_real_llm_client(worker_app, post_chat) -> None:
+    import json
+
+    from app.api.dependencies import get_chat_llm_client
+
+    client = Mock(model="test/chat", complete_chat=AsyncMock(return_value="답변"))
+    worker_app.dependency_overrides[get_chat_llm_client] = lambda: client
+    diaries = [{"diary_id": 42, "content": "밤에 자주 깼다"}]
+    response = post_chat(
+        {"message": "질문", "diary_context": diaries},
+        headers={"X-API-Key": "test-worker-key"},
+    )
+    assert response.status_code == 200
+    messages = client.complete_chat.call_args.kwargs["messages"]
+    assert messages[1]["role"] == "user"
+    assert json.loads(messages[1]["content"]) == {"diary_context": diaries}
+
+
+@pytest.mark.parametrize("diaries", [
+    [{"diary_id": 1, "content": "기록"}] * 6,
+    [{"diary_id": 1, "content": "가" * 1001}],
+    [{"diary_id": 0, "content": "기록"}],
+])
+def test_route_rejects_invalid_diaries_before_generation(post_chat, chat_service, diaries) -> None:
+    response = post_chat(
+        {"message": "질문", "diary_context": diaries},
+        headers={"X-API-Key": "test-worker-key"},
+    )
+    assert response.status_code == 422
+    chat_service.generate.assert_not_awaited()
+
+
+def test_openapi_describes_optional_diary_context(worker_app) -> None:
+    schemas = worker_app.openapi()["components"]["schemas"]
+    request = schemas["ChatGenerateRequest"]
+    assert "diary_context" not in request.get("required", [])
+    context = request["properties"]["diary_context"]
+    assert context["maxItems"] == 5
+    assert context["items"] == {"$ref": "#/components/schemas/DiaryContext"}
+    item = schemas["DiaryContext"]
+    assert item["additionalProperties"] is False
+    assert set(item["required"]) == {"diary_id", "content"}
+    assert item["properties"]["content"]["maxLength"] == 1000
