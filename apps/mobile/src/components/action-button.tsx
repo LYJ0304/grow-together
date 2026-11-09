@@ -1,5 +1,8 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { typography } from './typography';
+import { colors } from '../theme/colors';
+import { radius } from '../theme/radius';
+import { spacing } from '../theme/spacing';
 
 export function ActionButton({
   label,
@@ -18,16 +21,20 @@ export function ActionButton({
       disabled={disabled}
       accessibilityState={{ disabled }}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.button,
         secondary && styles.secondary,
         disabled && { opacity: 0.55 },
+        pressed && !disabled && { opacity: 0.72 },
       ]}
     >
       <Text
         style={[
           typography.button,
-          { color: secondary ? '#A84D40' : '#FFFFFF', textAlign: 'center' },
+          {
+            color: secondary ? colors.primary : colors.surface,
+            textAlign: 'center',
+          },
         ]}
       >
         {label}
@@ -38,14 +45,14 @@ export function ActionButton({
 const styles = StyleSheet.create({
   button: {
     minHeight: 48,
-    padding: 12,
-    borderRadius: 14,
+    padding: spacing.md,
+    borderRadius: radius.md,
     justifyContent: 'center',
-    backgroundColor: '#B25447',
+    backgroundColor: colors.primary,
   },
   secondary: {
-    backgroundColor: '#FFF1EC',
+    backgroundColor: colors.tint,
     borderWidth: 1,
-    borderColor: '#E9D2C8',
+    borderColor: colors.border,
   },
 });

@@ -1,13 +1,15 @@
+import { successFeedback } from '../../src/lib/haptics';
+import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { router, useLocalSearchParams } from 'expo-router';
-import { RecommendationOptions } from '../src/components/recommendation-options';
-import { ActionButton } from '../src/components/action-button';
-import { typography } from '../src/components/typography';
-import { useSessionValue } from '../src/lib/session-state';
-import { AppHeader } from '../src/components/app-header';
+import { RecommendationOptions } from '../../src/components/recommendation-options';
+import { ActionButton } from '../../src/components/action-button';
+import { typography } from '../../src/components/typography';
+import { useSessionValue } from '../../src/lib/session-state';
+import { AppHeader } from '../../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { parseDiaryDate } from '../src/lib/diary-storage';
+import { parseDiaryDate } from '../../src/lib/diary-storage';
 import {
   Modal,
   Pressable,
@@ -21,12 +23,14 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-import { BottomNavigation } from '../src/components/bottom-navigation';
-import { AddPlanModal } from '../src/components/add-plan-modal';
-import { useAuth } from '../src/components/auth-provider';
-import { ApiError } from '../src/lib/api/errors';
-import { createTodoApi } from '../src/lib/features/todo/todoApi';
-import type { TodoRequest, TodoResponse } from '../src/lib/features/todo/types';
+import { AddPlanModal } from '../../src/components/add-plan-modal';
+import { useAuth } from '../../src/components/auth-provider';
+import { ApiError } from '../../src/lib/api/errors';
+import { createTodoApi } from '../../src/lib/features/todo/todoApi';
+import type {
+  TodoRequest,
+  TodoResponse,
+} from '../../src/lib/features/todo/types';
 
 const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -48,6 +52,7 @@ export default function TodoScreen() {
   const insets = useSafeAreaInsets();
   const { client, status } = useAuth();
   const scroll = useRef<ScrollView>(null);
+  useTabScrollToTop(scroll);
   const [selectedDate, setSelectedDate] = useSessionValue('todoDate', () => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -126,7 +131,10 @@ export default function TodoScreen() {
     setCompletionError('');
     try {
       const updated = await completion.mutateAsync(todo);
-      if (updated.completed) setReactionTodo(updated);
+      if (updated.completed) {
+        successFeedback();
+        setReactionTodo(updated);
+      }
     } catch {
       setCompletionError(
         '완료 상태를 저장하지 못했어요. 목록 새로고침으로 상태를 확인한 뒤 다시 시도해 주세요.',
@@ -405,11 +413,6 @@ export default function TodoScreen() {
         </ScrollView>
       </View>
 
-      <BottomNavigation
-        active="일정"
-        onReselect={() => scroll.current?.scrollTo({ y: 0, animated: true })}
-        onUnavailable={(label) => setNotice(`${label} 화면은 준비 중입니다.`)}
-      />
       {reactionTodo ? (
         <Modal
           transparent

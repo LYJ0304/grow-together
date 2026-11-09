@@ -46,7 +46,7 @@ try {
     { waitUntil: 'commit', timeout: 120000 },
   );
   await page
-    .getByRole('heading', { name: '다음에 할 활동', exact: true })
+    .getByRole('heading', { name: '오늘의 일정', exact: true })
     .waitFor();
   await page.getByRole('tab', { name: '일정', exact: true }).click();
   await page

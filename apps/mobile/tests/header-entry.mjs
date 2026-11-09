@@ -57,7 +57,7 @@ try {
       scroller.scrollTop = scroller.scrollHeight;
       return scroller.scrollTop > 0;
     });
-    if (route === 'main' || route === 'chat')
+    if (route === 'chat')
       assert(scrolled, 'Exercise an actual scrolling region');
     const after = await settings.boundingBox();
     assert.equal(
@@ -74,17 +74,14 @@ try {
     );
   }
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
-  assert.equal(
-    await page.getByRole('textbox').count(),
-    0,
-    'Home entry is navigation rather than a second editor',
-  );
-  await page
-    .getByRole('button', { name: '육아 질문 작성하기', exact: true })
-    .scrollIntoViewIfNeeded();
+  const homeInput = page.getByRole('textbox', {
+    name: '홈 질문 입력',
+    exact: true,
+  });
+  await homeInput.fill('홈에서 이어 쓸 질문 초안');
   await page.screenshot({ path: '/tmp/growtogether-header-entry/home.png' });
   await page
-    .getByRole('button', { name: '육아 질문 작성하기', exact: true })
+    .getByRole('button', { name: '질문 이어서 보내기', exact: true })
     .click();
   await page.waitForURL('**/chat**');
   const input = page.getByRole('textbox', {
@@ -96,7 +93,7 @@ try {
   await input.fill('홈에서 이어 쓸 질문 초안');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   await page
-    .getByRole('button', { name: '작성하던 질문 이어쓰기', exact: true })
+    .getByRole('button', { name: '질문 이어서 보내기', exact: true })
     .click();
   assert.equal(await input.inputValue(), '홈에서 이어 쓸 질문 초안');
   assert.equal(

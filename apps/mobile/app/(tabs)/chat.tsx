@@ -1,4 +1,6 @@
-import { AppHeader } from '../src/components/app-header';
+import { useTabInteraction } from '../../src/components/tab-interaction';
+import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
+import { AppHeader } from '../../src/components/app-header';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -16,10 +18,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomNavigation } from '../src/components/bottom-navigation';
-import { useChatDraft } from '../src/components/auth-provider';
-import { typography } from '../src/components/typography';
-import { useChatKeyboard } from '../src/lib/use-chat-keyboard';
+import { useChatDraft } from '../../src/components/auth-provider';
+import { typography } from '../../src/components/typography';
+import { useChatKeyboard } from '../../src/lib/use-chat-keyboard';
 
 const suggestions = [
   {
@@ -39,10 +40,12 @@ const suggestions = [
 export default function CounselorChatScreen() {
   const { compose } = useLocalSearchParams<{ compose?: string }>();
   const scroll = useRef<ScrollView>(null);
+  useTabScrollToTop(scroll);
   const input = useRef<TextInput>(null);
   const { width, height } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
   const keyboard = useChatKeyboard();
+  useTabInteraction(false, keyboard.visible);
   const [notice, setNotice] = useState('');
   const [inputHeight, setInputHeight] = useState(48);
   const [inputFocused, setInputFocused] = useState(false);
@@ -96,7 +99,7 @@ export default function CounselorChatScreen() {
     >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
         <AppHeader title="육아 도우미" subtitle="연결 준비 중" />
@@ -133,7 +136,7 @@ export default function CounselorChatScreen() {
                   <Text style={styles.preview}>{item.preview}</Text>
                 </View>
                 <Image
-                  source={require('../assets/images/chat/arrow-up-right.svg')}
+                  source={require('../../assets/images/chat/arrow-up-right.svg')}
                   style={styles.suggestionArrow}
                   contentFit="contain"
                   accessible={false}
@@ -225,21 +228,13 @@ export default function CounselorChatScreen() {
             ]}
           >
             <Image
-              source={require('../assets/images/chat/send.svg')}
+              source={require('../../assets/images/chat/send.svg')}
               style={styles.sendIcon}
               contentFit="contain"
               accessible={false}
             />
           </Pressable>
         </View>
-        {!keyboard.visible && (
-          <BottomNavigation
-            active="질문"
-            onReselect={() =>
-              scroll.current?.scrollTo({ y: 0, animated: true })
-            }
-          />
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

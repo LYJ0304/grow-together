@@ -1,3 +1,5 @@
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useReduceMotion } from '../src/theme/motion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -15,6 +17,7 @@ const queryClient = new QueryClient();
 
 function AuthenticatedStack() {
   const { client, status, notice, epoch } = useAuth();
+  const reduced = useReduceMotion();
   if (
     status === 'restoring' ||
     status === 'restoreError' ||
@@ -56,7 +59,12 @@ function AuthenticatedStack() {
     <View style={styles.root}>
       <Stack
         key={hasAccess ? epoch : 'signed-out'}
-        screenOptions={{ headerShown: false, animation: 'none' }}
+        screenOptions={{
+          headerShown: false,
+          animation: reduced ? 'none' : 'default',
+          gestureEnabled: true,
+          contentStyle: { backgroundColor: '#FAF9F9' },
+        }}
       >
         <Stack.Protected guard={!hasAccess}>
           <Stack.Screen name="login" />
@@ -66,15 +74,11 @@ function AuthenticatedStack() {
           <Stack.Screen name="welcome" />
         </Stack.Protected>
         <Stack.Protected guard={hasAccess}>
-          <Stack.Screen name="main" />
-          <Stack.Screen name="todo" />
-          <Stack.Screen name="calendar" />
-          <Stack.Screen name="diary" />
+          <Stack.Screen name="(tabs)" />
           <Stack.Screen name="mypage" />
           <Stack.Screen name="children" />
           <Stack.Screen name="spouse" />
           <Stack.Screen name="persona" />
-          <Stack.Screen name="chat" />
         </Stack.Protected>
       </Stack>
     </View>
@@ -87,13 +91,15 @@ export default function RootLayout() {
   });
   if (!fontsLoaded && !fontError) return null;
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <LaunchTransitionProvider>
-          <AuthenticatedStack />
-        </LaunchTransitionProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <LaunchTransitionProvider>
+            <AuthenticatedStack />
+          </LaunchTransitionProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

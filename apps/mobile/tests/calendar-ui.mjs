@@ -87,6 +87,13 @@ try {
     .fill('아직 저장하지 않은 관찰');
   await page.getByRole('tab', { name: '질문', exact: true }).click();
   await page.getByRole('tab', { name: '기록', exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+      .inputValue(),
+    '아직 저장하지 않은 관찰',
+  );
+  await click('기록으로 돌아가기');
   await click('작성하던 일기 이어 쓰기');
   assert.equal(
     await page
