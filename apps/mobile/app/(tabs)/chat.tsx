@@ -1,3 +1,4 @@
+import { colors } from '../../src/theme/colors';
 import { useTabInteraction } from '../../src/components/tab-interaction';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { AppHeader } from '../../src/components/app-header';
@@ -167,7 +168,7 @@ export default function CounselorChatScreen() {
             ref={input}
             accessibilityLabel="상담 질문 입력"
             placeholder="궁금한 점을 뭐든지 물어보세요"
-            placeholderTextColor="#706A67"
+            placeholderTextColor={colors.muted}
             value={draft}
             onChangeText={setDraft}
             onFocus={() => setInputFocused(true)}
@@ -241,7 +242,7 @@ export default function CounselorChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   keyboard: { flex: 1, minHeight: 0 },
   messages: {
     flexGrow: 1,
@@ -251,46 +252,47 @@ const styles = StyleSheet.create({
   },
   intro: {
     marginBottom: 20,
-    textAlign: 'center',
-    fontFamily: 'Jua',
+    textAlign: 'left',
+    ...typography.button,
     fontSize: 17,
     lineHeight: 24,
-    color: '#4F4F4F',
+    color: colors.text,
   },
-  suggestions: { gap: 16 },
+  suggestions: { gap: 12 },
   suggestion: {
-    minHeight: 96,
+    minHeight: 104,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    borderRadius: 24,
-    backgroundColor: '#FDEDE6',
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   suggestionCopy: { flex: 1, minWidth: 0, gap: 6 },
-  question: { ...typography.button, color: '#4F4F4F' },
-  preview: { ...typography.label, color: '#706A67' },
+  question: { ...typography.button, color: colors.text },
+  preview: { ...typography.label, color: colors.muted },
   suggestionArrow: { width: 20, height: 20, flexShrink: 0 },
   composer: {
     minHeight: 58,
-    marginHorizontal: 12,
+    marginHorizontal: 20,
     marginTop: 10,
     marginBottom: 10,
     paddingLeft: 16,
     paddingRight: 6,
     paddingVertical: 4,
-    borderRadius: 28,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#EAE6E4',
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 12px rgba(84, 87, 92, 0.08)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
   },
-  composerFocused: { borderColor: '#A44F43' },
+  composerFocused: { borderColor: colors.primary },
   input: {
     ...typography.body,
     flex: 1,
@@ -299,19 +301,19 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlignVertical: 'top',
     ...Platform.select({ web: { outlineStyle: 'solid', outlineWidth: 0 } }),
-    color: '#4F4F4F',
+    color: colors.text,
   },
   notice: {
-    marginHorizontal: 12,
+    marginHorizontal: 20,
     paddingLeft: 12,
     paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDEDE6',
+    backgroundColor: colors.tint,
     borderRadius: 12,
     flexShrink: 0,
   },
-  noticeText: { ...typography.label, flex: 1, color: '#4F4F4F' },
+  noticeText: { ...typography.label, flex: 1, color: colors.text },
   dismissNotice: {
     width: 44,
     height: 44,
@@ -323,7 +325,7 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: 2,
     borderRadius: 22,
-    backgroundColor: '#A44F43',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

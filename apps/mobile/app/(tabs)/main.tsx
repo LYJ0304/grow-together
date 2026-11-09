@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 8,
-    gap: 24,
+    gap: 28,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  schedule: { gap: 12 },
+  schedule: { gap: 12, paddingHorizontal: 4 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,12 +348,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  linkText: { ...typography.label, color: colors.primary },
+  linkText: { ...typography.label, fontWeight: '600', color: colors.primary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },

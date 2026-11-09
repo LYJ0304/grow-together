@@ -165,6 +165,7 @@ export function AddPlanModal({
               </Text>
               <Text style={styles.label}>계획명</Text>
               <TextInput
+                selectionColor={colors.primary}
                 ref={titleInput}
                 accessibilityLabel="계획명"
                 placeholder="예: 아이와 공원 산책"
@@ -177,6 +178,7 @@ export function AddPlanModal({
               />
               <Text style={styles.label}>시간</Text>
               <TextInput
+                selectionColor={colors.primary}
                 accessibilityLabel="계획 시간"
                 placeholder="09:30"
                 placeholderTextColor={colors.muted}
@@ -192,6 +194,7 @@ export function AddPlanModal({
               </Text>
               <Text style={styles.label}>메모 (선택)</Text>
               <TextInput
+                selectionColor={colors.primary}
                 accessibilityLabel="계획 메모"
                 placeholder="기억하고 싶은 내용을 적어 주세요"
                 placeholderTextColor={colors.muted}
@@ -298,13 +301,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  content: { padding: spacing.section },
+  content: { padding: spacing.xl },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  heading: { fontFamily: 'Jua', fontSize: 24, color: colors.text },
+  heading: {
+    ...typography.section,
+    fontSize: 22,
+    lineHeight: 32,
+    color: colors.text,
+  },
   close: {
     width: 44,
     height: 44,
@@ -316,17 +324,19 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.text,
+    fontWeight: '600',
     marginTop: 20,
     marginBottom: 8,
   },
   input: {
+    outlineColor: colors.primary,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     ...typography.body,
     color: colors.text,
-    backgroundColor: colors.background,
+    backgroundColor: colors.field,
   },
   memo: { minHeight: 100 },
   hint: { marginTop: 8, ...typography.caption, color: colors.muted },

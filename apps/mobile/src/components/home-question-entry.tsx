@@ -26,9 +26,10 @@ export function HomeQuestionEntry() {
       </Text>
       <View style={styles.surface}>
         <TextInput
+          selectionColor={colors.primary}
           ref={input}
           accessibilityLabel="홈 질문 입력"
-          placeholder="아이와 함께하는 일상을 물어보세요"
+          placeholder="오늘의 육아 고민을 적어보세요"
           placeholderTextColor={colors.muted}
           value={draft}
           onChangeText={(value) => {
@@ -87,8 +88,19 @@ export function HomeQuestionEntry() {
   );
 }
 const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
-  title: { ...typography.title, color: colors.text, marginBottom: spacing.xs },
+  section: {
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: 24,
+    backgroundColor: colors.tint,
+  },
+  title: {
+    ...typography.section,
+    fontSize: 24,
+    lineHeight: 34,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
   surface: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -100,10 +112,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   input: {
+    outlineColor: colors.primary,
     ...typography.body,
     flex: 1,
     minWidth: 0,
-    minHeight: 76,
+    minHeight: 88,
     maxHeight: 140,
     color: colors.text,
     textAlignVertical: 'top',
@@ -126,8 +139,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: colors.tint,
+    backgroundColor: colors.surface,
   },
-  chipText: { ...typography.label, color: colors.primary },
+  chipText: { ...typography.caption, color: colors.primary },
   hint: { ...typography.caption, color: colors.muted },
 });

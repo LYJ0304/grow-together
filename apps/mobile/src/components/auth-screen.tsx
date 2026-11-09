@@ -1,3 +1,5 @@
+import { typography } from './typography';
+import { colors } from '../theme/colors';
 import { env } from '../config/env';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -263,9 +265,10 @@ function AuthField({
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.inputRow}>
         <TextInput
+          selectionColor={colors.primary}
           accessibilityLabel={label}
           placeholder={placeholder}
-          placeholderTextColor="#A0A3B1"
+          placeholderTextColor={colors.muted}
           value={value}
           onChangeText={onChangeText}
           style={styles.input}
@@ -278,7 +281,7 @@ function AuthField({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   backButton: {
     width: 44,
@@ -286,11 +289,11 @@ const styles = StyleSheet.create({
     marginTop: 7,
     marginLeft: 20,
     borderRadius: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: '#4F4F4F' },
+  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: colors.text },
   content: {
     flexGrow: 1,
     width: '100%',
@@ -302,80 +305,80 @@ const styles = StyleSheet.create({
   },
   logo: { width: 82, height: 82, alignSelf: 'center', marginBottom: 13 },
   title: {
-    fontFamily: 'Jua',
+    ...typography.title,
     fontSize: 28,
     lineHeight: 37,
     textAlign: 'center',
-    color: '#D26A5C',
+    color: colors.primary,
   },
   subtitle: {
     marginTop: 5,
     marginBottom: 29,
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
-    color: '#92909A',
+    color: colors.muted,
   },
   field: { marginBottom: 17 },
   fieldLabel: {
     marginBottom: 8,
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 14,
-    color: '#4F4F4F',
+    color: colors.text,
   },
   inputRow: {
     minHeight: 55,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#EAE6E5',
+    borderColor: colors.border,
     borderRadius: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
   },
   input: {
+    outlineColor: colors.primary,
     flex: 1,
     minWidth: 0,
     paddingVertical: 14,
-    fontFamily: 'Jua',
-    fontSize: 14,
-    color: '#4F4F4F',
+    ...typography.label,
+    fontSize: 16,
+    color: colors.text,
   },
   passwordToggle: {
     paddingVertical: 10,
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 12,
-    color: '#D26A5C',
+    color: colors.primary,
   },
   primaryButton: {
     minHeight: 58,
     marginTop: 12,
     borderRadius: 15,
-    backgroundColor: '#D26A5C',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 4px 2px rgba(160, 163, 177, 0.3)',
   },
-  primaryLabel: { fontFamily: 'Jua', fontSize: 19, color: '#FFFFFF' },
+  primaryLabel: { ...typography.section, fontSize: 19, color: colors.surface },
   previewButton: {
     minHeight: 54,
     marginTop: 9,
     borderWidth: 1,
-    borderColor: '#D26A5C',
+    borderColor: colors.primary,
     borderRadius: 15,
-    backgroundColor: '#FFF5F2',
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewLabel: { fontFamily: 'Jua', fontSize: 16, color: '#D26A5C' },
+  previewLabel: { ...typography.button, fontSize: 16, color: colors.primary },
   notice: {
     marginTop: 1,
     marginBottom: 5,
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 13,
     lineHeight: 19,
-    color: '#C9534A',
+    color: colors.danger,
   },
   switchRow: {
     marginTop: 22,
@@ -384,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  switchText: { fontFamily: 'Jua', fontSize: 13, color: '#85818A' },
-  switchLink: { fontFamily: 'Jua', fontSize: 13, color: '#D26A5C' },
+  switchText: { ...typography.caption, fontSize: 13, color: colors.muted },
+  switchLink: { ...typography.caption, fontSize: 13, color: colors.primary },
   pressed: { opacity: 0.78 },
 });

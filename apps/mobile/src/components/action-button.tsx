@@ -44,7 +44,7 @@ export function ActionButton({
 }
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
+    minHeight: 52,
     padding: spacing.md,
     borderRadius: radius.md,
     justifyContent: 'center',
@@ -52,7 +52,5 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: colors.tint,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
 });

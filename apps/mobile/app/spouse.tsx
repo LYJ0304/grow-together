@@ -1,3 +1,5 @@
+import { typography } from '../src/components/typography';
+import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
@@ -66,10 +68,11 @@ export default function SpouseScreen() {
                 accessible={false}
               />
               <TextInput
+                selectionColor={colors.primary}
                 ref={input}
                 accessibilityLabel="배우자 이름"
                 placeholder="이름을 입력해 주세요"
-                placeholderTextColor="#858895"
+                placeholderTextColor={colors.muted}
                 value={query}
                 onChangeText={setQuery}
                 onSubmitEditing={search}
@@ -165,41 +168,40 @@ export default function SpouseScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 36,
+    paddingTop: 24,
     paddingBottom: 32,
   },
-  eyebrow: { fontFamily: 'Jua', fontSize: 14, color: '#D26A5C' },
+  eyebrow: { ...typography.label, fontSize: 14, color: colors.primary },
   title: {
-    fontFamily: 'Jua',
+    ...typography.title,
     fontSize: 28,
     lineHeight: 36,
-    color: '#4F4F4F',
+    color: colors.text,
     marginTop: 8,
     marginBottom: 8,
   },
   description: {
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 14,
     lineHeight: 22,
-    color: '#666975',
+    color: colors.muted,
   },
   searchCard: {
     marginTop: 28,
     padding: 16,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 12px rgba(84, 87, 92, 0.08)',
+    backgroundColor: colors.surface,
   },
   label: {
-    fontFamily: 'Jua',
+    ...typography.button,
     fontSize: 16,
-    color: '#4F4F4F',
+    color: colors.text,
     marginBottom: 12,
   },
   searchRow: { flexDirection: 'row', gap: 8 },
@@ -210,46 +212,47 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#E5E3E3',
+    borderColor: colors.border,
     borderRadius: 12,
   },
   searchIcon: { width: 18, height: 18 },
   input: {
+    outlineColor: colors.primary,
     flex: 1,
     minWidth: 0,
     minHeight: 48,
-    fontFamily: 'Jua',
-    fontSize: 14,
-    color: '#4F4F4F',
+    ...typography.body,
+    fontSize: 16,
+    color: colors.text,
   },
   searchButton: {
     minHeight: 48,
     paddingHorizontal: 16,
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#D26A5C',
+    backgroundColor: colors.primary,
   },
-  searchLabel: { fontFamily: 'Jua', fontSize: 16, color: '#FFFFFF' },
+  searchLabel: { ...typography.button, fontSize: 16, color: colors.surface },
   resetButton: {
     alignSelf: 'flex-end',
     minHeight: 44,
     justifyContent: 'center',
   },
-  resetLabel: { fontFamily: 'Jua', fontSize: 14, color: '#666975' },
-  error: { fontFamily: 'Jua', fontSize: 14, color: '#B44336' },
+  resetLabel: { ...typography.label, fontSize: 14, color: colors.muted },
+  error: { ...typography.label, fontSize: 14, color: colors.danger },
   sampleNotice: {
     marginVertical: 24,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FDEDE6',
+    backgroundColor: colors.tint,
     gap: 6,
   },
-  sampleTitle: { fontFamily: 'Jua', fontSize: 15, color: '#9C4B40' },
-  resultsTitle: { fontFamily: 'Jua', fontSize: 20, color: '#4F4F4F' },
+  sampleTitle: { ...typography.label, fontSize: 15, color: colors.primary },
+  resultsTitle: { ...typography.section, fontSize: 20, color: colors.text },
   queryLabel: {
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 14,
-    color: '#666975',
+    color: colors.muted,
     marginTop: 6,
     marginBottom: 12,
   },
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   avatar: {
     width: 48,
@@ -268,18 +271,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 24,
-    backgroundColor: '#FDEDE6',
+    backgroundColor: colors.tint,
   },
-  avatarLabel: { fontFamily: 'Jua', fontSize: 22, color: '#D26A5C' },
+  avatarLabel: { ...typography.section, fontSize: 22, color: colors.primary },
   profileText: { flex: 1, gap: 4 },
-  profileName: { fontFamily: 'Jua', fontSize: 18, color: '#4F4F4F' },
+  profileName: { ...typography.section, fontSize: 18, color: colors.text },
   emptyCard: {
     paddingVertical: 32,
     paddingHorizontal: 16,
     gap: 8,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
-  emptyTitle: { fontFamily: 'Jua', fontSize: 18, color: '#4F4F4F' },
+  emptyTitle: { ...typography.section, fontSize: 18, color: colors.text },
   pressed: { opacity: 0.8 },
 });

@@ -1,3 +1,5 @@
+import { ScheduleCheck } from '../../src/components/schedule-check';
+import { colors } from '../../src/theme/colors';
 import { successFeedback } from '../../src/lib/haptics';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -372,10 +374,12 @@ export default function TodoScreen() {
                         {task.description}
                       </Text>
                     ) : null}
-                    <Text style={[typography.caption, { color: '#625B57' }]}>
+                    <Text style={[typography.caption, { color: colors.muted }]}>
                       {task.todo.completed ? '완료' : '예정'}
                     </Text>
-                    <Text style={[typography.caption, { color: '#A84D40' }]}>
+                    <Text
+                      style={[typography.caption, { color: colors.primary }]}
+                    >
                       수정 · 삭제
                     </Text>
                   </View>
@@ -394,9 +398,7 @@ export default function TodoScreen() {
                   onPress={() => void toggleCompletion(task.todo)}
                   style={styles.completionButton}
                 >
-                  <Text style={styles.completionMark}>
-                    {task.todo.completed ? '☑' : '☐'}
-                  </Text>
+                  <ScheduleCheck completed={task.todo.completed} />
                 </Pressable>
               </View>
             ))}
@@ -524,7 +526,7 @@ export default function TodoScreen() {
               <Text
                 style={[
                   typography.caption,
-                  { marginTop: 12, color: '#625B57' },
+                  { marginTop: 12, color: colors.muted },
                 ]}
               >
                 예정·완료로 관리해요. 미룸·건너뜀 상태는 아직 지원하지 않아요.
@@ -626,18 +628,18 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   menuSheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
   },
-  menuTitle: { fontFamily: 'Jua', fontSize: 20, color: '#4F4F4F' },
+  menuTitle: { ...typography.section, fontSize: 20, color: colors.text },
   menuAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: colors.background },
   scheduleContent: { flex: 1 },
-  content: { paddingBottom: 88 },
+  content: { paddingBottom: 32 },
   dateHeader: {
     minHeight: 96,
     paddingHorizontal: 24,
@@ -645,82 +647,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   dateSummary: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dateNumber: {
-    fontFamily: 'Jua',
-    fontSize: 39,
+    ...typography.body,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    fontSize: 36,
     lineHeight: 46,
-    color: '#4F4F4F',
+    color: colors.text,
   },
   dateMeta: {
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 12,
-    lineHeight: 15,
-    color: '#BCC1CD',
+    lineHeight: 20,
+    color: colors.muted,
   },
   addButton: {
     paddingHorizontal: 13,
     paddingVertical: 11,
-    borderRadius: 18,
-    backgroundColor: '#FDEDE6',
+    borderRadius: 14,
+    minHeight: 48,
+    backgroundColor: colors.tint,
   },
-  addLabel: { fontFamily: 'Jua', fontSize: 16, color: '#D26A5C' },
+  addLabel: { ...typography.button, fontSize: 16, color: colors.primary },
   scheduleToolbar: {
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 8px rgba(84, 87, 92, 0.12)',
+    backgroundColor: colors.surface,
     zIndex: 1,
   },
   weekStrip: {
-    height: 74,
+    minHeight: 80,
     paddingHorizontal: 17,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   weekDay: {
-    width: 38,
-    height: 54,
+    flex: 1,
+    minWidth: 38,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 11,
+    borderRadius: 14,
   },
   weekday: {
-    fontFamily: 'Jua',
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#BCC1CD',
+    ...typography.caption,
+    fontSize: 12,
+    lineHeight: 20,
+    color: colors.muted,
   },
   dayNumber: {
     marginTop: 3,
     ...typography.label,
     lineHeight: 18,
-    color: '#4F4F4F',
+    color: colors.text,
   },
-  selectedDay: { backgroundColor: '#D26A5C' },
-  selectedDayText: { color: '#FFFFFF' },
+  selectedDay: { backgroundColor: colors.primary },
+  selectedDayText: { color: colors.surface },
   viewTabs: {
-    height: 54,
-    paddingHorizontal: 27,
+    minHeight: 56,
+    paddingHorizontal: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F6F6F5',
+    borderTopColor: colors.field,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  tabLabels: { flexDirection: 'row', gap: 28 },
+  tabLabels: { flexDirection: 'row', gap: 20 },
   tabButton: { minWidth: 34, paddingVertical: 10 },
-  tabLabel: { fontFamily: 'Jua', fontSize: 14, color: '#BCC1CD' },
-  activeTabLabel: { color: '#88889D' },
+  tabLabel: { ...typography.label, fontSize: 14, color: colors.muted },
+  activeTabLabel: { color: colors.primary, fontWeight: '700' },
   filters: { flexDirection: 'row', alignItems: 'center', gap: 17 },
-  filterIcon: { fontSize: 18, color: '#88889D' },
-  sortIcon: { fontSize: 21, color: '#BCC1CD' },
+  filterIcon: { fontSize: 18, color: colors.muted },
+  sortIcon: { fontSize: 21, color: colors.muted },
   timeline: {
     paddingTop: 18,
     paddingHorizontal: 22,
     borderLeftWidth: 1,
-    borderLeftColor: '#FAF9F9',
+    borderLeftColor: colors.background,
     marginLeft: 82,
   },
   completionButton: {
@@ -729,9 +734,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  completionMark: { fontSize: 24, color: '#B25447' },
   taskRow: {
-    minHeight: 121,
+    minHeight: 112,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginLeft: -60,
@@ -742,12 +747,13 @@ const styles = StyleSheet.create({
     paddingTop: 17,
     textAlign: 'center',
     ...typography.label,
-    color: '#4E3A30',
+    color: colors.text,
   },
   timeSpacer: { width: 47 },
   taskCard: {
     flex: 1,
-    minHeight: 104,
+    backgroundColor: colors.surface,
+    minHeight: 96,
     paddingVertical: 13,
     paddingHorizontal: 12,
     borderRadius: 16,
@@ -755,15 +761,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
   },
-  future: { backgroundColor: '#F6F6F5' },
+  future: { backgroundColor: colors.surface },
   taskCopy: { flex: 1, minWidth: 0, gap: 5 },
-  taskTitle: { ...typography.button, color: '#433C39' },
-  taskDescription: { ...typography.label, color: '#625B57' },
+  taskTitle: { ...typography.button, color: colors.text },
+  taskDescription: { ...typography.label, color: colors.muted },
   notice: {
     margin: 18,
     textAlign: 'center',
     ...typography.caption,
-    color: '#D26A5C',
+    color: colors.primary,
   },
   listAction: { minHeight: 44, justifyContent: 'center' },
   pressed: { opacity: 0.75 },

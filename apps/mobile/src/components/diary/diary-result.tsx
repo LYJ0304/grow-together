@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import { Image } from 'expo-image';
 import { typography } from '../typography';
 import {
@@ -22,7 +23,10 @@ export function DiaryGeneratingView() {
       accessibilityLiveRegion="polite"
       accessibilityState={{ busy: true }}
     >
-      <ActivityIndicator color="#B25447" accessibilityLabel="일기 생성 중" />
+      <ActivityIndicator
+        color={colors.primary}
+        accessibilityLabel="일기 생성 중"
+      />
       <Text accessibilityRole="header" style={styles.title}>
         오늘의 이야기를 정리하고 있어요
       </Text>
@@ -100,6 +104,7 @@ export function DiaryResultView({
         ) : (
           <>
             <TextInput
+              selectionColor={colors.primary}
               accessibilityLabel="일기 본문 수정"
               multiline
               editable={!busy}
@@ -283,9 +288,9 @@ const styles = StyleSheet.create({
   paper: {
     padding: 22,
     borderWidth: 1,
-    borderColor: '#EEE8E5',
+    borderColor: colors.border,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     gap: 18,
   },
   headingRow: {
@@ -298,20 +303,20 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   title: {
     ...typography.section,
-    color: '#292929',
+    color: colors.text,
     flexShrink: 1,
   },
   body: {
     ...typography.body,
-    color: '#494442',
+    color: colors.text,
   },
   caption: {
     ...typography.caption,
-    color: '#777574',
+    color: colors.muted,
   },
   meta: {
     ...typography.caption,
-    color: '#777574',
+    color: colors.muted,
   },
   action: {
     minHeight: 44,
@@ -322,14 +327,14 @@ const styles = StyleSheet.create({
   },
   actionText: {
     ...typography.button,
-    color: '#B25447',
+    color: colors.primary,
   },
   editor: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#D26A5C',
+    borderColor: colors.primary,
     borderRadius: 8,
-    backgroundColor: '#FAF9F9',
+    backgroundColor: colors.background,
   },
   editActions: {
     flexDirection: 'row',
@@ -343,25 +348,25 @@ const styles = StyleSheet.create({
     width: 152,
     height: 114,
     borderRadius: 12,
-    backgroundColor: '#EEE8E5',
+    backgroundColor: colors.border,
   },
   insights: { paddingHorizontal: 4 },
   section: {
     paddingVertical: 18,
     gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EEE8E5',
+    borderBottomColor: colors.border,
   },
   observation: {
     ...typography.body,
-    color: '#494442',
+    color: colors.text,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#FFF1EC',
+    backgroundColor: colors.tint,
   },
   chipText: {
     ...typography.caption,
@@ -369,7 +374,7 @@ const styles = StyleSheet.create({
   },
   sources: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EEE8E5',
+    borderTopColor: colors.border,
   },
   disclosure: {
     flexDirection: 'row',
@@ -380,9 +385,9 @@ const styles = StyleSheet.create({
   sourceBody: { gap: 10, paddingBottom: 16 },
   sourceText: {
     ...typography.body,
-    color: '#494442',
+    color: colors.text,
   },
   generating: { gap: 20 },
-  skeleton: { height: 12, borderRadius: 4, backgroundColor: '#EEE8E5' },
+  skeleton: { height: 12, borderRadius: 4, backgroundColor: colors.border },
   pressed: { opacity: 0.65 },
 });

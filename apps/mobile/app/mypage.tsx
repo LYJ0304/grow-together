@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -85,7 +86,7 @@ export default function MyPageScreen() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FAF9F9' },
+  screen: { flex: 1, backgroundColor: colors.background },
   header: {
     width: '100%',
     maxWidth: 600,
@@ -103,12 +104,17 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 18,
   },
-  card: { padding: 20, gap: 12, borderRadius: 18, backgroundColor: '#FFFFFF' },
-  title: { ...typography.title, color: '#433C39' },
-  section: { ...typography.section, color: '#433C39' },
-  body: { ...typography.body, color: '#494442' },
-  caption: { ...typography.caption, color: '#625B57' },
-  link: { ...typography.button, color: '#A84D40' },
-  logout: { ...typography.button, color: '#A03C30' },
+  card: {
+    padding: 20,
+    gap: 12,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+  },
+  title: { ...typography.title, color: colors.text },
+  section: { ...typography.section, color: colors.text },
+  body: { ...typography.body, color: colors.text },
+  caption: { ...typography.caption, color: colors.muted },
+  link: { ...typography.button, color: colors.primary },
+  logout: { ...typography.button, color: colors.danger },
   button: { minHeight: 48, paddingVertical: 10, gap: 4 },
 });
