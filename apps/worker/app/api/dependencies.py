@@ -6,6 +6,8 @@ from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 
 from app.core.config import settings
+from app.features.chat.generator import ChatGenerator
+from app.features.chat.service import ChatService
 from app.features.diary.generator import DiaryGenerator
 from app.features.diary.service import DiaryService
 from app.features.diary.validator import DiaryValidator
@@ -13,8 +15,6 @@ from app.features.schedule.planner import SchedulePlanner
 from app.features.schedule.scheduler import ScheduleScheduler
 from app.features.schedule.service import ScheduleService
 from app.features.schedule.validator import ScheduleValidator
-from app.chat.service import ChatService
-from app.chat.generator import ChatGenerator
 from app.llm.client import OpenRouterClient
 
 api_key_header = APIKeyHeader(
@@ -85,11 +85,16 @@ def get_schedule_service(
         validator=ScheduleValidator(),
     )
 
-@lru_cache
-def get_chat_generator() -> ChatGenerator:
-    return ChatGenerator()
 
-def get_chat_service() -> ChatService:
-    return ChatService(
-        generator=get_chat_generator()
+@lru_cache
+def get_chat_llm_client() -> OpenRouterClient:
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.llm_chat_model or settings.llm_diary_model,
     )
+
+
+def get_chat_service(
+    llm_client: Annotated[OpenRouterClient, Depends(get_chat_llm_client)],
+) -> ChatService:
+    return ChatService(generator=ChatGenerator(llm_client))

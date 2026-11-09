@@ -22,15 +22,25 @@ class OpenRouterClient:
         self.model = model
 
     async def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+        return await self._send(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            json_response=True,
+        )
+
+    async def complete_chat(self, *, messages: list[dict[str, str]]) -> str:
+        return await self._send(messages=messages, json_response=False)
+
+    async def _send(self, *, messages: list[dict[str, str]], json_response: bool) -> str:
+        options = {"response_format": {"type": "json_object"}} if json_response else {}
         try:
             async with OpenRouter(api_key=self.api_key, timeout_ms=30_000) as sdk:
                 response = await sdk.chat.send_async(
                     model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={"type": "json_object"},
+                    messages=messages,
+                    **options,
                     stream=False,
                     retries=None,
                 )

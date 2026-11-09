@@ -144,3 +144,21 @@ def test_client_identifies_timeout_for_gateway_mapping(transport) -> None:
     with pytest.raises(LLMError) as raised:
         asyncio.run(client.complete(system_prompt="system", user_prompt="user"))
     assert type(raised.value).__name__ == "LLMTimeoutError"
+
+
+def test_chat_client_preserves_conversation_and_requests_plain_text(transport) -> None:
+    requests, outcome = transport
+    outcome["body"]["choices"][0]["message"]["content"] = "답변"
+    messages = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "answer"},
+        {"role": "user", "content": "next"},
+    ]
+    client = OpenRouterClient(api_key="test-key", model="test/chat")
+    assert asyncio.run(client.complete_chat(messages=messages)) == "답변"
+    payload = json.loads(requests[0].content)
+    assert payload["messages"] == messages
+    assert payload["model"] == "test/chat"
+    assert "response_format" not in payload
+    assert outcome["http_client"].is_closed

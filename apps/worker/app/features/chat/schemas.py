@@ -1,16 +1,21 @@
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class ChatBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
 
 class ChatMessage(ChatBase):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1)
 
+
 class ChatGenerateRequest(ChatBase):
     message: str = Field(min_length=1)
     history: list[ChatMessage] = Field(default_factory=list)
+
 
 class ChatGenerateResponse(ChatBase):
     content: str
