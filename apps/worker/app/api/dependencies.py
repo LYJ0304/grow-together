@@ -13,6 +13,8 @@ from app.features.schedule.planner import SchedulePlanner
 from app.features.schedule.scheduler import ScheduleScheduler
 from app.features.schedule.service import ScheduleService
 from app.features.schedule.validator import ScheduleValidator
+from app.chat.service import ChatService
+from app.chat.generator import ChatGenerator
 from app.llm.client import OpenRouterClient
 
 api_key_header = APIKeyHeader(
@@ -81,4 +83,13 @@ def get_schedule_service(
         planner=SchedulePlanner(llm_client),
         scheduler=ScheduleScheduler(),
         validator=ScheduleValidator(),
+    )
+
+@lru_cache
+def get_chat_generator() -> ChatGenerator:
+    return ChatGenerator()
+
+def get_chat_service() -> ChatService:
+    return ChatService(
+        generator=get_chat_generator()
     )
