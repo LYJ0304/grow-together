@@ -90,7 +90,7 @@ def get_schedule_service(
 def get_chat_llm_client() -> OpenRouterClient:
     return OpenRouterClient(
         api_key=settings.openrouter_api_key.get_secret_value(),
-        model=settings.llm_chat_model or settings.llm_diary_model,
+        model=settings.llm_chat_model,
     )
 
 

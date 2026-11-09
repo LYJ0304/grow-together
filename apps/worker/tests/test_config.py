@@ -9,6 +9,7 @@ def test_settings_read_environment_and_hide_secrets(worker_environment) -> None:
     assert settings.ai_worker_api_key.get_secret_value() == "test-worker-key"
     assert settings.openrouter_api_key.get_secret_value() == "test-router-key"
     assert settings.llm_diary_model == "test/model"
+    assert settings.llm_chat_model == "test/chat"
     assert "test-worker-key" not in repr(settings)
     assert "test-router-key" not in repr(settings)
 
@@ -19,6 +20,7 @@ def test_settings_read_environment_and_hide_secrets(worker_environment) -> None:
         ("AI_WORKER_API_KEY", "ai_worker_api_key"),
         ("OPENROUTER_API_KEY", "openrouter_api_key"),
         ("LLM_DIARY_MODEL", "llm_diary_model"),
+        ("LLM_CHAT_MODEL", "llm_chat_model"),
     ],
 )
 def test_settings_require_credentials_and_model(

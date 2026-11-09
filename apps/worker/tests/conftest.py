@@ -10,6 +10,7 @@ def worker_environment(monkeypatch):
     monkeypatch.setenv("AI_WORKER_API_KEY", "test-worker-key")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-router-key")
     monkeypatch.setenv("LLM_DIARY_MODEL", "test/model")
+    monkeypatch.setenv("LLM_CHAT_MODEL", "test/chat")
 
 
 @pytest.fixture
