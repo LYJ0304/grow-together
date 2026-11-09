@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "child_profile")
@@ -22,6 +24,8 @@ public class ChildProfile {
     private String name;
 
     @Column(nullable = false)
+    // Keep calendar dates out of java.sql.Date's timezone and historical calendar conversions.
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     private LocalDate birthday;
 
     public ChildProfile(Long userId, String name, LocalDate birthday) {
