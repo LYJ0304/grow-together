@@ -18,10 +18,16 @@ class ChildContext(ChatBase):
     concerns: list[str] = Field(default_factory=list, max_length=10)
 
 
+class DiaryContext(ChatBase):
+    diary_id: int = Field(gt=0, strict=True)
+    content: str = Field(min_length=1, max_length=1000)
+
+
 class ChatGenerateRequest(ChatBase):
     message: str = Field(min_length=1)
     history: list[ChatMessage] = Field(default_factory=list)
     child_context: ChildContext | None = None
+    diary_context: list[DiaryContext] = Field(default_factory=list, max_length=5)
 
 
 class ChatGenerateResponse(ChatBase):

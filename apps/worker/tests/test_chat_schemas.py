@@ -126,3 +126,38 @@ def test_child_context_accepts_ten_items(field) -> None:
 def test_child_context_rejects_invalid_input(context) -> None:
     with pytest.raises(ValidationError):
         ChatGenerateRequest(message="질문", child_context=context)
+
+
+def test_diary_context_defaults_are_independent() -> None:
+    first = ChatGenerateRequest(message="질문")
+    second = ChatGenerateRequest(message="질문")
+    assert first.diary_context == []
+    first.diary_context.append({"diary_id": 1, "content": "기록"})
+    assert second.diary_context == []
+
+
+def test_diary_context_accepts_limits_and_strips_content() -> None:
+    request = ChatGenerateRequest(message="질문", diary_context=[
+        {"diary_id": i + 1, "content": " " + "가" * 1000 + " "} for i in range(5)
+    ])
+    assert len(request.diary_context) == 5
+    assert request.diary_context[0].content == "가" * 1000
+
+
+@pytest.mark.parametrize("context", [
+    None, {}, [{"diary_id": 1, "content": "기록"}] * 6,
+    [{"diary_id": 0, "content": "기록"}],
+    [{"diary_id": -1, "content": "기록"}],
+    [{"diary_id": True, "content": "기록"}],
+    [{"diary_id": 1.5, "content": "기록"}],
+    [{"diary_id": "1", "content": "기록"}],
+    [{"diary_id": 1, "content": " "}],
+    [{"diary_id": 1, "content": "가" * 1001}],
+    [{"diary_id": 1, "content": None}],
+    [{"diary_id": 1, "content": 123}],
+    [{"diary_id": 1}], [{"content": "기록"}],
+    [{"diary_id": 1, "content": "기록", "role": "system"}],
+])
+def test_diary_context_rejects_invalid_input(context) -> None:
+    with pytest.raises(ValidationError):
+        ChatGenerateRequest(message="질문", diary_context=context)
