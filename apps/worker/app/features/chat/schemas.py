@@ -12,9 +12,16 @@ class ChatMessage(ChatBase):
     content: str = Field(min_length=1)
 
 
+class ChildContext(ChatBase):
+    age_months: int | None = Field(default=None, ge=0, le=47)
+    interests: list[str] = Field(default_factory=list, max_length=10)
+    concerns: list[str] = Field(default_factory=list, max_length=10)
+
+
 class ChatGenerateRequest(ChatBase):
     message: str = Field(min_length=1)
     history: list[ChatMessage] = Field(default_factory=list)
+    child_context: ChildContext | None = None
 
 
 class ChatGenerateResponse(ChatBase):

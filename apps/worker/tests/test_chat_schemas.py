@@ -89,3 +89,40 @@ def test_response_preserves_usage_including_zero() -> None:
 def test_response_rejects_missing_fields_and_extras(payload) -> None:
     with pytest.raises(ValidationError):
         ChatGenerateResponse.model_validate(payload)
+
+
+@pytest.mark.parametrize("context", [None, {}, {"age_months": 0}, {"age_months": 47}])
+def test_request_accepts_optional_child_context(context) -> None:
+    request = ChatGenerateRequest(message="질문", child_context=context)
+    if context is None:
+        assert request.child_context is None
+    else:
+        assert request.child_context.age_months == context.get("age_months")
+
+
+def test_child_context_defaults_are_independent() -> None:
+    first = ChatGenerateRequest(message="질문", child_context={})
+    second = ChatGenerateRequest(message="질문", child_context={})
+    first.child_context.interests.append("공")
+    first.child_context.concerns.append("수면")
+    assert second.child_context.model_dump() == {
+        "age_months": None, "interests": [], "concerns": [],
+    }
+    assert ChatGenerateRequest(message="질문").child_context is None
+
+
+@pytest.mark.parametrize("field", ["interests", "concerns"])
+def test_child_context_accepts_ten_items(field) -> None:
+    request = ChatGenerateRequest(message="질문", child_context={field: ["놀이"] * 10})
+    assert len(getattr(request.child_context, field)) == 10
+
+
+@pytest.mark.parametrize("context", [
+    {"age_months": -1}, {"age_months": 48}, {"age_months": "unknown"},
+    {"age_months": 1.5}, {"interests": ["놀이"] * 11},
+    {"concerns": ["수면"] * 11}, {"interests": "공"},
+    {"concerns": [123]}, {"interests": None}, {"unexpected": True},
+])
+def test_child_context_rejects_invalid_input(context) -> None:
+    with pytest.raises(ValidationError):
+        ChatGenerateRequest(message="질문", child_context=context)
