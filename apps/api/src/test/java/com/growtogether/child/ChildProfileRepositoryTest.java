@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.growtogether.auth.AuthRepository;
 import com.growtogether.user.User;
 import java.time.LocalDate;
+import java.util.TimeZone;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -17,6 +21,31 @@ class ChildProfileRepositoryTest {
     @Autowired private ChildProfileRepository profiles;
     @Autowired private AuthRepository users;
     @Autowired private TestEntityManager entityManager;
+    @Autowired private JdbcTemplate jdbc;
+
+    @ParameterizedTest
+    @CsvSource({
+            "Asia/Seoul, 0001-01-01",
+            "UTC, 0001-01-01",
+            "America/Los_Angeles, 0001-01-01",
+            "Asia/Seoul, 1582-10-10",
+            "Asia/Seoul, 2024-02-29"
+    })
+    void birthday_시간대와무관하게동일한날짜를저장하고조회(String zone, LocalDate birthday) {
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone(zone));
+            Long ownerId = user("birthday@example.com");
+            profiles.saveAndFlush(new ChildProfile(ownerId, "하늘", birthday));
+            entityManager.clear();
+
+            assertThat(jdbc.queryForObject("SELECT birthday FROM child_profile WHERE user_id = ?",
+                    LocalDate.class, ownerId)).isEqualTo(birthday);
+            assertThat(profiles.findById(ownerId).orElseThrow().getBirthday()).isEqualTo(birthday);
+        } finally {
+            TimeZone.setDefault(original);
+        }
+    }
 
     @Test
     void save_저장후계정별로조회() {
