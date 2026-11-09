@@ -1,3 +1,4 @@
+import { colors } from '../../../src/theme/colors';
 import { useChatKeyboard } from '../../../src/lib/use-chat-keyboard';
 import { useTabInteraction } from '../../../src/components/tab-interaction';
 import { usePreventRemove } from '@react-navigation/native';
@@ -562,9 +563,10 @@ function DiaryEditor() {
                   관찰 메모 (선택)
                 </Text>
                 <TextInput
+                  selectionColor={colors.primary}
                   accessibilityLabel="추가 관찰 메모"
                   placeholder="함께한 상황과 아이의 반응을 적어주세요"
-                  placeholderTextColor="#706A67"
+                  placeholderTextColor={colors.muted}
                   multiline
                   maxLength={1000}
                   value={note}
@@ -773,7 +775,7 @@ function DiaryEditor() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FAF9F9' },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
     maxWidth: 600,
@@ -781,27 +783,33 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, gap: 14 },
-  title: { ...typography.title, color: '#433C39' },
-  section: { ...typography.section, color: '#433C39' },
-  body: { ...typography.body, color: '#494442' },
-  meta: { ...typography.caption, color: '#625B57' },
-  error: { ...typography.body, color: '#A03C30' },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 18,
+    gap: 14,
+  },
+  title: { ...typography.title, color: colors.text },
+  section: { ...typography.section, color: colors.text },
+  body: { ...typography.body, color: colors.text },
+  meta: { ...typography.caption, color: colors.muted },
+  error: { ...typography.body, color: colors.danger },
   input: {
+    outlineColor: colors.primary,
     ...typography.body,
-    color: '#433C39',
+    color: colors.text,
     minHeight: 130,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#D3C4BC',
+    borderColor: colors.border,
     borderRadius: 12,
-    backgroundColor: '#FAF9F9',
+    backgroundColor: colors.background,
   },
   record: {
     minHeight: 48,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E9D2C8',
+    borderColor: colors.border,
     borderRadius: 12,
     gap: 6,
   },

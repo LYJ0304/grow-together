@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import { typography } from '../src/components/typography';
 import { router, useNavigation } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
@@ -253,6 +254,7 @@ function ChildrenEditor() {
                 <View pointerEvents={saving ? 'none' : 'auto'}>
                   <Text style={styles.label}>아이 이름 (필수)</Text>
                   <TextInput
+                    selectionColor={colors.primary}
                     ref={nameInput}
                     editable={!saving}
                     accessibilityLabel="아이 이름"
@@ -262,7 +264,7 @@ function ChildrenEditor() {
                     }
                     aria-invalid={Boolean(errors.name)}
                     placeholder="예: 하늘"
-                    placeholderTextColor="#88889D"
+                    placeholderTextColor={colors.muted}
                     value={name}
                     onChangeText={(value) => {
                       setName(value);
@@ -285,6 +287,7 @@ function ChildrenEditor() {
                   ) : null}
                   <Text style={styles.label}>생년월일 (필수)</Text>
                   <TextInput
+                    selectionColor={colors.primary}
                     ref={birthdayInput}
                     editable={!saving}
                     accessibilityLabel="생년월일"
@@ -299,7 +302,7 @@ function ChildrenEditor() {
                     }
                     aria-invalid={Boolean(errors.birthday)}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#88889D"
+                    placeholderTextColor={colors.muted}
                     value={birthday}
                     onChangeText={(value) => {
                       setBirthday(value);
@@ -416,7 +419,7 @@ function ChildrenEditor() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   keyboard: { flex: 1 },
   content: {
     flexGrow: 1,
@@ -431,71 +434,76 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  backLabel: { fontFamily: 'Jua', fontSize: 16, color: '#4F4F4F' },
-  title: { fontFamily: 'Jua', fontSize: 26, lineHeight: 34, color: '#4F4F4F' },
+  backLabel: { ...typography.button, fontSize: 16, color: colors.text },
+  title: {
+    ...typography.title,
+    fontSize: 26,
+    lineHeight: 34,
+    color: colors.text,
+  },
   subtitle: {
     marginTop: 8,
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 14,
     lineHeight: 21,
-    color: '#858895',
+    color: colors.muted,
   },
   notice: {
     marginVertical: 24,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FDEDE6',
+    backgroundColor: colors.tint,
   },
   noticeText: {
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 13,
     lineHeight: 20,
-    color: '#87463D',
+    color: colors.primary,
   },
   card: {
     padding: 20,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0px 3px 12px rgba(84, 87, 92, 0.08)',
+    backgroundColor: colors.surface,
   },
   label: {
     marginTop: 12,
     marginBottom: 8,
-    fontFamily: 'Jua',
+    ...typography.button,
     fontSize: 16,
-    color: '#4F4F4F',
+    color: colors.text,
   },
   input: {
+    outlineColor: colors.primary,
     minHeight: 48,
     borderWidth: 1,
-    borderColor: '#E5E5E8',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     ...typography.body,
-    color: '#4F4F4F',
-    backgroundColor: '#FAF9F9',
+    color: colors.text,
+    backgroundColor: colors.background,
   },
-  invalid: { borderColor: '#B44638' },
+  invalid: { borderColor: colors.danger },
   hint: {
     marginTop: 8,
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 12,
     lineHeight: 18,
-    color: '#858895',
+    color: colors.muted,
   },
   error: {
     marginTop: 8,
-    fontFamily: 'Jua',
+    ...typography.caption,
     fontSize: 13,
     lineHeight: 20,
-    color: '#B44638',
+    color: colors.danger,
   },
   value: {
     marginBottom: 16,
-    fontFamily: 'Jua',
+    ...typography.section,
     fontSize: 20,
     lineHeight: 28,
-    color: '#4F4F4F',
+    color: colors.text,
   },
   button: {
     minHeight: 48,
@@ -503,8 +511,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#D26A5C',
+    backgroundColor: colors.primary,
   },
-  buttonLabel: { fontFamily: 'Jua', fontSize: 16, color: '#FFFFFF' },
+  buttonLabel: { ...typography.button, fontSize: 16, color: colors.surface },
   pressed: { opacity: 0.75 },
 });

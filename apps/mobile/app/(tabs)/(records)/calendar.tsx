@@ -1,3 +1,4 @@
+import { colors } from '../../../src/theme/colors';
 import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
 import { useAuth } from '../../../src/components/auth-provider';
 import {
@@ -326,7 +327,7 @@ export default function CalendarScreen() {
               numberOfLines={4}
               style={[
                 typography.body,
-                { color: '#494442', alignSelf: 'stretch', marginBottom: 12 },
+                { color: colors.text, alignSelf: 'stretch', marginBottom: 12 },
               ]}
             >
               {summary.data}
@@ -399,7 +400,7 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
   content: {
     paddingTop: 12,
@@ -418,9 +419,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#EAE1DE',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -428,10 +429,10 @@ const styles = StyleSheet.create({
   nextArrow: { transform: [{ scaleX: -1 }] },
   monthTitle: { flex: 1, alignItems: 'center' },
   month: {
-    fontFamily: 'Jua',
+    ...typography.section,
     fontSize: 22,
     lineHeight: 28,
-    color: '#433C39',
+    color: colors.text,
   },
   calendarToolbar: {
     width: '100%',
@@ -443,20 +444,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 6,
   },
-  calendarCaption: { fontFamily: 'Jua', fontSize: 13, color: '#756A65' },
+  calendarCaption: { ...typography.caption, fontSize: 13, color: colors.muted },
   todayButton: {
     minWidth: 52,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todayLabel: { fontFamily: 'Jua', fontSize: 14, color: '#A84D40' },
+  todayLabel: { ...typography.label, fontSize: 14, color: colors.primary },
   calendar: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
-    paddingVertical: 10,
+    paddingVertical: 16,
   },
   weekdays: { flexDirection: 'row', marginTop: 2, marginBottom: 4 },
   weekday: {
@@ -464,9 +465,9 @@ const styles = StyleSheet.create({
     ...typography.caption,
     lineHeight: 16,
     textAlign: 'center',
-    color: '#73737D',
+    color: colors.muted,
   },
-  weekend: { color: '#A84D40' },
+  weekend: { color: colors.primary },
   weeks: { marginTop: 8, gap: 2 },
   week: { flexDirection: 'row' },
   day: {
@@ -480,37 +481,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayText: {
-    fontFamily: 'Jua',
+    ...typography.label,
     fontSize: 15,
     lineHeight: 20,
-    color: '#4F4F4F',
+    color: colors.text,
   },
-  outsideDay: { color: '#756A65' },
-  todayDay: { borderColor: '#B25447' },
-  selectedDay: { backgroundColor: '#B25447', borderColor: '#B25447' },
-  selectedDayText: { color: '#FFFFFF' },
+  outsideDay: { color: colors.muted },
+  todayDay: { borderColor: colors.primary },
+  selectedDay: { backgroundColor: colors.primary, borderColor: colors.primary },
+  selectedDayText: { color: colors.surface },
   diaryDot: {
     position: 'absolute',
     bottom: 5,
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D26A5C',
+    backgroundColor: colors.primary,
   },
-  selectedDiaryDot: { backgroundColor: '#FFFFFF' },
-  legendDot: { color: '#D26A5C' },
+  selectedDiaryDot: { backgroundColor: colors.surface },
+  legendDot: { color: colors.primary },
   diaryLegend: {
     marginTop: 10,
     ...typography.caption,
     lineHeight: 16,
-    color: '#73737D',
+    color: colors.muted,
   },
   retryButton: {
     minHeight: 44,
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  retryLabel: { fontFamily: 'Jua', fontSize: 14, color: '#D26A5C' },
+  retryLabel: { ...typography.label, fontSize: 14, color: colors.primary },
   actions: {
     width: '100%',
     maxWidth: 360,
@@ -518,27 +519,25 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 12,
     borderRadius: 20,
-    backgroundColor: '#FFF1EC',
-    borderWidth: 1,
-    borderColor: '#F0DED6',
+    backgroundColor: colors.surface,
   },
   selectionEyebrow: {
     ...typography.caption,
     lineHeight: 16,
-    color: '#8D594E',
+    color: colors.primary,
   },
   selectionDate: {
-    fontFamily: 'Jua',
+    ...typography.section,
     fontSize: 18,
     lineHeight: 24,
-    color: '#433C39',
+    color: colors.text,
     marginTop: 4,
     textAlign: 'center',
   },
   selectionHint: {
     ...typography.caption,
     lineHeight: 18,
-    color: '#756A65',
+    color: colors.muted,
     marginTop: 6,
     marginBottom: 14,
     textAlign: 'center',
@@ -547,25 +546,25 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     minHeight: 48,
-    borderRadius: 10,
-    backgroundColor: '#B25447',
+    borderRadius: 14,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   generateLabel: {
-    fontFamily: 'Jua',
+    ...typography.button,
     fontSize: 16,
     lineHeight: 22,
-    color: '#FFFFFF',
+    color: colors.surface,
     textAlign: 'center',
   },
   notice: {
     marginBottom: 12,
     ...typography.label,
     lineHeight: 20,
-    color: '#D26A5C',
+    color: colors.primary,
     textAlign: 'center',
   },
   pressed: { opacity: 0.8 },

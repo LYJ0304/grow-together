@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ActionButton } from './action-button';
@@ -7,7 +8,7 @@ export function RecommendationOptions({ onDirect }: { onDirect: () => void }) {
   const [choice, setChoice] = useState<string | null>(null);
   return (
     <View style={{ gap: 12 }}>
-      <Text style={[typography.body, { color: '#494442' }]}>
+      <Text style={[typography.body, { color: colors.text }]}>
         오늘은 얼마나 여유가 있나요? 선택하지 않아도 괜찮아요.
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -20,18 +21,20 @@ export function RecommendationOptions({ onDirect }: { onDirect: () => void }) {
             style={{
               minHeight: 44,
               padding: 12,
-              borderRadius: 12,
-              backgroundColor: choice === label ? '#F3D8CC' : '#FFF1EC',
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: choice === label ? colors.primary : colors.border,
+              backgroundColor: choice === label ? colors.tint : colors.surface,
             }}
           >
-            <Text style={[typography.label, { color: '#6B3C33' }]}>
+            <Text style={[typography.label, { color: colors.primary }]}>
               {choice === label ? '✓ ' : ''}
               {label}
             </Text>
           </Pressable>
         ))}
       </View>
-      <Text style={[typography.caption, { color: '#625B57' }]}>
+      <Text style={[typography.caption, { color: colors.muted }]}>
         활동 추천 연결 준비 중이에요.{' '}
         {choice
           ? `${choice} 선택은 아직 추천 요청으로 전송되지 않아요.`

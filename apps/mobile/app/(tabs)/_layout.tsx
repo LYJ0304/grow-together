@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { TabButton } from '../../src/components/tab-button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../src/theme/colors';
@@ -28,7 +28,7 @@ const tabs = [
   {
     name: 'chat',
     title: '질문',
-    icon: require('../../assets/images/main/search.svg'),
+    icon: require('../../assets/images/main/chat.svg'),
   },
 ];
 export default function TabLayout() {
@@ -67,13 +67,15 @@ export default function TabLayout() {
               config: { duration: reduced ? 0 : motion.quick },
             },
           },
-          tabBarLabelStyle: { fontSize: 13, fontWeight: '500' },
-          tabBarItemStyle: { minHeight: 48, paddingVertical: 4 },
+          tabBarLabelPosition: 'below-icon',
+          tabBarShowLabel: true,
+          tabBarLabelStyle: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
+          tabBarItemStyle: { minHeight: 56, paddingVertical: 4 },
           tabBarStyle: {
             height:
-              Math.max(60, 32 + Math.ceil(20 * fontScale)) + insets.bottom,
+              Math.max(64, 40 + Math.ceil(20 * fontScale)) + insets.bottom,
             paddingBottom: insets.bottom,
-            backgroundColor: colors.background,
+            backgroundColor: colors.surface,
             borderTopColor: colors.border,
             borderTopWidth: StyleSheet.hairlineWidth,
             elevation: 0,
@@ -89,13 +91,24 @@ export default function TabLayout() {
             options={{
               title: tab.title,
               tabBarAccessibilityLabel: tab.title,
-              tabBarIcon: ({ color }) => (
-                <Image
-                  source={tab.icon}
-                  tintColor={color}
-                  style={{ width: 24, height: 24 }}
-                  accessible={false}
-                />
+              tabBarIcon: ({ color, focused }) => (
+                <View
+                  style={{
+                    width: 48,
+                    height: 30,
+                    borderRadius: 15,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: focused ? colors.tint : 'transparent',
+                  }}
+                >
+                  <Image
+                    source={tab.icon}
+                    tintColor={color}
+                    style={{ width: 24, height: 24 }}
+                    accessible={false}
+                  />
+                </View>
               ),
             }}
           />

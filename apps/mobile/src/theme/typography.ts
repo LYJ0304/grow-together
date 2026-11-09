@@ -10,10 +10,10 @@ const bodyFont = Platform.select({
 export const typography = StyleSheet.create({
   title: { fontFamily: 'Jua', fontSize: 24, lineHeight: 32, fontWeight: '400' },
   section: {
-    fontFamily: 'Jua',
-    fontSize: 19,
+    fontFamily: bodyFont,
+    fontSize: 20,
     lineHeight: 28,
-    fontWeight: '400',
+    fontWeight: '700',
   },
   body: {
     fontFamily: bodyFont,
@@ -25,7 +25,7 @@ export const typography = StyleSheet.create({
     fontFamily: bodyFont,
     fontSize: 14,
     lineHeight: 22,
-    fontWeight: '400',
+    fontWeight: '500',
   },
   caption: {
     fontFamily: bodyFont,
