@@ -6,6 +6,8 @@ from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 
 from app.core.config import settings
+from app.features.chat.generator import ChatGenerator
+from app.features.chat.service import ChatService
 from app.features.diary.generator import DiaryGenerator
 from app.features.diary.service import DiaryService
 from app.features.diary.validator import DiaryValidator
@@ -82,3 +84,17 @@ def get_schedule_service(
         scheduler=ScheduleScheduler(),
         validator=ScheduleValidator(),
     )
+
+
+@lru_cache
+def get_chat_llm_client() -> OpenRouterClient:
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.llm_chat_model,
+    )
+
+
+def get_chat_service(
+    llm_client: Annotated[OpenRouterClient, Depends(get_chat_llm_client)],
+) -> ChatService:
+    return ChatService(generator=ChatGenerator(llm_client))

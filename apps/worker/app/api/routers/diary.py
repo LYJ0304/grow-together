@@ -24,6 +24,7 @@ router = APIRouter(
 @router.post(
     "/generate",
     response_model=DiaryGenerationResponse,
+    status_code=200,
 )
 async def generate_diary(
     request: DiaryGenerateRequest,
