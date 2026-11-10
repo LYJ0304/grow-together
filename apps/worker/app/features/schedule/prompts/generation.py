@@ -11,3 +11,14 @@ preferred_time은 희망 시작 시각일 뿐이며 scheduled_time, scheduled_da
 plan_name은 공백을 제외하고 1~80자, content는 null 또는 255자 이하입니다.
 preferred_time은 null일 수 있습니다. activities는 배열이며 다른 필드를 추가하지 않습니다.
 """
+
+# Appended only when a nonempty child context is supplied.
+PERSONALIZATION_PROMPT = """
+개인화 배경은 아이의 제공된 연령과 구체적인 고민에 맞는 부담 없는 활동을 고르는 참고 자료입니다.
+available_activity_time은 하루에 함께할 수 있는 시간 선호입니다.
+activity_budget_minutes가 있으면 새로 제안하는 모든 activities의 duration_minutes 합계가
+그 상한 이하여야 합니다. 나중에 unscheduled가 될 제안도 총합에 포함합니다.
+15to20min은 최대 20분이며 최소 15분을 채울 필요는 없습니다.
+기존 일정 시간은 이 예산에서 차감하거나 변경하지 않습니다.
+flexible/미응답에는 임의의 시간 상한을 만들지 않습니다.
+""".strip()

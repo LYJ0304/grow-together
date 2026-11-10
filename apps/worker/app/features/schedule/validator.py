@@ -1,11 +1,28 @@
+from collections.abc import Sequence
 from datetime import timedelta
 
+from app.features.child_context import activity_budget_minutes
+
 from .scheduler import available_intervals, time_offset
-from .schemas import ScheduleGenerationRequest, ScheduleGenerationResponse
+from .schemas import (
+    ActivityProposal,
+    ScheduleCandidate,
+    ScheduleGenerationRequest,
+    ScheduleGenerationResponse,
+)
 
 
 class ScheduleValidationError(Exception):
     pass
+
+
+def validate_activity_budget(
+    request: ScheduleGenerationRequest,
+    activities: Sequence[ActivityProposal | ScheduleCandidate],
+) -> None:
+    budget = activity_budget_minutes(request.child_context)
+    if budget is not None and sum(item.duration_minutes for item in activities) > budget:
+        raise ScheduleValidationError("Exceeded activity time budget")
 
 
 class ScheduleValidator:
@@ -25,6 +42,8 @@ class ScheduleValidator:
         ]
         if len(names) != len(set(names)):
             raise ScheduleValidationError("Duplicate activities")
+
+        validate_activity_budget(request, [*result.candidates, *result.unscheduled])
 
         windows = available_intervals(request)
         occupied = [

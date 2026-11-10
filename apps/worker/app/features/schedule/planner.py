@@ -1,10 +1,18 @@
+import json
+
 from pydantic import Field, ValidationError
 
+from app.features.child_context import (
+    PERSONALIZATION_GUIDANCE,
+    activity_budget_minutes,
+    child_context_data,
+)
 from app.llm.client import LLMClient
 from app.llm.errors import LLMError, LLMTimeoutError
 
-from .prompts.generation import SYSTEM_PROMPT
+from .prompts.generation import PERSONALIZATION_PROMPT, SYSTEM_PROMPT
 from .schemas import ActivityProposal, ScheduleBase, ScheduleGenerationRequest
+from .validator import ScheduleValidationError, validate_activity_budget
 
 
 class ScheduleGenerationError(Exception):
@@ -20,10 +28,19 @@ class SchedulePlanner:
         self.llm_client = llm_client
 
     async def plan(self, request: ScheduleGenerationRequest) -> list[ActivityProposal]:
+        payload = request.model_dump(mode="json", exclude_none=True, exclude={"child_context"})
+        system_prompt = SYSTEM_PROMPT
+        context = child_context_data(request.child_context)
+        if context is not None:
+            payload["child_context"] = context
+            system_prompt += "\n\n" + PERSONALIZATION_GUIDANCE + "\n\n" + PERSONALIZATION_PROMPT
+        budget = activity_budget_minutes(request.child_context)
+        if budget is not None:
+            payload["activity_budget_minutes"] = budget
         try:
             raw = await self.llm_client.complete(
-                system_prompt=SYSTEM_PROMPT,
-                user_prompt=request.model_dump_json(exclude_none=True),
+                system_prompt=system_prompt,
+                user_prompt=json.dumps(payload, ensure_ascii=False),
             )
         except LLMTimeoutError:
             raise
@@ -34,6 +51,7 @@ class SchedulePlanner:
             plan = ActivityPlan.model_validate_json(raw)
             if len(plan.activities) > request.max_candidates:
                 raise ValueError("Too many activities")
-        except (ValueError, TypeError, ValidationError) as exc:
+            validate_activity_budget(request, plan.activities)
+        except (ValueError, TypeError, ValidationError, ScheduleValidationError) as exc:
             raise ScheduleGenerationError("Invalid schedule generation response") from exc
         return plan.activities

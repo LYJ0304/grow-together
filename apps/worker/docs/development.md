@@ -112,3 +112,17 @@ an explicit duration policy, and saving only after user confirmation. It must
 revalidate candidates against current schedules when saving. Spring/Mobile
 integration and Todo duration persistence are outside this worker implementation;
 there is no change to the external Spring OpenAPI contract.
+
+## Personalization context
+
+Chat and schedule share the request-scoped models in `features/child_context.py`.
+The [personalization guide](personalization.md) documents the API-to-worker mapping,
+validation boundaries, prompt separation and aggregate proposal budget.
+The shared LLM client and jobs infrastructure remain unchanged.
+
+Run `uv run pytest tests/test_personalization_*.py` for focused checks.
+The complete `uv run pytest` suite also covers legacy requests, scheduling
+conflicts and authentication/error mappings. FastAPI generates the internal
+OpenAPI schema directly from these models; tests resolve its references.
+No real provider key is required: model calls are mocked, so passing tests do
+not establish actual model compliance, recommendation quality or medical accuracy.

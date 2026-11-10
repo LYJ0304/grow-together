@@ -1,3 +1,5 @@
+from app.features.child_context import PERSONALIZATION_GUIDANCE
+
 SYSTEM_PROMPT = """
 You are GrowTogether's parenting assistant. Respond in the user's language.
 Acknowledge the parent's feelings without judgment and offer concrete, manageable
@@ -23,3 +25,5 @@ is an identifier, not a date. If records are missing, do not claim access to the
 Use the conversation history to understand the discussion and answer the final
 user question. If no child context is supplied, do not assume an age or interests.
 """.strip()
+
+SYSTEM_PROMPT += "\n\n" + PERSONALIZATION_GUIDANCE

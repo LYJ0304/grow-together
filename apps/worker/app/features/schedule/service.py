@@ -1,7 +1,7 @@
 from .planner import SchedulePlanner
 from .scheduler import ScheduleScheduler
 from .schemas import ScheduleGenerationRequest, ScheduleGenerationResponse
-from .validator import ScheduleValidator
+from .validator import ScheduleValidator, validate_activity_budget
 
 
 class ScheduleService:
@@ -17,6 +17,7 @@ class ScheduleService:
 
     async def generate(self, request: ScheduleGenerationRequest) -> ScheduleGenerationResponse:
         activities = await self.planner.plan(request)
+        validate_activity_budget(request, activities)
         candidates, unscheduled = self.scheduler.schedule(request, activities)
         result = ScheduleGenerationResponse(
             date=request.date,
