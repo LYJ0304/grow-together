@@ -25,7 +25,7 @@ an optional request-scoped child profile:
 
 Send the configured service key in the `X-API-Key` header. `child_context`
 may be omitted or `null`; an empty object also works. `age_months` defaults
-to `null` and accepts 0–47 inclusive. `interests` and `concerns` default
+to `null` and accepts 0–48 inclusive. `interests` and `concerns` default
 to independent empty lists and accept at most 10 strings each. Unknown fields
 are rejected, consistent with the other chat request models. Invalid context
 returns HTTP 422 before generation.
@@ -77,3 +77,12 @@ images, attachment URLs, Todo data, search, or summarization is included.
 Spring API and mobile integration are separate work; this change alone does not
 make saved diaries available automatically. The external Spring OpenAPI contract
 is unchanged; the internal request is described by FastAPI-generated OpenAPI.
+
+## Onboarding personalization
+
+Chat and schedule generation accept optional, validated
+`child_context.personalization`, separate from legacy free-text concerns. See
+[personalization mapping and examples](docs/personalization.md) for #170/#171
+field mapping, empty/null semantics, unapproved-observation rejection and the
+aggregate 5/10/20-minute schedule budget. Worker support does not yet connect
+stored profiles to product chat/schedule requests; Spring integration remains separate.

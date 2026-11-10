@@ -3,6 +3,8 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
+from app.features.child_context import ChildContext
+
 
 def validate_local_time(value: time) -> time:
     if value.tzinfo is not None:
@@ -62,6 +64,7 @@ class ScheduleGenerationRequest(ScheduleBase):
     )
 
     max_candidates: int = Field(default=5, ge=1, le=10)
+    child_context: ChildContext | None = None
 
 
 class ActivityProposal(ScheduleBase):

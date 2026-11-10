@@ -144,12 +144,14 @@ def test_route_passes_validated_child_context(post_chat, chat_service) -> None:
         headers={"X-API-Key": "test-worker-key"},
     )
     assert response.status_code == 200
-    assert chat_service.generate.call_args.args[0].child_context.model_dump() == context
+    assert chat_service.generate.call_args.args[0].child_context.model_dump() == {
+        **context, "personalization": None,
+    }
 
 
 def test_route_rejects_invalid_child_context_before_generation(post_chat, chat_service) -> None:
     response = post_chat(
-        {"message": "질문", "child_context": {"age_months": 48}},
+        {"message": "질문", "child_context": {"age_months": 49}},
         headers={"X-API-Key": "test-worker-key"},
     )
     assert response.status_code == 422
@@ -166,7 +168,7 @@ def test_openapi_describes_optional_child_context(worker_app) -> None:
     context = schemas["ChildContext"]["properties"]
     age = context["age_months"]["anyOf"][0]
     assert age["minimum"] == 0
-    assert age["maximum"] == 47
+    assert age["maximum"] == 48
     assert context["interests"]["maxItems"] == 10
     assert context["concerns"]["maxItems"] == 10
 

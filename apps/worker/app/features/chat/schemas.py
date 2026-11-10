@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.features.child_context import ChildContext
+
 
 class ChatBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -10,12 +12,6 @@ class ChatBase(BaseModel):
 class ChatMessage(ChatBase):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1)
-
-
-class ChildContext(ChatBase):
-    age_months: int | None = Field(default=None, ge=0, le=47)
-    interests: list[str] = Field(default_factory=list, max_length=10)
-    concerns: list[str] = Field(default_factory=list, max_length=10)
 
 
 class DiaryContext(ChatBase):
