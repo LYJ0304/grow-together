@@ -1,8 +1,13 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReduceMotion } from '../src/theme/motion';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { createChildApi } from '../src/lib/features/child/childApi';
 import {
   ActivityIndicator,
   Pressable,
@@ -16,8 +21,14 @@ import { LaunchTransitionProvider } from '../src/components/launch-transition';
 const queryClient = new QueryClient();
 
 function AuthenticatedStack() {
-  const { client, status, notice, epoch } = useAuth();
+  const { client, status, notice, epoch, accountKey } = useAuth();
   const reduced = useReduceMotion();
+  const profile = useQuery({
+    queryKey: ['childProfile', accountKey, epoch],
+    enabled: status === 'authenticated',
+    queryFn: () => createChildApi(client).getProfile(),
+    retry: false,
+  });
   if (
     status === 'restoring' ||
     status === 'restoreError' ||
@@ -55,32 +66,78 @@ function AuthenticatedStack() {
     );
   }
   const hasAccess = status === 'authenticated' || status === 'preview';
+  const checkingProfile =
+    status === 'authenticated' && profile.data === undefined;
   return (
     <View style={styles.root}>
-      <Stack
-        key={hasAccess ? epoch : 'signed-out'}
-        screenOptions={{
-          headerShown: false,
-          animation: reduced ? 'none' : 'default',
-          gestureEnabled: true,
-          contentStyle: { backgroundColor: '#FAF9F9' },
-        }}
+      <View
+        style={{ flex: 1 }}
+        pointerEvents={checkingProfile ? 'none' : 'auto'}
+        accessibilityElementsHidden={checkingProfile}
+        importantForAccessibility={
+          checkingProfile ? 'no-hide-descendants' : 'auto'
+        }
       >
-        <Stack.Protected guard={!hasAccess}>
-          <Stack.Screen name="login" />
-          <Stack.Screen name="signup" />
-          <Stack.Screen name="index" />
-          <Stack.Screen name="app-name" />
-          <Stack.Screen name="welcome" />
-        </Stack.Protected>
-        <Stack.Protected guard={hasAccess}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="mypage" />
-          <Stack.Screen name="children" />
-          <Stack.Screen name="spouse" />
-          <Stack.Screen name="persona" />
-        </Stack.Protected>
-      </Stack>
+        <Stack
+          key={hasAccess ? epoch : 'signed-out'}
+          screenOptions={{
+            headerShown: false,
+            animation: reduced ? 'none' : 'default',
+            gestureEnabled: true,
+            contentStyle: { backgroundColor: '#FAF9F9' },
+          }}
+        >
+          <Stack.Protected guard={!hasAccess}>
+            <Stack.Screen name="login" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="index" />
+            <Stack.Screen name="app-name" />
+            <Stack.Screen name="welcome" />
+          </Stack.Protected>
+          <Stack.Protected
+            guard={hasAccess && (status === 'preview' || profile.data !== null)}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="mypage" />
+            <Stack.Screen name="children" />
+            <Stack.Screen name="spouse" />
+            <Stack.Screen name="persona" />
+          </Stack.Protected>
+          <Stack.Protected guard={status === 'authenticated'}>
+            <Stack.Screen name="onboarding" />
+          </Stack.Protected>
+        </Stack>
+      </View>
+      {checkingProfile ? (
+        <View style={[StyleSheet.absoluteFillObject, styles.loading]}>
+          {profile.isError ? (
+            <>
+              <Text accessibilityRole="alert">
+                아이 정보를 확인하지 못했어요.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.button}
+                onPress={() => void profile.refetch()}
+              >
+                <Text>아이 정보 다시 확인</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.button}
+                onPress={() => void client.logout()}
+              >
+                <Text>로그아웃</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <ActivityIndicator />
+              <Text>아이 정보를 확인하고 있어요.</Text>
+            </>
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }

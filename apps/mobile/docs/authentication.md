@@ -16,4 +16,8 @@ that the server session may remain until expiry. Storage deletion failure blocks
 access and offers another logout attempt. Device-local diaries remain preserved;
 their server migration/account ownership is tracked in [#71](https://github.com/LYJ0304/grow-together/issues/71)/[#72](https://github.com/LYJ0304/grow-together/issues/72).
 
+After authentication, the child profile gate distinguishes an existing profile,
+404 (new-user onboarding), loading and retryable failure. Account-scoped onboarding
+drafts are cleared on logout; see [child onboarding](child-onboarding.md).
+
 For API URL and UI preview settings, see [mobile development](development.md).

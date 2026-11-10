@@ -36,7 +36,7 @@ try {
   await page.reload();
   await page
     .getByRole('alert')
-    .filter({ hasText: '아이 정보를 불러오지 못했어요.' })
+    .filter({ hasText: '아이 정보를 확인하지 못했어요.' })
     .waitFor();
   assert.equal(
     await page
@@ -46,16 +46,13 @@ try {
   );
   status = 200;
   await page
-    .getByRole('button', { name: '아이 정보 다시 시도', exact: true })
+    .getByRole('button', { name: '아이 정보 다시 확인', exact: true })
     .click();
   await heading('바다의 하루 · 12개월').waitFor();
   status = 404;
   await page.reload();
-  await page.getByText('아이와 함께하는 첫 기록', { exact: true }).waitFor();
-  await page
-    .getByRole('button', { name: '아이 정보 등록하기', exact: true })
-    .click();
-  await page.waitForURL('**/children');
+  await heading('아이를 소개해 주세요').waitFor();
+  assert.equal(await page.getByRole('tablist').count(), 0);
   console.log(
     'PASS child months, profile/settings entry, focus refresh and missing/error separation',
   );

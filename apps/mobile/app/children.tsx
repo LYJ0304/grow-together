@@ -232,6 +232,23 @@ function ChildrenEditor() {
                 <>
                   {profile.data ? (
                     <>
+                      {status === 'authenticated' ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="개인화 설정 수정"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/onboarding',
+                              params: { edit: 'true' },
+                            })
+                          }
+                          style={styles.button}
+                        >
+                          <Text style={styles.buttonLabel}>
+                            개인화 설정 수정
+                          </Text>
+                        </Pressable>
+                      ) : null}
                       <Text style={styles.label}>아이 이름</Text>
                       <Text style={styles.value}>{profile.data.name}</Text>
                       <Text style={styles.label}>생년월일</Text>

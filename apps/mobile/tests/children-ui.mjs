@@ -20,7 +20,7 @@ try {
       timezoneId,
     });
     await context.addInitScript(authenticatedSessionFixture);
-    const profiles = new Map();
+    const profiles = new Map([['1', { name: '하늘', birthday: '2024-02-29' }]]);
     const writes = [];
     let readFailure = false;
     let writeFailure = false;
@@ -88,10 +88,11 @@ try {
     const alert = (text) =>
       page.getByRole('alert').filter({ hasText: text }).waitFor();
     await page.goto(`${url}/children`);
-    await page.getByText('등록된 아이가 없어요.').waitFor();
+    await screen().getByText('하늘', { exact: true }).waitFor();
     assert.deepEqual(writes, []);
     await page.getByText('로그인한 계정에 저장되는 아이 정보예요.').waitFor();
-    await click('아이 추가');
+    await click('수정');
+    await name.fill('');
     await click('저장');
     await alert('아이 이름을 입력');
     await name.fill('  하늘  ');
@@ -163,7 +164,9 @@ try {
     await other.route('**/api/v1/children/me', handleProfile);
     const second = await other.newPage();
     await second.goto(`${url}/children`);
-    await second.getByText('등록된 아이가 없어요.').waitFor();
+    await second
+      .getByRole('heading', { name: '아이를 소개해 주세요', exact: true })
+      .waitFor();
     await other.close();
     for (const width of [320, 390, 1024]) {
       await page.setViewportSize({ width, height: 720 });
@@ -188,7 +191,7 @@ try {
     // Failed reads must not become an empty registration form.
     readFailure = true;
     await page.reload();
-    await alert('요청을 처리하지 못했어요');
+    await alert('아이 정보를 확인하지 못했어요');
     assert.equal(
       await page
         .getByRole('button', { name: '아이 추가', exact: true })
@@ -196,26 +199,10 @@ try {
       0,
     );
     readFailure = false;
-    await click('다시 시도');
+    await click('아이 정보 다시 확인');
     await screen().getByText('바다', { exact: true }).waitFor();
-    // Another client registered between GET and POST: do not overwrite it.
-    profiles.delete('1');
-    await page.reload();
-    await click('아이 추가');
-    await name.fill('내 입력');
-    await birthday.fill('2024-02-29');
-    profiles.set('1', { name: '다른 기기', birthday: '2024-01-01' });
-    const before = writes.length;
-    await click('저장');
-    await alert('이미 등록된 아이 정보가 있어요');
-    assert.equal(await name.inputValue(), '내 입력');
-    assert.deepEqual(writes.slice(before), ['POST']);
-    await click('등록 정보 다시 확인');
-    assert.equal(await name.inputValue(), '내 입력');
-    await click('저장');
-    await screen().getByText('내 입력', { exact: true }).waitFor();
-    assert.equal(writes.at(-1), 'PUT');
-    assert.equal(profiles.get('1').name, '내 입력');
+    // New-user registration and 409 checks moved to onboarding UI regressions.
+    assert.equal(profiles.get('1').name, '바다');
     assert.equal(
       await page.evaluate(
         () =>
