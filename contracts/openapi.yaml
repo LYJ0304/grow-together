@@ -10,7 +10,8 @@ paths:
       description: >-
         Creates one profile per account. An existing profile returns 409 without
         changing it. Ownership comes exclusively from the access JWT. Validation
-        and name normalization are the same as PUT.
+        and name normalization are the same as PUT. Optional personalization is stored
+        atomically; omission or null uses empty/default personalization for a new profile.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -54,6 +55,9 @@ paths:
         Returns 200 for both creation and replacement. Ownership comes exclusively from
         the access JWT. Name is trimmed before validation and storage. Birthday must be
         a real calendar date from year 0001 through today (server date).
+        Omitted or null personalization preserves existing values. An explicit object
+        replaces all personalization fields; {} clears them. A birthday edit that
+        conflicts with a preserved expected due date returns 400 without mutation.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -493,12 +497,97 @@ components:
           pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
           description: A real calendar date from 0001-01-01 through today (server date).
           example: '2024-03-15'
+        personalization:
+          description: Optional. Omission/null preserves existing values on PUT; an explicit object replaces all choices.
+          anyOf:
+            - { $ref: '#/components/schemas/ChildPersonalizationRequest' }
+            - { type: 'null' }
     ChildProfileResponse:
       type: object
-      required: [name, birthday]
+      required: [name, birthday, personalization]
       properties:
+        personalization: { $ref: '#/components/schemas/ChildPersonalizationResponse' }
         name: { type: string, minLength: 1, maxLength: 50 }
         birthday: { type: string, format: date }
+    ChildPersonalizationRequest:
+      type: object
+      additionalProperties: false
+      description: >-
+        All fields are optional. Missing/null lists normalize to empty arrays and
+        missing scalar fields normalize to null. Only explicitly approved question
+        IDs may be stored; no questions are approved in this version, so nonempty
+        developmentObservations is rejected. No corrected age or diagnosis is computed.
+      properties:
+        prematurityStatus:
+          type: [string, 'null']
+          enum: ['yes', 'no', 'unknown', null]
+        expectedDueDate:
+          type: [string, 'null']
+          format: date
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: Real date from year 0001 to 9999 strictly after birthday. Requires prematurityStatus yes. May be future and is not required for yes.
+        concerns:
+          type: [array, 'null']
+          maxItems: 2
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/ChildConcern' }
+          description: none is exclusive; [] means skipped and differs from [none].
+        availableActivityTime:
+          type: [string, 'null']
+          enum: ['5min', '10min', '15to20min', 'flexible', null]
+        developmentObservations:
+          type: [array, 'null']
+          maxItems: 0
+          items: { $ref: '#/components/schemas/DevelopmentObservation' }
+          description: Must be empty or null until a source-reviewed catalog is available. Future capacity is at most five, not enabled now.
+      allOf:
+        - if:
+            required: [expectedDueDate]
+            properties:
+              expectedDueDate: { type: string }
+          then:
+            required: [prematurityStatus]
+            properties:
+              prematurityStatus: { const: 'yes' }
+        - if:
+            required: [concerns]
+            properties:
+              concerns:
+                type: array
+                contains: { const: none }
+          then:
+            properties:
+              concerns: { maxItems: 1 }
+    ChildPersonalizationResponse:
+      type: object
+      required: [prematurityStatus, expectedDueDate, concerns, availableActivityTime, developmentObservations]
+      properties:
+        prematurityStatus:
+          type: [string, 'null']
+          enum: ['yes', 'no', 'unknown', null]
+        expectedDueDate: { type: [string, 'null'], format: date }
+        concerns:
+          type: array
+          maxItems: 2
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/ChildConcern' }
+        availableActivityTime:
+          type: [string, 'null']
+          enum: ['5min', '10min', '15to20min', 'flexible', null]
+        developmentObservations:
+          type: array
+          maxItems: 0
+          items: { $ref: '#/components/schemas/DevelopmentObservation' }
+    ChildConcern:
+      type: string
+      enum: [sleep, feeding, emotion_expression, communication, developmental_play, daily_habits, separation_anxiety, none]
+    DevelopmentObservation:
+      type: object
+      required: [questionId, answer]
+      description: Reserved answer shape. No question IDs are approved in the current version; nonempty answer arrays are rejected.
+      properties:
+        questionId: { type: string, minLength: 1, maxLength: 100, pattern: '\S' }
+        answer: { type: string, enum: ['yes', not_yet, unknown] }
     PresignedUrlRequest:
       type: object
       required: [filename, contentType, fileSize]

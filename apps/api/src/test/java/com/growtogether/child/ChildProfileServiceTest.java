@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
 
 import com.growtogether.child.dto.ChildProfileRequest;
+import java.util.List;
 import com.growtogether.user.User;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -129,6 +130,36 @@ class ChildProfileServiceTest {
                         exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
 
         then(profiles).should(never()).findById(any());
+        then(profiles).should(never()).saveAndFlush(any());
+    }
+    @Test
+    void save_basicEditPreservesStoredPersonalization() {
+        var profile = new ChildProfile(userId, "Before", birthday);
+        profile.replacePersonalization("yes", birthday.plusMonths(1), List.of("sleep"), "10min");
+        given(profiles.lockOwner(userId)).willReturn(Optional.of(new User("Owner", "owner@example.com", "hash")));
+        given(profiles.findById(userId)).willReturn(Optional.of(profile));
+        given(profiles.saveAndFlush(profile)).willReturn(profile);
+
+        var result = service.save(userId, new ChildProfileRequest("After", birthday));
+
+        assertThat(result.personalization().concerns()).containsExactly("sleep");
+        assertThat(result.personalization().expectedDueDate()).isEqualTo(birthday.plusMonths(1));
+        assertThat(result.personalization().availableActivityTime()).isEqualTo("10min");
+    }
+
+    @Test
+    void save_invalidCombinedDateDoesNotMutateProfile() {
+        var profile = new ChildProfile(userId, "Before", birthday);
+        profile.replacePersonalization("yes", birthday.plusMonths(1), List.of("sleep"), "10min");
+        given(profiles.lockOwner(userId)).willReturn(Optional.of(new User("Owner", "owner@example.com", "hash")));
+        given(profiles.findById(userId)).willReturn(Optional.of(profile));
+
+        assertThatThrownBy(() -> service.save(userId, new ChildProfileRequest("After", birthday.plusMonths(2))))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThat(profile.getName()).isEqualTo("Before");
+        assertThat(profile.getBirthday()).isEqualTo(birthday);
+        assertThat(profile.getConcerns()).containsExactly("sleep");
         then(profiles).should(never()).saveAndFlush(any());
     }
 }
