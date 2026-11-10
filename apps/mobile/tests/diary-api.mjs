@@ -46,7 +46,14 @@ assert.equal(
 );
 
 const input = { content: '오늘의 일기', todoIds: [2], diaryFiles: [] };
-const diary = { id: 42, content: input.content, todos: [], diaryFiles: [] };
+const createInput = { ...input, diaryDate: '2026-11-10' };
+const diary = {
+  id: 42,
+  diaryDate: '2026-11-10',
+  content: input.content,
+  todos: [],
+  diaryFiles: [],
+};
 const requests = [];
 let refreshes = 0;
 let failRequest = false;
@@ -93,13 +100,13 @@ const session = new AuthSession(
 const api = createDiaryApi(session);
 await assert.rejects(api.getDiary(42), (error) => error.status === 401);
 await session.login({ email: 'user@example.com', password: 'password123' });
-assert.deepEqual(await api.createDiary(input), diary);
+assert.deepEqual(await api.createDiary(createInput), diary);
 assert.deepEqual(await api.getDiary(42), diary);
 assert.deepEqual(await api.updateDiary(42, input), diary);
 assert.equal(await api.deleteDiary(42), undefined);
 assert.equal(refreshes, 1);
 assert.deepEqual(requests, [
-  { path: '/api/v1/diary', method: 'POST', body: JSON.stringify(input) },
+  { path: '/api/v1/diary', method: 'POST', body: JSON.stringify(createInput) },
   { path: '/api/v1/diary/42', method: 'GET', body: undefined },
   { path: '/api/v1/diary/42', method: 'PUT', body: JSON.stringify(input) },
   { path: '/api/v1/diary/42', method: 'DELETE', body: undefined },
@@ -109,3 +116,20 @@ await assert.rejects(api.deleteDiary(42), (error) => error.status === 403);
 console.log(
   'Diary API checks passed (CRUD, URLs, authentication, refresh, 204, errors)',
 );
+
+const dateRequests = [];
+const dateApi = createDiaryApi({
+  request: async (path) => {
+    dateRequests.push(path);
+    if (path.includes('month=')) return [{ id: 42, diaryDate: '2026-11-10' }];
+    return { ...diary, diaryDate: '2026-11-10' };
+  },
+});
+assert.deepEqual(await dateApi.getMonth('2026-11'), [
+  { id: 42, diaryDate: '2026-11-10' },
+]);
+assert.equal((await dateApi.getByDate('2026-11-10')).diaryDate, '2026-11-10');
+assert.deepEqual(dateRequests, [
+  '/api/v1/diary?month=2026-11',
+  '/api/v1/diary/by-date?date=2026-11-10',
+]);

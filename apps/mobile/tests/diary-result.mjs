@@ -37,19 +37,33 @@ const todos = [
 ];
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: todos }));
 await page.route('**/api/v1/diary**', async (r) => {
+  const url = new URL(r.request().url());
+  if (r.request().method() === 'GET' && url.searchParams.has('month'))
+    return r.fulfill({
+      json: savedContent ? [{ id: 42, diaryDate: date }] : [],
+    });
+  if (
+    r.request().method() === 'GET' &&
+    url.pathname.endsWith('/by-date') &&
+    !savedContent
+  )
+    return r.fulfill({ status: 404, json: { code: 'NOT_FOUND' } });
   if (r.request().method() === 'GET')
     return r.fulfill({
       json: {
         id: 42,
+        diaryDate: date,
         content: savedContent,
         todos: [todos[0]],
         diaryFiles: [{ id: 7, imageUrl: 'https://images.example/child.jpg' }],
       },
     });
-  if (r.request().method() === 'DELETE')
+  if (r.request().method() === 'DELETE') {
+    if (!deleteFailure) savedContent = undefined;
     return r.fulfill(
       deleteFailure ? { status: 400, json: {} } : { status: 204 },
     );
+  }
   if (held) await held;
   writes++;
   last = r.request().postDataJSON();
@@ -133,6 +147,7 @@ try {
   await page.getByRole('alert').waitFor();
   assert.equal(writes, 1);
   assert.equal(last.content, '내가 다듬은 오늘의 기록');
+  assert.equal(last.diaryDate, date);
   assert.deepEqual(last.todoIds, [1]);
   failure = false;
   await page

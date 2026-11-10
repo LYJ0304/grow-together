@@ -3,9 +3,11 @@ package com.growtogether.diary.domain.dto;
 import com.growtogether.diary.domain.Diary;
 import com.growtogether.todo.dto.TodoResponse;
 import java.util.List;
+import java.time.LocalDate;
 
 public record DiaryResponse(
     Long id,
+    LocalDate diaryDate,
     String content,
     List<TodoResponse> todos,
     List<DiaryFileResponse> diaryFiles
@@ -13,6 +15,7 @@ public record DiaryResponse(
     public static DiaryResponse from(Diary diary) {
         return new DiaryResponse(
             diary.getId(),
+            diary.getDiaryDate(),
             diary.getContent(),
                 diary.getTodos().stream().map(TodoResponse::from).toList(),
                 diary.getDiaryFiles().stream()

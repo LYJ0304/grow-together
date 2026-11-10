@@ -159,7 +159,7 @@ class TodoApiTest {
         mvc.perform(post("/api/v1/diary").with(jwt().jwt(token -> token.subject(otherUserId.toString())))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"content":"Private diary","todoIds":[%d],"diaryFiles":[]}
+                        {"diaryDate":"2026-10-10","content":"Private diary","todoIds":[%d],"diaryFiles":[]}
                         """.formatted(todo.getId())))
                 .andExpect(status().isCreated());
         assertInaccessible(todo.getId());
@@ -179,7 +179,7 @@ class TodoApiTest {
                 .andExpect(status().isOk()).andExpect(content().json("[]"));
         perform(post("/api/v1/diary").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"content":"Claim legacy","todoIds":[%d],"diaryFiles":[]}
+                        {"diaryDate":"2026-10-10","content":"Claim legacy","todoIds":[%d],"diaryFiles":[]}
                         """.formatted(id)))
                 .andExpect(status().isNotFound());
         assertThat(repository.findById(id)).isPresent();

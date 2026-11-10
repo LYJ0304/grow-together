@@ -327,7 +327,7 @@ class DiaryIntegrationTest {
     private static String body(String content, String todoIds, String imageUrl) {
         String files = imageUrl == null ? "[]" : "[{\"imageUrl\":\"" + imageUrl + "\"}]";
         return """
-                {"content":"%s","todoIds":%s,"diaryFiles":%s}
+                {"diaryDate":"2026-11-10","content":"%s","todoIds":%s,"diaryFiles":%s}
                 """.formatted(content, todoIds, files);
     }
 }

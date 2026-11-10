@@ -1,12 +1,27 @@
 import { createClient } from '../../api/client';
 import type { AuthSession } from '../auth';
-import type { DiaryRequest, DiaryResponse } from './types';
+import type {
+  DiaryCreateRequest,
+  DiaryRequest,
+  DiaryResponse,
+  DiarySummary,
+} from './types';
 
 export function createDiaryApi(session: Pick<AuthSession, 'request'>) {
   const client = createClient(session.request.bind(session));
   return {
-    async createDiary(input: DiaryRequest): Promise<DiaryResponse> {
+    async createDiary(input: DiaryCreateRequest): Promise<DiaryResponse> {
       return client.post<DiaryResponse>('/api/v1/diary', input);
+    },
+    async getMonth(month: string): Promise<DiarySummary[]> {
+      return client.get<DiarySummary[]>(
+        `/api/v1/diary?month=${encodeURIComponent(month)}`,
+      );
+    },
+    async getByDate(date: string): Promise<DiaryResponse> {
+      return client.get<DiaryResponse>(
+        `/api/v1/diary/by-date?date=${encodeURIComponent(date)}`,
+      );
     },
     async getDiary(id: number): Promise<DiaryResponse> {
       return client.get<DiaryResponse>(`/api/v1/diary/${id}`);
