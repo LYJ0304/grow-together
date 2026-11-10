@@ -11,6 +11,10 @@ import java.util.Optional;
 
 @Repository 
 public interface TodoRepository extends JpaRepository<Todo, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :userId")
+    Optional<com.growtogether.user.User> lockOwner(Long userId);
+
     List<Todo> findByUserIdAndScheduledDateOrderByScheduledTimeAsc(Long userId, LocalDate date);
 
     Optional<Todo> findByIdAndUserId(Long id, Long userId);

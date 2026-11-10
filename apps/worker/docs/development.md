@@ -11,7 +11,7 @@ Use Python 3.12 and uv. From `apps/worker`, prepare the environment from the
 ```bash
 cp .env.example .env
 uv sync --locked
-uv run python -m app.main
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 The worker reads `SERVICE_NAME` and `LOG_LEVEL` from its local `.env`.
@@ -36,8 +36,9 @@ the URL prefix carries the API version.
 schedule previews without saving Todos.
 `LLM_SCHEDULE_MODEL` optionally selects a separate model for schedule generation;
 unset or empty values reuse `LLM_DIARY_MODEL`.
-The current command-line entry point
-still runs the example job; an HTTP server is not configured.
+The Docker entry point runs `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+For a host process use `uv run uvicorn app.main:app --port 8000`.
+`python -m app.main` remains an explicit example-job command.
 
 ## Run with Compose
 
@@ -126,3 +127,6 @@ conflicts and authentication/error mappings. FastAPI generates the internal
 OpenAPI schema directly from these models; tests resolve its references.
 No real provider key is required: model calls are mocked, so passing tests do
 not establish actual model compliance, recommendation quality or medical accuracy.
+
+The API schedule caller, explicit Todo durations, confirmation locking and local
+execution are described in the [schedule integration guide](../../api/docs/schedule-generation.md).

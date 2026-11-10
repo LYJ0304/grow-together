@@ -10,10 +10,11 @@ public record TodoResponse(
     String content,
     LocalDate scheduledDate,
     LocalTime scheduledTime,
-    boolean completed
+    boolean completed,
+    Integer durationMinutes
 ) {
     public static TodoResponse from(Todo todo) {
         return new TodoResponse(todo.getId(), todo.getPlanName(), todo.getContent(),
-                todo.getScheduledDate(), todo.getScheduledTime(), todo.isCompleted());
+                todo.getScheduledDate(), todo.getScheduledTime(), todo.isCompleted(), todo.getDurationMinutes());
     }
 }

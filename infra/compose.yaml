@@ -22,6 +22,7 @@ services:
       dockerfile: apps/api/Dockerfile
     env_file: ../apps/api/.env
     environment:
+      WORKER_BASE_URL: http://worker:8000
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
       POSTGRES_USER: ${POSTGRES_USER:-growtogether}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
@@ -39,6 +40,7 @@ services:
     build: ../apps/worker
     profiles: ["worker"]
     env_file: ../apps/worker/.env
+    expose: ["8000"]
 
 volumes:
   postgres-data:

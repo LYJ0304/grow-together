@@ -29,3 +29,8 @@ app:
       bucket: ${AWS_S3_BUCKET_NAME}
       presigned-url-expiration: 10m
       max-file-size: 10MB
+  worker:
+    base-url: ${WORKER_BASE_URL:http://localhost:8000}
+    api-key: ${AI_WORKER_API_KEY:}
+    connect-timeout-seconds: ${WORKER_CONNECT_TIMEOUT_SECONDS:3}
+    read-timeout-seconds: ${WORKER_READ_TIMEOUT_SECONDS:35}

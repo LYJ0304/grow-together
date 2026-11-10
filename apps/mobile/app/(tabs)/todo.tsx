@@ -3,7 +3,7 @@ import { colors } from '../../src/theme/colors';
 import { successFeedback } from '../../src/lib/haptics';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { router, useLocalSearchParams } from 'expo-router';
-import { RecommendationOptions } from '../../src/components/recommendation-options';
+import { ScheduleGenerationModal } from '../../src/components/schedule-generation-modal';
 import { ActionButton } from '../../src/components/action-button';
 import { typography } from '../../src/components/typography';
 import { useSessionValue } from '../../src/lib/session-state';
@@ -61,7 +61,7 @@ export default function TodoScreen() {
   });
   const params = useLocalSearchParams<{ date?: string; add?: string }>();
   const [reactionTodo, setReactionTodo] = useState<TodoResponse | null>(null);
-  const [recommendations, setRecommendations] = useState(false);
+  const [recommendations, setRecommendations] = useState<string | null>(null);
   useEffect(() => {
     const fromRoute = parseDiaryDate(params.date);
     if (fromRoute)
@@ -308,7 +308,7 @@ export default function TodoScreen() {
             <ActionButton
               label="활동 추천받기"
               secondary
-              onPress={() => setRecommendations(true)}
+              onPress={() => setRecommendations(localDateKey(selectedDate))}
             />
           </View>
           <View style={styles.timeline}>
@@ -468,44 +468,15 @@ export default function TodoScreen() {
         </Modal>
       ) : null}
       {recommendations ? (
-        <Modal
-          transparent
-          animationType="slide"
-          onRequestClose={() => setRecommendations(false)}
-        >
-          <SafeAreaView
-            style={[styles.menuOverlay, { justifyContent: 'flex-end' }]}
-          >
-            <ScrollView
-              style={{
-                maxHeight: '90%',
-                width: '100%',
-                maxWidth: 440,
-                alignSelf: 'center',
-              }}
-              contentContainerStyle={[styles.menuSheet, { gap: 16 }]}
-              accessibilityViewIsModal
-            >
-              <Text accessibilityRole="header" style={styles.menuTitle}>
-                활동 추천받기
-              </Text>
-              <RecommendationOptions
-                onDirect={() => {
-                  setRecommendations(false);
-                  if (status === 'authenticated')
-                    setForm({ date: selectedDate });
-                  else
-                    setNotice('직접 일정 추가는 로그인 후 이용할 수 있어요.');
-                }}
-              />
-              <ActionButton
-                label="추천 안내 닫기"
-                secondary
-                onPress={() => setRecommendations(false)}
-              />
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
+        <ScheduleGenerationModal
+          date={recommendations}
+          onClose={() => setRecommendations(null)}
+          onSaved={() =>
+            void queryClient.invalidateQueries({
+              queryKey: ['todos', recommendations],
+            })
+          }
+        />
       ) : null}
       {managedTodo ? (
         <Modal transparent animationType="fade" onRequestClose={closeMenu}>
@@ -596,6 +567,7 @@ export default function TodoScreen() {
                   title: form.todo.planName,
                   time: form.todo.scheduledTime.slice(0, 5),
                   description: form.todo.content ?? '',
+                  durationMinutes: form.todo.durationMinutes ?? undefined,
                 }
               : undefined
           }
@@ -609,6 +581,7 @@ export default function TodoScreen() {
                 content: plan.description,
                 scheduledDate: form.todo?.scheduledDate ?? localDateKey(date),
                 scheduledTime: `${plan.time}:00`,
+                durationMinutes: plan.durationMinutes,
               },
             });
             setForm(null);

@@ -152,3 +152,40 @@ await assert.rejects(api.deleteTodo(42), (error) => error.status === 403);
 console.log(
   'Todo API checks passed (CRUD, URLs, authentication, refresh, 204, errors)',
 );
+
+assert.equal(
+  typeof api.generateSchedule,
+  'function',
+  'Schedule generation must use the authenticated API',
+);
+assert.equal(
+  typeof api.saveSchedule,
+  'function',
+  'Batch confirmation must use the authenticated API',
+);
+const generatedCalls = [];
+const scheduleApi = createTodoApi({
+  request: async (path, init) => {
+    generatedCalls.push({ path, init });
+    return [];
+  },
+});
+const signal = new AbortController().signal;
+await scheduleApi.generateSchedule(
+  {
+    date: '2026-11-10',
+    availableWindows: [{ start: '09:00:00', end: '10:00:00' }],
+  },
+  signal,
+);
+await scheduleApi.saveSchedule('2026-11-10', [
+  { planName: '읽기', scheduledTime: '09:00:00', durationMinutes: 5 },
+]);
+assert.equal(generatedCalls[0].path, '/api/v1/todos/generate');
+assert.equal(generatedCalls[0].init.timeoutMs, 45000);
+assert.equal(generatedCalls[0].init.signal, signal);
+assert.equal(generatedCalls[1].path, '/api/v1/todos/batch');
+assert.equal(
+  JSON.parse(generatedCalls[1].init.body).candidates[0].durationMinutes,
+  5,
+);
