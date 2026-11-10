@@ -22,6 +22,13 @@ try {
       },
     }),
   );
+  await page.route('**/api/v1/diary**', (r) =>
+    r.fulfill(
+      new URL(r.request().url()).searchParams.has('month')
+        ? { json: [] }
+        : { status: 404, json: { code: 'NOT_FOUND' } },
+    ),
+  );
   await page.route('**/api/v1/todos**', (r) =>
     r.fulfill({
       json: [

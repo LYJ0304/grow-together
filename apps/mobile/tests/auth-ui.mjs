@@ -25,6 +25,20 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   if (!live) {
+    // Authentication regression uses an already registered account; new-user
+    // profile gating is covered by onboarding-ui.mjs.
+    await page.route('**/api/v1/children/me', (route) =>
+      route.fulfill({ json: { name: '하늘', birthday: '2024-03-15' } }),
+    );
+
+    // Keep authentication fixtures independent from the live API used by
+    // the separate persistence test. Fake tokens must not reach real resources.
+    await page.route('**/api/v1/todos**', (route) =>
+      route.fulfill({ json: [] }),
+    );
+    await page.route('**/api/v1/diaries**', (route) =>
+      route.fulfill({ status: 404, json: {} }),
+    );
     let registered = false;
     let rotations = 0;
     await page.route('**/api/v1/auth/*', async (route) => {

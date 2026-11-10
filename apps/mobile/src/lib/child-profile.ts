@@ -1,6 +1,11 @@
+import type { Personalization } from './onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type ChildProfile = { name: string; birthday: string };
+export type ChildProfile = {
+  name: string;
+  birthday: string;
+  personalization?: Personalization;
+};
 export type ChildProfileErrors = { name?: string; birthday?: string };
 
 export function validateChildProfile(
