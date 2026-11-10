@@ -11,6 +11,7 @@ import com.growtogether.diary.domain.Diary;
 import com.growtogether.diary.domain.DiaryFile;
 import com.growtogether.diary.domain.dto.DiaryFileRequest;
 import com.growtogether.diary.domain.dto.DiaryRequest;
+import com.growtogether.diary.domain.dto.DiaryCreateRequest;
 import com.growtogether.todo.Todo;
 import com.growtogether.todo.TodoRepository;
 import java.time.LocalDate;
@@ -45,7 +46,7 @@ class DiaryServiceTest {
     @Test
     void create_할일과이미지가있으면_연결해서저장() {
         Todo todo = todo(20L);
-        var request = new DiaryRequest("오늘의 일기", List.of(20L, 20L),
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "오늘의 일기", List.of(20L, 20L),
                 List.of(new DiaryFileRequest(imageUrl)));
         given(todoRepository.findForDiaryByIdAndUserId(20L, userId)).willReturn(Optional.of(todo));
         given(diaryRepository.saveAndFlush(any(Diary.class))).willAnswer(invocation -> {
@@ -73,7 +74,7 @@ class DiaryServiceTest {
 
     @Test
     void create_할일과이미지가없으면_빈목록으로생성() {
-        var request = new DiaryRequest("오늘의 일기", List.of(), List.of());
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "오늘의 일기", List.of(), List.of());
         given(diaryRepository.saveAndFlush(any(Diary.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -215,7 +216,7 @@ class DiaryServiceTest {
 
     @Test
     void create_본인할일을찾지못하면_저장하지않고404반환() {
-        var request = new DiaryRequest("오늘의 일기", List.of(20L), List.of());
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "오늘의 일기", List.of(20L), List.of());
         given(todoRepository.findForDiaryByIdAndUserId(20L, userId)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> diaryService.create(userId, request))
@@ -230,7 +231,7 @@ class DiaryServiceTest {
         Todo todo = todo(20L);
         Diary linked = diary(userId, 99L);
         linked.replaceTodos(List.of(todo));
-        var request = new DiaryRequest("오늘의 일기", List.of(20L), List.of());
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "오늘의 일기", List.of(20L), List.of());
         given(todoRepository.findForDiaryByIdAndUserId(20L, userId)).willReturn(Optional.of(todo));
 
         assertThatThrownBy(() -> diaryService.create(userId, request))
@@ -246,7 +247,7 @@ class DiaryServiceTest {
         Todo todo = todo(20L);
         Diary linked = diary(2L, 99L);
         linked.replaceTodos(List.of(todo));
-        var request = new DiaryRequest("오늘의 일기", List.of(20L), List.of());
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "오늘의 일기", List.of(20L), List.of());
         given(todoRepository.findForDiaryByIdAndUserId(20L, userId)).willReturn(Optional.of(todo));
 
         assertThatThrownBy(() -> diaryService.create(userId, request))

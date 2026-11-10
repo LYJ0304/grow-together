@@ -15,7 +15,12 @@ export type DiaryFileResponse = {
   imageUrl: string;
 };
 
+export type DiaryCreateRequest = DiaryRequest & { diaryDate: string };
+
+export type DiarySummary = { id: number; diaryDate: string };
+
 export type DiaryResponse = {
+  diaryDate: string | null;
   id: number;
   content?: string | null;
   todos: TodoResponse[];

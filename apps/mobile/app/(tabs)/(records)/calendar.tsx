@@ -33,7 +33,6 @@ import {
 export default function CalendarScreen() {
   const { status, client, epoch } = useAuth();
   const preview = status === 'preview';
-  const [knownIds] = useSessionValue<Record<string, number>>('diaryIds', {});
   const values = useSessionStore((state) => state.values);
   const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
   useEffect(() => setHydrated(true), []);
@@ -60,40 +59,42 @@ export default function CalendarScreen() {
   );
   const [selected, setSelected] = useSessionValue('calendarDate', initialDate);
   const [notice, setNotice] = useState('');
+  const monthKey = diaryDateKey(month).slice(0, 7);
   const {
     data: dates,
     isFetching: loadingDiaries,
     error: diaryError,
     refetch,
   } = useQuery({
-    queryKey: ['savedDiaryDates', 'preview'],
-    enabled: preview,
-    queryFn: savedDiaryDates,
+    queryKey: ['savedDiaryDates', preview ? 'preview' : epoch, monthKey],
+    enabled: preview || status === 'authenticated',
+    queryFn: async () =>
+      preview
+        ? savedDiaryDates()
+        : (await createDiaryApi(client).getMonth(monthKey)).map(
+            (entry) => entry.diaryDate,
+          ),
     retry: false,
   });
-  const savedDates = new Set(preview ? (dates ?? []) : Object.keys(knownIds));
+  const savedDates = new Set(dates ?? []);
   const summary = useQuery({
     queryKey: [
       'diarySummary',
       preview ? 'preview' : epoch,
       diaryDateKey(selected),
-      knownIds[diaryDateKey(selected)],
     ],
     enabled: savedDates.has(diaryDateKey(selected)),
     retry: false,
     queryFn: async () =>
       preview
         ? ((await readDiary(diaryDateKey(selected)))?.content ?? '')
-        : ((
-            await createDiaryApi(client).getDiary(
-              knownIds[diaryDateKey(selected)],
-            )
-          ).content ?? ''),
+        : ((await createDiaryApi(client).getByDate(diaryDateKey(selected)))
+            .content ?? ''),
   });
   const diaryNotice =
-    preview && diaryError instanceof Error
+    diaryError instanceof Error
       ? diaryError.message
-      : summary.isError
+      : savedDates.has(diaryDateKey(selected)) && summary.isError
         ? '일기 요약을 불러오지 못했어요.'
         : '';
   const hasDraft = Object.entries(values).some(
@@ -121,8 +122,8 @@ export default function CalendarScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (preview) void refetch();
-    }, [refetch, preview]),
+      void refetch();
+    }, [refetch]),
   );
   const days = calendarDays(month);
   const today = new Date();
@@ -137,10 +138,10 @@ export default function CalendarScreen() {
         : selectedHasDiary
           ? preview
             ? '이 기기에 저장된 미리보기 일기예요.'
-            : '이 세션에서 저장한 일기예요.'
+            : '서버에 저장된 일기예요.'
           : preview
             ? '저장된 미리보기 기록이 없어요. 오늘의 순간을 남겨보세요.'
-            : '날짜별 서버 기록 조회는 연결 준비 중이에요. 기록 유무를 확인할 수 없어요.';
+            : '저장된 일기가 없어요. 오늘의 순간을 남겨보세요.';
 
   const changeMonth = (offset: number) => {
     setMonth(
@@ -318,8 +319,8 @@ export default function CalendarScreen() {
           </Text>
           {!preview ? (
             <Text style={styles.selectionHint}>
-              이 세션에서 저장한 일기만 표시해요. 서버 일기의 날짜·전체 목록
-              조회는 아직 지원하지 않아요.
+              로그인한 계정의 서버 일기를 표시해요. 날짜가 없는 과거 기록은
+              표시되지 않아요.
             </Text>
           ) : null}
           {summary.data ? (
@@ -346,7 +347,7 @@ export default function CalendarScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => {
-                if (preview) void refetch();
+                void refetch();
                 if (selectedHasDiary) void summary.refetch();
               }}
               style={styles.retryButton}
@@ -370,10 +371,6 @@ export default function CalendarScreen() {
                 params: {
                   date: diaryDateKey(selected),
                   mode: selectedHasDiary ? 'view' : 'create',
-                  id:
-                    !preview && selectedHasDiary
-                      ? String(knownIds[diaryDateKey(selected)])
-                      : undefined,
                 },
               })
             }

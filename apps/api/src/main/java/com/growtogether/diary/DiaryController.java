@@ -15,6 +15,13 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import com.growtogether.diary.domain.dto.DiaryRequest;
 import com.growtogether.diary.domain.dto.DiaryResponse;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestParam;
+import com.growtogether.diary.domain.dto.DiaryCreateRequest;
+import com.growtogether.diary.domain.dto.DiarySummary;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,9 +33,21 @@ public class DiaryController {
 
     @PostMapping
     public ResponseEntity<DiaryResponse> createDiary(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DiaryRequest request) {
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DiaryCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(diaryService.create(Long.valueOf(jwt.getSubject()), request));
+    }
+
+    @GetMapping
+    public List<DiarySummary> getMonth(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(pattern = "uuuu-MM") YearMonth month) {
+        return diaryService.getMonth(Long.valueOf(jwt.getSubject()), month);
+    }
+
+    @GetMapping("/by-date")
+    public DiaryResponse getByDate(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return diaryService.getByDate(Long.valueOf(jwt.getSubject()), date);
     }
 
     @GetMapping("/{id}")

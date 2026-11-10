@@ -78,16 +78,25 @@ function DiaryEditor() {
     setCalendarDate(date);
     setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));
   }, [date, setCalendarDate, setCalendarMonth]);
-  const [knownIds, setKnownIds] = useSessionValue<Record<string, number>>(
-    'diaryIds',
-    {},
-  );
+  const dateLookup = useQuery({
+    queryKey: ['diaryByDate', epoch, dateKey],
+    enabled: status === 'authenticated' && !params.id,
+    retry: false,
+    queryFn: async () => {
+      try {
+        return await createDiaryApi(client).getByDate(dateKey);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+  });
   const id =
     params.id &&
     /^[1-9]\d*$/.test(params.id) &&
     Number.isSafeInteger(Number(params.id))
       ? Number(params.id)
-      : knownIds[dateKey];
+      : dateLookup.data?.id;
   const viewing = params.mode === 'view' || !!params.id || !!id;
   const prefix = `diary:${dateKey}:${viewing ? (id ?? 'preview') : 'new'}:`;
   const [step, setStep] = useSessionValue<'materials' | 'result'>(
@@ -121,6 +130,7 @@ function DiaryEditor() {
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [conflict, setConflict] = useState(false);
   const [notice, setNotice] = useState('');
   const [confirm, setConfirm] = useState<'regenerate' | 'delete' | null>(null);
   const [completion, setCompletion] = useState<'saved' | 'deleted' | null>(
@@ -272,7 +282,6 @@ function DiaryEditor() {
     setBusy(true);
     setNotice('');
     try {
-      let savedId = id;
       if (preview) {
         if (viewing) await updateDiary(dateKey, content);
         else
@@ -296,23 +305,23 @@ function DiaryEditor() {
           })),
         });
       } else {
-        const created = await api.createDiary({
+        await api.createDiary({
+          diaryDate: dateKey,
           content: content.trim(),
           todoIds: sourceIds,
           diaryFiles: [],
         });
-        savedId = created.id;
       }
       if (!stillActive()) return;
-      if (!preview && savedId)
-        setKnownIds((current) => ({ ...current, [dateKey]: savedId! }));
+
       setCompletion('saved');
       clearSessionValues(prefix);
       void queryClient.invalidateQueries({ queryKey: ['savedDiary'] });
       void queryClient.invalidateQueries({
-        queryKey: ['savedDiaryDates', 'preview'],
+        queryKey: ['savedDiaryDates'],
       });
       void queryClient.invalidateQueries({ queryKey: ['diarySummary'] });
+      void queryClient.invalidateQueries({ queryKey: ['diaryByDate'] });
     } catch (error) {
       if (!stillActive()) return;
       const unknown =
@@ -321,12 +330,16 @@ function DiaryEditor() {
         error instanceof ApiError &&
         (error.status === 0 || error.status >= 500);
       setUncertain(unknown);
+      const duplicate = error instanceof ApiError && error.status === 409;
+      setConflict(duplicate);
       setNotice(
-        unknown
-          ? '저장 여부를 확인하지 못했어요. 날짜별 서버 조회가 아직 없어 재시도하면 일기가 중복될 수 있어요.'
-          : error instanceof Error
-            ? error.message
-            : '저장하지 못했어요. 작성 내용은 유지돼요. 다시 시도해주세요.',
+        duplicate
+          ? '이미 일기가 있거나 다른 일기에 연결된 활동이에요. 입력 내용은 유지돼요. 기존 일기를 확인해주세요.'
+          : unknown
+            ? '저장 여부를 확인하지 못했어요. 입력 내용은 유지돼요. 기존 일기를 확인한 뒤 다시 시도해주세요.'
+            : error instanceof Error
+              ? error.message
+              : '저장하지 못했어요. 작성 내용은 유지돼요. 다시 시도해주세요.',
       );
     } finally {
       pending.current = false;
@@ -342,19 +355,16 @@ function DiaryEditor() {
       if (preview) await deleteDiary(dateKey);
       else await api.deleteDiary(id!);
       if (!stillActive()) return;
-      setKnownIds((current) => {
-        const next = { ...current };
-        delete next[dateKey];
-        return next;
-      });
+
       setCompletion('deleted');
       clearSessionValues(prefix);
       setConfirm(null);
       void queryClient.invalidateQueries({ queryKey: ['savedDiary'] });
       void queryClient.invalidateQueries({
-        queryKey: ['savedDiaryDates', 'preview'],
+        queryKey: ['savedDiaryDates'],
       });
       void queryClient.invalidateQueries({ queryKey: ['diarySummary'] });
+      void queryClient.invalidateQueries({ queryKey: ['diaryByDate'] });
     } catch (error) {
       if (stillActive())
         setNotice(
@@ -443,10 +453,7 @@ function DiaryEditor() {
             onPress={back}
           />
           <Text style={styles.meta}>
-            {viewing && !params.date && !knownIds[dateKey]
-              ? '날짜 정보 미지원'
-              : dateKey}{' '}
-            ·{' '}
+            {viewing && !params.date ? '날짜 정보 미지원' : dateKey} ·{' '}
             {viewing
               ? '저장된 일기'
               : step === 'materials'
@@ -461,11 +468,27 @@ function DiaryEditor() {
               ? '미리보기 · 이 기기에만 저장돼요. 과거 소유자 미확인 기록은 별도로 보존돼 있어요.'
               : '초안은 이 로그인 세션에서 유지돼요. 앱을 종료하면 저장하지 않은 내용은 사라져요.'}
           </Text>
-          {unavailable ? (
+          {!preview &&
+          !params.id &&
+          (dateLookup.isPending || dateLookup.isError) ? (
             <View style={styles.card}>
               <Text style={styles.body}>
-                날짜로 서버 일기를 찾는 기능은 연결 준비 중이에요. 일기 ID가
-                있는 링크로 조회할 수 있어요.
+                {dateLookup.isError
+                  ? '날짜의 일기를 확인하지 못했어요.'
+                  : '저장된 일기를 확인하고 있어요.'}
+              </Text>
+              {dateLookup.isError ? (
+                <ActionButton
+                  label="일기 다시 확인하기"
+                  onPress={() => void dateLookup.refetch()}
+                />
+              ) : null}
+            </View>
+          ) : unavailable ? (
+            <View style={styles.card}>
+              <Text style={styles.body}>
+                해당 날짜에 저장된 일기가 없어요. 일기 ID가 있는 링크로 조회할
+                수 있어요.
               </Text>
             </View>
           ) : viewing && !savedQuery.data ? (
@@ -690,6 +713,32 @@ function DiaryEditor() {
               ) : null}
             </>
           )}
+          {conflict || uncertain ? (
+            <ActionButton
+              label="기존 일기 확인"
+              onPress={async () => {
+                try {
+                  const existing = await api.getByDate(dateKey);
+                  if (stillActive())
+                    router.push({
+                      pathname: '/diary',
+                      params: {
+                        date: dateKey,
+                        mode: 'view',
+                        id: String(existing.id),
+                      },
+                    });
+                } catch (error) {
+                  if (stillActive())
+                    setNotice(
+                      error instanceof ApiError && error.status === 404
+                        ? '이 날짜의 일기는 아직 없어요. 작성 내용은 유지돼요.'
+                        : '기존 일기를 확인하지 못했어요. 다시 시도해주세요.',
+                    );
+                }
+              }}
+            />
+          ) : null}
           {notice ? (
             <Text accessibilityRole="alert" style={styles.error}>
               {notice}

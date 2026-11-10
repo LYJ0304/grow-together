@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.time.LocalDate;
+import com.growtogether.diary.domain.dto.DiaryCreateRequest;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,8 +49,8 @@ public class DiaryControllerTest {
 
     @Test
     void create_정상요청이면_201CREATED_반환() throws Exception {
-        var request = new DiaryRequest("안녕하세요.", List.of(), List.of());
-        var response = new DiaryResponse(1L, "안녕하세요", List.of(), List.of());
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "안녕하세요.", List.of(), List.of());
+        var response = new DiaryResponse(1L, null, "안녕하세요", List.of(), List.of());
 
         given(diaryService.create(userId, request)).willReturn(response);
 
@@ -68,7 +70,7 @@ public class DiaryControllerTest {
     @Test
     void get_정상요청이면_200OK_반환() throws Exception {
         Long id = 10L;
-        var response = new DiaryResponse(id, "안녕하세요.", List.of(), List.of());
+        var response = new DiaryResponse(id, null, "안녕하세요.", List.of(), List.of());
 
         given(diaryService.getDiary(userId, id)).willReturn(response);
 
@@ -87,7 +89,7 @@ public class DiaryControllerTest {
     void update_정상요청이면_200OK_반환() throws Exception {
         Long id = 10L;
         var request = new DiaryRequest("수정한 일기입니다.", List.of(), List.of());
-        var response = new DiaryResponse(id, request.content(), List.of(), List.of());
+        var response = new DiaryResponse(id, null, request.content(), List.of(), List.of());
 
         given(diaryService.updateDiary(userId, id, request)).willReturn(response);
 

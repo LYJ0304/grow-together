@@ -296,6 +296,7 @@ paths:
       operationId: createDiary
       summary: Create a diary for the authenticated user
       description: >-
+        Requires an explicit local diaryDate and allows one diary per user/date.
         Links existing todos owned by the authenticated user and stores image URLs.
         Duplicate todo IDs are linked once. Todos owned by another user or without
         a known owner are treated as missing, even if not linked to a diary.
@@ -305,14 +306,55 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/DiaryRequest' }
+            schema: { $ref: '#/components/schemas/DiaryCreateRequest' }
       responses:
         '201': { $ref: '#/components/responses/Diary' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
-        '409': { $ref: '#/components/responses/TodoAlreadyLinked' }
+        '409':
+          description: A diary already exists for this user/date, or a todo is linked elsewhere
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      operationId: getDiaryMonth
+      summary: List dated diary IDs for the authenticated user and month
+      description: Date-ascending minimal list. Undated legacy records are excluded. Empty months return an empty array.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2026-11' }
+      responses:
+        '200':
+          description: Diary dates and IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DiarySummary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/diary/by-date:
+    get:
+      operationId: getDiaryByDate
+      summary: Get a diary by the authenticated user's local diary date
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Diary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/DiaryOrTodoNotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/diary/{id}:
     parameters:
@@ -332,7 +374,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
     put:
       operationId: updateDiary
-      summary: Replace diary content, todo links, and image URLs
+      summary: Replace diary content, todo links, and image URLs, preserving diaryDate
       description: >-
         Only the owner can update a diary. Both lists are required; an empty list
         clears the corresponding links or images. Removed todos are preserved.
@@ -482,6 +524,19 @@ components:
         fileSize: { type: integer, format: int64 }
         status: { type: string, enum: [PENDING, COMPLETED, FAILED] }
         createdAt: { type: string, format: date-time }
+    DiaryCreateRequest:
+      allOf:
+        - { $ref: '#/components/schemas/DiaryRequest' }
+        - type: object
+          required: [diaryDate]
+          properties:
+            diaryDate: { type: string, format: date, description: Explicit user-selected local date, not inferred from todos or server time }
+    DiarySummary:
+      type: object
+      required: [id, diaryDate]
+      properties:
+        id: { type: integer, format: int64 }
+        diaryDate: { type: string, format: date }
     DiaryRequest:
       type: object
       required: [todoIds, diaryFiles]
@@ -500,9 +555,10 @@ components:
         imageUrl: { type: string, minLength: 1, maxLength: 2048, pattern: '\S' }
     DiaryResponse:
       type: object
-      required: [id, todos, diaryFiles]
+      required: [id, diaryDate, todos, diaryFiles]
       properties:
         id: { type: integer, format: int64 }
+        diaryDate: { type: [string, 'null'], format: date, description: Null for preserved undated legacy records }
         content: { type: [string, 'null'], maxLength: 1000 }
         todos:
           type: array

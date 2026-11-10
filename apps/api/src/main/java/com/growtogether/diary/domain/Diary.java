@@ -10,6 +10,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -19,7 +23,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Entity
-@Table(name = "diary")
+@Table(name = "diary", uniqueConstraints = @UniqueConstraint(name = "uq_diary_user_date", columnNames = {"user_id", "diary_date"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Diary {
@@ -30,6 +34,10 @@ public class Diary {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
+    @Column(name = "diary_date")
+    private LocalDate diaryDate;
 
     @Size(max = 1000)
     @Column(length = 1000)
@@ -48,6 +56,11 @@ public class Diary {
     public Diary(Long userId, String content) {
         this.userId = userId;
         this.content = content;
+    }
+
+    public Diary(Long userId, LocalDate diaryDate, String content) {
+        this(userId, content);
+        this.diaryDate = diaryDate;
     }
 
     public void updateContent(String content) {

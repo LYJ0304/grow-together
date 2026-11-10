@@ -44,7 +44,8 @@
     "test:chat:polish": "node tests/chat-polish.mjs",
     "test:ux": "node tests/diary-navigation.mjs && node tests/activity-journey.mjs && node tests/diary-result.mjs && node tests/session-isolation.mjs && node tests/diary-limit.mjs && node tests/diary-panels.mjs && node tests/header-entry.mjs",
     "test:native-ux": "node tests/native-ux.mjs && UX_PHASE=navigation node tests/native-ux.mjs && UX_PHASE=sheet node tests/native-ux.mjs && UX_PHASE=session node tests/native-ux.mjs",
-    "test:visual-polish": "node tests/visual-polish.mjs"
+    "test:visual-polish": "node tests/visual-polish.mjs",
+    "test:diary:dates": "node tests/diary-dates-ui.mjs && node tests/diary-date-conflict.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
