@@ -1,3 +1,4 @@
+import { MotionPressable } from './motion-pressable';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
@@ -9,24 +10,20 @@ export function ActionButton({
   onPress,
   secondary = false,
   disabled = false,
+  motionEnabled = false,
 }: {
   label: string;
   onPress: () => void;
   secondary?: boolean;
   disabled?: boolean;
+  motionEnabled?: boolean;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <ButtonShell
+      motionEnabled={motionEnabled}
       disabled={disabled}
-      accessibilityState={{ disabled }}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        secondary && styles.secondary,
-        disabled && { opacity: 0.55 },
-        pressed && !disabled && { opacity: 0.72 },
-      ]}
+      secondary={secondary}
     >
       <Text
         style={[
@@ -39,6 +36,46 @@ export function ActionButton({
       >
         {label}
       </Text>
+    </ButtonShell>
+  );
+}
+function ButtonShell({
+  motionEnabled,
+  disabled,
+  secondary,
+  onPress,
+  children,
+}: {
+  motionEnabled: boolean;
+  disabled: boolean;
+  secondary: boolean;
+  onPress: () => void;
+  children: React.ReactNode;
+}) {
+  const style = [
+    styles.button,
+    secondary && styles.secondary,
+    disabled && { opacity: 0.55 },
+  ];
+  const props = {
+    accessibilityRole: 'button' as const,
+    disabled,
+    accessibilityState: { disabled },
+    onPress,
+  };
+  return motionEnabled ? (
+    <MotionPressable {...props} style={style}>
+      {children}
+    </MotionPressable>
+  ) : (
+    <Pressable
+      {...props}
+      style={({ pressed }) => [
+        style,
+        pressed && !disabled && { opacity: 0.72 },
+      ]}
+    >
+      {children}
     </Pressable>
   );
 }

@@ -1,6 +1,15 @@
+import Animated, {
+  interpolateColor,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { motion, useReduceMotion } from '../theme/motion';
+import { MotionPressable } from './motion-pressable';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useChatDraft } from './auth-provider';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
@@ -17,6 +26,33 @@ export function HomeQuestionEntry() {
   const { draft, setDraft } = useChatDraft();
   const input = useRef<TextInput>(null);
   const [notice, setNotice] = useState('');
+  const [focused, setFocused] = useState(false);
+  const reduced = useReduceMotion();
+  const focus = useSharedValue(0);
+  const active = useSharedValue(Number(!!draft.trim()));
+  useEffect(() => {
+    const config = {
+      duration: reduced ? 0 : motion.state,
+      easing: motion.easeOut,
+      reduceMotion: ReduceMotion.System,
+    };
+    focus.value = withTiming(Number(focused), config);
+    active.value = withTiming(Number(!!draft.trim()), config);
+  }, [focused, draft, reduced, focus, active]);
+  const surfaceStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      focus.value,
+      [0, 1],
+      [colors.controlBorder, colors.primary],
+    ),
+  }));
+  const sendStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      active.value,
+      [0, 1],
+      [colors.disabled, colors.primary],
+    ),
+  }));
   const openChat = () =>
     router.navigate({ pathname: '/chat', params: { compose: 'true' } });
   return (
@@ -24,8 +60,10 @@ export function HomeQuestionEntry() {
       <Text accessibilityRole="header" style={styles.title}>
         무엇이 궁금하세요?
       </Text>
-      <View style={styles.surface}>
+      <Animated.View style={[styles.surface, surfaceStyle]}>
         <TextInput
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           selectionColor={colors.primary}
           ref={input}
           accessibilityLabel="홈 질문 입력"
@@ -39,25 +77,21 @@ export function HomeQuestionEntry() {
           multiline
           style={styles.input}
         />
-        <Pressable
+        <MotionPressable
           accessibilityRole="button"
           accessibilityLabel="질문 이어서 보내기"
           accessibilityHint="질문 초안을 유지하고 육아 도우미로 이동해요"
           accessibilityState={{ disabled: !draft.trim() }}
           disabled={!draft.trim()}
           onPress={openChat}
-          style={({ pressed }) => [
-            styles.send,
-            !draft.trim() && styles.disabled,
-            pressed && styles.pressed,
-          ]}
+          style={[styles.send, sendStyle]}
         >
           <Text style={styles.arrow}>↑</Text>
-        </Pressable>
-      </View>
+        </MotionPressable>
+      </Animated.View>
       <View style={styles.chips}>
         {suggestions.map(([label, question]) => (
-          <Pressable
+          <MotionPressable
             key={label}
             accessibilityRole="button"
             accessibilityLabel={label}
@@ -70,10 +104,10 @@ export function HomeQuestionEntry() {
                 openChat();
               }
             }}
-            style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+            style={styles.chip}
           >
             <Text style={styles.chipText}>{label}</Text>
-          </Pressable>
+          </MotionPressable>
         ))}
       </View>
       <Text style={styles.hint}>
@@ -90,23 +124,23 @@ export function HomeQuestionEntry() {
 const styles = StyleSheet.create({
   section: {
     gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 24,
+    padding: spacing.xl,
+    borderRadius: 26,
     backgroundColor: colors.tint,
   },
   title: {
     ...typography.section,
-    fontSize: 24,
-    lineHeight: 34,
+    fontSize: 22,
+    lineHeight: 30,
     color: colors.text,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   surface: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomWidth: 2,
     borderColor: colors.controlBorder,
     padding: spacing.md,
     gap: spacing.sm,
@@ -116,7 +150,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     flex: 1,
     minWidth: 0,
-    minHeight: 88,
+    minHeight: 72,
     maxHeight: 140,
     color: colors.text,
     textAlignVertical: 'top',
@@ -130,13 +164,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  arrow: { fontSize: 24, color: colors.surface },
-  disabled: { backgroundColor: colors.disabled },
-  pressed: { opacity: 0.7 },
+  arrow: { fontSize: 22, color: colors.surface },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     minHeight: 44,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 14,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: colors.surface,

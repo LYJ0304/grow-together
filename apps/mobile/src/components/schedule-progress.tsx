@@ -14,7 +14,8 @@ export function ScheduleProgress({ progress }: { progress: number }) {
   const value = useSharedValue(progress);
   useEffect(() => {
     value.value = withTiming(progress, {
-      duration: reduced ? 0 : motion.standard,
+      duration: reduced ? 0 : motion.progress,
+      easing: motion.easeOut,
       reduceMotion: ReduceMotion.System,
     });
   }, [progress, reduced, value]);
@@ -41,10 +42,10 @@ export function ScheduleProgress({ progress }: { progress: number }) {
 }
 const styles = StyleSheet.create({
   track: {
-    height: 4,
+    height: 5,
     backgroundColor: colors.border,
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  fill: { height: 4, borderRadius: 2, backgroundColor: colors.primary },
+  fill: { height: 5, borderRadius: 3, backgroundColor: colors.primary },
 });
