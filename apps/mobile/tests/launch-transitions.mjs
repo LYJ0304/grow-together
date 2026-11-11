@@ -328,41 +328,49 @@ try {
     const main = await evaluate(`(() => {
       const character = document.querySelector('[data-testid="routine-character"]');
       const bounds = character?.getBoundingClientRect();
-      const home = document.querySelector('[aria-label="홈"]');
+      const home = document.querySelector('[aria-label="오늘"]');
       return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
-    assert(main.text.includes('+378일'));
+    assert(main.text.includes('무엇이 궁금하세요?'));
+    assert(!main.text.includes('+378일'), 'Preview must not invent child data');
     assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
-    assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
-    assert(main.text.includes('오늘의 일정') && main.text.includes('AI 일기'));
+    assert(main.text.includes('오늘의 일정'));
+    assert(
+      !main.text.includes('AI 일기'),
+      'Removed dashboard cards must stay absent',
+    );
     assert.equal(
       main.character,
       null,
       'Unauthenticated preview must not display authenticated routine data',
     );
     assert.equal(main.homeSelected, 'true');
-    assert(main.navHeight <= 56, 'Navigation row should stay compact');
     assert(
-      main.homeBottom <= main.height - 8,
-      'Navigation must keep a small gap from the screen edge',
+      main.navHeight >= 56 && main.navHeight <= 100,
+      'Navigation must retain accessible touch height',
+    );
+    assert(
+      main.homeBottom <= main.height,
+      'Navigation must remain inside the safe viewport',
     );
     console.log(
       `PASS ${label} opens authentication, then UI preview with loaded assets and safe navigation`,
     );
-    await evaluate(`document.querySelector('[aria-label="캘린더"]').click()`);
+    await evaluate(`document.querySelector('[aria-label="기록"]').click()`);
     await waitFor(
-      'location.pathname === "/calendar" && [...document.querySelectorAll("[aria-pressed=\\"true\\"]")].some(node => /년 .*월 .*일$/.test(node.getAttribute("aria-label") ?? ""))',
+      'location.pathname === "/calendar" && [...document.querySelectorAll("[aria-pressed=\\"true\\"]")].some(node => /년 .*월 .*일(?:,.*)?$/.test(node.getAttribute("aria-label") ?? ""))',
     );
     await waitFor(`
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
         .every(node => node.complete && node.naturalWidth > 0)
     `);
     const calendar = await evaluate(`(() => {
-      const dateButtons = [...document.querySelectorAll('[role="button"]')].filter(node => /년 .*월 .*일$/.test(node.getAttribute('aria-label') ?? ''));
+      const dateButtons = [...document.querySelectorAll('[role="button"]')].filter(node => /년 .*월 .*일(?:,.*)?$/.test(node.getAttribute('aria-label') ?? ''));
       const selected = dateButtons.find(node => node.getAttribute('aria-pressed') === 'true');
-      const tab = document.querySelector('[aria-label="캘린더"]');
+      const tab = document.querySelector('[aria-label="기록"]');
       const today = new Date();
-      const todayLabel = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
+      const todayPrefix = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
+      const todayLabel = dateButtons.find(node => node.getAttribute('aria-label')?.split(',')[0] === todayPrefix)?.getAttribute('aria-label');
       const monthPrefix = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ';
       const anotherDate = dateButtons.find(node => node.getAttribute('aria-label') !== todayLabel && node.getAttribute('aria-label')?.startsWith(monthPrefix));
       return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight, text: document.body.innerText };
@@ -374,9 +382,9 @@ try {
     assert.equal(calendar.selected, calendar.todayLabel);
     assert(calendar.anotherDate);
     assert.equal(calendar.tabSelected, 'true');
-    assert(calendar.navHeight <= 56);
-    assert(calendar.tabBottom <= calendar.height - 8);
-    assert(calendar.text.includes('일기 생성하기'));
+    assert(calendar.navHeight >= 56 && calendar.navHeight <= 100);
+    assert(calendar.tabBottom <= calendar.height);
+    assert(calendar.text.includes('일기 작성하기'));
     await evaluate(
       `document.querySelector('[aria-label="${calendar.anotherDate}"]').click()`,
     );
@@ -422,11 +430,11 @@ try {
       ),
       'true',
     );
-    await evaluate(`document.querySelector('[aria-label="홈"]').click()`);
+    await evaluate(`document.querySelector('[aria-label="오늘"]').click()`);
     await waitFor('location.pathname === "/main"');
     assert.equal(
       await evaluate(
-        `document.querySelector('[aria-label="홈"]').getAttribute('aria-selected')`,
+        `document.querySelector('[aria-label="오늘"]').getAttribute('aria-selected')`,
       ),
       'true',
     );

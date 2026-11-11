@@ -1,11 +1,12 @@
+import { HomeScheduleRow } from '../../src/components/home-schedule-row';
+import { MotionPressable } from '../../src/components/motion-pressable';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { HomeQuestionEntry } from '../../src/components/home-question-entry';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,7 +26,6 @@ import { diaryDateKey } from '../../src/lib/diary-storage';
 import type { TodoResponse } from '../../src/lib/features/todo/types';
 import { colors } from '../../src/theme/colors';
 import { successFeedback } from '../../src/lib/haptics';
-import { ScheduleCheck } from '../../src/components/schedule-check';
 import { ScheduleProgress } from '../../src/components/schedule-progress';
 
 const localDateKey = diaryDateKey;
@@ -79,6 +79,10 @@ export default function MainScreen() {
       a.scheduledTime.localeCompare(b.scheduledTime) ||
       a.id - b.id,
   );
+  const [hasShownSchedules, setHasShownSchedules] = useState(false);
+  useEffect(() => {
+    if (todos.data?.length) setHasShownSchedules(true);
+  }, [todos.data]);
   const completed = schedules.filter((todo) => todo.completed).length;
   const progress = schedules.length
     ? Math.round((completed / schedules.length) * 100)
@@ -132,6 +136,7 @@ export default function MainScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
       <AppHeader
+        polished
         title="안녕하세요"
         subtitle={new Date(`${today}T12:00:00`).toLocaleDateString('ko-KR', {
           month: 'long',
@@ -157,6 +162,7 @@ export default function MainScreen() {
                   아이 정보를 불러오지 못했어요.
                 </Text>
                 <ActionButton
+                  motionEnabled
                   label="아이 정보 다시 시도"
                   secondary
                   onPress={() => void profile.refetch()}
@@ -170,13 +176,13 @@ export default function MainScreen() {
             ) : (
               <View style={styles.registration}>
                 <Text style={styles.meta}>아이와 함께하는 첫 기록</Text>
-                <Pressable
+                <MotionPressable
                   accessibilityRole="button"
                   onPress={() => router.push('/children')}
                   style={styles.link}
                 >
                   <Text style={styles.linkText}>아이 정보 등록하기</Text>
-                </Pressable>
+                </MotionPressable>
               </View>
             )}
           </View>
@@ -186,13 +192,13 @@ export default function MainScreen() {
               <Text accessibilityRole="header" style={styles.title}>
                 오늘의 일정
               </Text>
-              <Pressable
+              <MotionPressable
                 accessibilityRole="button"
                 onPress={viewAll}
                 style={styles.link}
               >
                 <Text style={styles.linkText}>전체 일정 보기</Text>
-              </Pressable>
+              </MotionPressable>
             </View>
             {status === 'preview' ? (
               <Text style={styles.body}>
@@ -208,6 +214,7 @@ export default function MainScreen() {
                   일정을 불러오지 못했어요.
                 </Text>
                 <ActionButton
+                  motionEnabled
                   label="일정 다시 불러오기"
                   secondary
                   onPress={() => void todos.refetch()}
@@ -223,6 +230,7 @@ export default function MainScreen() {
                   <View style={styles.empty}>
                     <Text style={styles.body}>등록된 일정이 없어요.</Text>
                     <ActionButton
+                      motionEnabled
                       label="일정 만들기"
                       secondary
                       onPress={() =>
@@ -240,48 +248,16 @@ export default function MainScreen() {
                         오늘 일정을 모두 마쳤어요.
                       </Text>
                     ) : null}
-                    {schedules.slice(0, 3).map((todo) => (
-                      <View
+                    {schedules.slice(0, 3).map((todo, index) => (
+                      <HomeScheduleRow
                         key={todo.id}
-                        testID="home-schedule-row"
-                        style={styles.row}
-                      >
-                        <Pressable
-                          accessibilityRole="checkbox"
-                          accessibilityLabel={`${todo.planName} 완료${todo.completed ? ' 취소' : ''}`}
-                          accessibilityState={{
-                            checked: todo.completed,
-                            disabled: pendingId !== null,
-                            busy: pendingId === todo.id,
-                          }}
-                          disabled={pendingId !== null}
-                          onPress={() => void toggle(todo)}
-                          style={({ pressed }) => [
-                            styles.checkTarget,
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          <ScheduleCheck completed={todo.completed} />
-                        </Pressable>
-                        <View style={styles.rowCopy}>
-                          <Text
-                            style={[
-                              styles.body,
-                              todo.completed && styles.completed,
-                            ]}
-                          >
-                            {todo.planName}
-                          </Text>
-                          <Text style={styles.meta}>
-                            {todo.scheduledTime.slice(0, 5)} ·{' '}
-                            {todo.completed
-                              ? '완료'
-                              : todo.scheduledTime < now
-                                ? '시간이 지난 미완료 일정'
-                                : '예정'}
-                          </Text>
-                        </View>
-                      </View>
+                        todo={todo}
+                        index={index}
+                        entrance={!hasShownSchedules}
+                        now={now}
+                        pendingId={pendingId}
+                        onToggle={() => void toggle(todo)}
+                      />
                     ))}
                   </>
                 )}
@@ -293,6 +269,7 @@ export default function MainScreen() {
                   {completionError}
                 </Text>
                 <ActionButton
+                  motionEnabled
                   label="일정 다시 불러오기"
                   secondary
                   onPress={() => {
@@ -325,7 +302,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 8,
-    gap: 28,
+    gap: 26,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
@@ -349,24 +326,7 @@ const styles = StyleSheet.create({
   },
   link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   linkText: { ...typography.label, fontWeight: '600', color: colors.primary },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  rowCopy: { flex: 1, minWidth: 0, gap: 2 },
-  checkTarget: {
-    minWidth: 44,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completed: { textDecorationLine: 'line-through', color: colors.muted },
-  pressed: { opacity: 0.7 },
-  empty: { paddingVertical: 16, gap: 12 },
+  empty: { paddingVertical: 12, gap: 14 },
   loading: { minHeight: 232 },
   error: { ...typography.caption, color: colors.primary, marginBottom: 8 },
 });

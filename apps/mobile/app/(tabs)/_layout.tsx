@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Image } from 'expo-image';
+import { TabIcon } from '../../src/components/tab-icon';
 import { useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { TabButton } from '../../src/components/tab-button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../src/theme/colors';
@@ -92,23 +92,7 @@ export default function TabLayout() {
               title: tab.title,
               tabBarAccessibilityLabel: tab.title,
               tabBarIcon: ({ color, focused }) => (
-                <View
-                  style={{
-                    width: 48,
-                    height: 30,
-                    borderRadius: 15,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: focused ? colors.tint : 'transparent',
-                  }}
-                >
-                  <Image
-                    source={tab.icon}
-                    tintColor={color}
-                    style={{ width: 24, height: 24 }}
-                    accessible={false}
-                  />
-                </View>
+                <TabIcon source={tab.icon} color={color} focused={focused} />
               ),
             }}
           />
