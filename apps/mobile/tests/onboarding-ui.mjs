@@ -35,6 +35,10 @@ try {
     timeout: 120000,
   });
   await page
+    .getByRole('dialog', { name: '우리 아이를 등록해주세요', exact: true })
+    .waitFor();
+  await click('아이 정보 등록하기');
+  await page
     .getByRole('heading', { name: '아이를 소개해 주세요', exact: true })
     .waitFor();
   assert.equal(await page.getByRole('tablist').count(), 0);

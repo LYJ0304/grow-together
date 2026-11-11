@@ -50,7 +50,8 @@
     "test:children:onboarding:ui": "node tests/onboarding-ui.mjs && node tests/onboarding-edge-ui.mjs",
     "test:schedule:ui": "node tests/schedule-ui.mjs",
     "test:colors": "node tests/brand-colors.mjs",
-    "test:main:motion": "node tests/main-motion.mjs"
+    "test:main:motion": "node tests/main-motion.mjs",
+    "test:children:registration:ui": "node tests/child-registration-ui.mjs && node tests/child-registration-errors-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

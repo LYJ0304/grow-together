@@ -63,7 +63,7 @@ try {
   });
   await legacy.page
     .getByRole('alert')
-    .filter({ hasText: '아이 정보를 확인하지 못했어요.' })
+    .filter({ hasText: '아이 정보를 불러오지 못했어요.' })
     .waitFor();
   assert.equal(
     await legacy.page
@@ -72,7 +72,11 @@ try {
     0,
   );
   failure = false;
-  await legacy.click('아이 정보 다시 확인');
+  await legacy.click('아이 정보 다시 시도');
+  await legacy.page
+    .getByRole('dialog', { name: '우리 아이를 등록해주세요' })
+    .waitFor();
+  await legacy.click('아이 정보 등록하기');
   await intro(legacy.page);
   await legacy.page.getByRole('radio', { name: '네', exact: true }).click();
   await legacy.page
@@ -129,6 +133,7 @@ try {
     waitUntil: 'commit',
     timeout: 120000,
   });
+  await duplicate.click('아이 정보 등록하기');
   await intro(duplicate.page);
   await summary(duplicate.click);
   await duplicate.click('같이 키우기 시작하기');
@@ -194,6 +199,7 @@ try {
     waitUntil: 'commit',
     timeout: 120000,
   });
+  await logout.click('아이 정보 등록하기');
   await intro(logout.page, '秘密の下書き');
   await logout.page.waitForFunction(() =>
     Object.keys(sessionStorage).some((k) =>

@@ -178,7 +178,11 @@ export default function MainScreen() {
                 <Text style={styles.meta}>아이와 함께하는 첫 기록</Text>
                 <MotionPressable
                   accessibilityRole="button"
-                  onPress={() => router.push('/children')}
+                  onPress={() =>
+                    router.push(
+                      status === 'authenticated' ? '/onboarding' : '/children',
+                    )
+                  }
                   style={styles.link}
                 >
                   <Text style={styles.linkText}>아이 정보 등록하기</Text>
