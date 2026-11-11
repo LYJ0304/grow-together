@@ -1,10 +1,35 @@
 import { createClient } from '../../api/client';
 import type { AuthSession } from '../auth';
-import type { CreateTodoResponse, TodoRequest, TodoResponse } from './types';
+import type {
+  CreateTodoResponse,
+  TodoRequest,
+  TodoResponse,
+  SchedulePreview,
+  ScheduleRequest,
+  ScheduleCandidate,
+} from './types';
 
 export function createTodoApi(session: Pick<AuthSession, 'request'>) {
   const client = createClient(session.request.bind(session));
   return {
+    generateSchedule(
+      input: ScheduleRequest,
+      signal?: AbortSignal,
+    ): Promise<SchedulePreview> {
+      return client.post<SchedulePreview>('/api/v1/todos/generate', input, {
+        timeoutMs: 45000,
+        signal,
+      });
+    },
+    saveSchedule(
+      date: string,
+      candidates: ScheduleCandidate[],
+    ): Promise<TodoResponse[]> {
+      return client.post<TodoResponse[]>('/api/v1/todos/batch', {
+        date,
+        candidates,
+      });
+    },
     async createTodo(input: TodoRequest): Promise<CreateTodoResponse> {
       return client.post<CreateTodoResponse>('/api/v1/todos', input);
     },

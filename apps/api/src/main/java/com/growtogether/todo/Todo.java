@@ -52,6 +52,11 @@ public class Todo {
     @Column(name = "scheduled_time", nullable = false)
     private LocalTime scheduledTime;
 
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    public void setDurationMinutes(Integer value) { durationMinutes = value; }
+
     @Column(nullable = false)
     private boolean completed;
 

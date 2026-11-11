@@ -1,6 +1,6 @@
 import { env } from '../../../config/env';
 import { ApiError, messages } from '../../api/errors';
-import { http } from '../../api/http';
+import { http, type HttpRequestInit } from '../../api/http';
 import { authApi } from './api';
 import { parseTokens, type Tokens, type TokenStorage } from './tokens';
 
@@ -216,7 +216,7 @@ export class AuthSession {
     return promise;
   }
 
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  async request<T>(path: string, init: HttpRequestInit = {}): Promise<T> {
     if (!path.startsWith('/api/') || path.startsWith('/api/v1/auth/'))
       throw new Error('인증 요청은 전용 메서드를 사용해 주세요.');
     const epoch = this.epoch;

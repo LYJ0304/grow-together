@@ -4,4 +4,6 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.0 /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY app ./app
-CMD ["uv", "run", "--no-sync", "python", "-m", "app.main"]
+EXPOSE 8000
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/openapi.json', timeout=3)"]
+CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

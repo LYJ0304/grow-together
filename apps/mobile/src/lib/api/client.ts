@@ -1,4 +1,4 @@
-import { http } from './http';
+import { http, type HttpRequestInit } from './http';
 
 export type HealthResponse = { status: string; service: string };
 export const getHealth = () => client.get<HealthResponse>('/api/health');
@@ -14,14 +14,18 @@ function mergeHeaders(input?: HeadersInit) {
 
 export function createClient(request: typeof http = http) {
   return {
-    get<T = unknown>(endpoint: string, options?: RequestInit) {
+    get<T = unknown>(endpoint: string, options?: HttpRequestInit) {
       return request<T>(endpoint, {
         method: 'GET',
         ...options,
         headers: mergeHeaders(options?.headers),
       });
     },
-    post<T = unknown>(endpoint: string, body: unknown, options?: RequestInit) {
+    post<T = unknown>(
+      endpoint: string,
+      body: unknown,
+      options?: HttpRequestInit,
+    ) {
       return request<T>(endpoint, {
         method: 'POST',
         body: JSON.stringify(body),
@@ -29,7 +33,11 @@ export function createClient(request: typeof http = http) {
         headers: mergeHeaders(options?.headers),
       });
     },
-    put<T = unknown>(endpoint: string, body: unknown, options?: RequestInit) {
+    put<T = unknown>(
+      endpoint: string,
+      body: unknown,
+      options?: HttpRequestInit,
+    ) {
       return request<T>(endpoint, {
         method: 'PUT',
         body: JSON.stringify(body),
@@ -37,7 +45,11 @@ export function createClient(request: typeof http = http) {
         headers: mergeHeaders(options?.headers),
       });
     },
-    patch<T = unknown>(endpoint: string, body: unknown, options?: RequestInit) {
+    patch<T = unknown>(
+      endpoint: string,
+      body: unknown,
+      options?: HttpRequestInit,
+    ) {
       return request<T>(endpoint, {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -45,7 +57,7 @@ export function createClient(request: typeof http = http) {
         headers: mergeHeaders(options?.headers),
       });
     },
-    delete<T = unknown>(endpoint: string, options?: RequestInit) {
+    delete<T = unknown>(endpoint: string, options?: HttpRequestInit) {
       return request<T>(endpoint, {
         method: 'DELETE',
         ...options,

@@ -23,7 +23,12 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-type PlanInput = { title: string; time: string; description: string };
+type PlanInput = {
+  title: string;
+  time: string;
+  description: string;
+  durationMinutes?: number;
+};
 
 export function AddPlanModal({
   date,
@@ -41,6 +46,9 @@ export function AddPlanModal({
   const [description, setDescription] = useState(
     initialValues?.description ?? '',
   );
+  const initialDuration =
+    initialValues?.durationMinutes?.toString() ?? (initialValues ? '' : '30');
+  const [duration, setDuration] = useState(initialDuration);
   const [error, setError] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const reduced = useReduceMotion();
@@ -48,6 +56,7 @@ export function AddPlanModal({
   const keyboard = useChatKeyboard();
   const titleInput = useRef<TextInput>(null);
   const dirty =
+    duration !== initialDuration ||
     title !== (initialValues?.title ?? '') ||
     time !== (initialValues?.time ?? '') ||
     description !== (initialValues?.description ?? '');
@@ -74,6 +83,18 @@ export function AddPlanModal({
       setError('계획명은 80자, 메모는 255자 이내로 입력해 주세요.');
       return;
     }
+    const minutes = duration.trim() ? Number(duration) : undefined;
+    if (
+      minutes !== undefined &&
+      (!/^\d+$/.test(duration) ||
+        !Number.isInteger(minutes) ||
+        minutes < 1 ||
+        minutes > 1440 ||
+        Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) + minutes > 1440)
+    ) {
+      setError('소요 시간은 1~1440분이며 같은 날짜 안에 끝나야 해요.');
+      return;
+    }
     submitting.current = true;
     setPending(true);
     setError('');
@@ -82,6 +103,7 @@ export function AddPlanModal({
         title: title.trim(),
         time: time.trim(),
         description: description.trim(),
+        durationMinutes: minutes,
       });
       successFeedback();
     } catch (error) {
@@ -192,6 +214,16 @@ export function AddPlanModal({
               <Text style={styles.hint}>
                 24시간 형식으로 입력해 주세요. 예: 14:30
               </Text>
+              <Text style={styles.label}>소요 시간 (분 · AI 추천 시 필요)</Text>
+              <TextInput
+                accessibilityLabel="계획 소요 시간"
+                value={duration}
+                onChangeText={setDuration}
+                editable={!pending}
+                keyboardType="number-pad"
+                maxLength={4}
+                style={styles.input}
+              />
               <Text style={styles.label}>메모 (선택)</Text>
               <TextInput
                 selectionColor={colors.primary}

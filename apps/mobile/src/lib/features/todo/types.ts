@@ -7,6 +7,7 @@ export type TodoRequest = {
   content?: string | null;
   scheduledDate: string;
   scheduledTime: string;
+  durationMinutes?: number | null;
 };
 
 export type TodoResponse = {
@@ -16,4 +17,27 @@ export type TodoResponse = {
   content?: string | null;
   scheduledDate: string;
   scheduledTime: string;
+  durationMinutes?: number | null;
+};
+
+export type ScheduleCandidate = {
+  planName: string;
+  content?: string | null;
+  scheduledTime: string;
+  durationMinutes: number;
+};
+export type SchedulePreview = {
+  date: string;
+  candidates: ScheduleCandidate[];
+  unscheduled: {
+    planName: string;
+    content?: string | null;
+    durationMinutes: number;
+  }[];
+};
+export type ScheduleRequest = {
+  date: string;
+  instructions?: string;
+  availableWindows: { start: string; end: string }[];
+  maxCandidates?: number;
 };

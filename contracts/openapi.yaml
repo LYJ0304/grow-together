@@ -181,6 +181,65 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/todos/generate:
+    post:
+      operationId: generateSchedule
+      summary: Generate a preview without saving todos
+      description: >-
+        Reads only the authenticated user's profile and existing schedules. Uses the current
+        worker /internal/v1/schedule/generate contract. No transaction is held during generation.
+        Local calendar date and explicit available windows are required. Missing/blank instructions
+        use a general request for manageable shared activities. Unknown existing durations return
+        409; edit those todos first. Out-of-range child ages are omitted, never clamped.
+        Generated candidates plus unscheduled activities respect the stored daily activity budget.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleGenerateRequest' }
+      responses:
+        '200':
+          description: Preview only; unscheduled activities cannot be confirmed for storage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchedulePreview' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ScheduleConflict' }
+        '502': { $ref: '#/components/responses/ScheduleUpstreamError' }
+        '503': { $ref: '#/components/responses/ScheduleUnavailable' }
+        '504': { $ref: '#/components/responses/ScheduleTimeout' }
+  /api/v1/todos/batch:
+    post:
+      operationId: confirmSchedule
+      summary: Atomically append confirmed schedule candidates
+      description: >-
+        Locks the owner row shared with Todo create/update/delete, rechecks current schedules
+        and the current profile activity budget, and appends all candidates in one transaction.
+        Never overwrites existing todos. Unknown existing duration, overlapping candidates,
+        midnight overflow or changed budget return 409 with no writes. No automatic retries or
+        exactly-once guarantee: after an uncertain response, inspect GET todos for this date.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleBatchRequest' }
+      responses:
+        '201':
+          description: All saved todos in time order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TodoResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Account no longer exists
+        '409': { $ref: '#/components/responses/ScheduleConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/todos:
     post:
       operationId: createTodo
@@ -204,6 +263,8 @@ paths:
                   message: { type: string, example: Todo created Successful }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Account no longer exists
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '500': { $ref: '#/components/responses/InternalError' }
     get:
@@ -660,10 +721,67 @@ components:
             properties:
               id: { type: integer, format: int64 }
               imageUrl: { type: string, maxLength: 2048 }
+    ScheduleWindow:
+      type: object
+      required: [start, end]
+      properties:
+        start: { type: string, example: '09:00:00', description: Local start strictly before end }
+        end: { type: string, example: '18:00:00', description: Same-day local time without UTC offset }
+    ScheduleGenerateRequest:
+      type: object
+      required: [date, availableWindows]
+      properties:
+        date: { type: string, format: date }
+        instructions: { type: [string, 'null'], maxLength: 1000 }
+        availableWindows:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ScheduleWindow' }
+        maxCandidates: { type: [integer, 'null'], minimum: 1, maximum: 10, default: 5 }
+    ScheduleCandidate:
+      type: object
+      required: [planName, scheduledTime, durationMinutes]
+      properties:
+        planName: { type: string, minLength: 1, maxLength: 80, pattern: '\S' }
+        content: { type: [string, 'null'], maxLength: 255 }
+        scheduledTime: { type: string, example: '09:00:00', description: Same-day local time without UTC offset }
+        durationMinutes: { type: integer, minimum: 1, maximum: 1440 }
+    ScheduleUnscheduled:
+      type: object
+      required: [planName, durationMinutes]
+      properties:
+        planName: { type: string, minLength: 1, maxLength: 80 }
+        content: { type: [string, 'null'], maxLength: 255 }
+        durationMinutes: { type: integer, minimum: 1, maximum: 1440 }
+    SchedulePreview:
+      type: object
+      required: [date, candidates, unscheduled]
+      properties:
+        date: { type: string, format: date }
+        candidates:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ScheduleCandidate' }
+        unscheduled:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ScheduleUnscheduled' }
+    ScheduleBatchRequest:
+      type: object
+      required: [date, candidates]
+      properties:
+        date: { type: string, format: date }
+        candidates:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ScheduleCandidate' }
     TodoRequest:
       type: object
       required: [planName, scheduledDate, scheduledTime]
       properties:
+        durationMinutes: { type: [integer, 'null'], minimum: 1, maximum: 1440, description: Optional for legacy compatibility. Must end within the same day. Omission/null on PUT preserves the stored value. Unknown durations must be supplied before AI generation for that date. }
         planName: { type: string, minLength: 1, maxLength: 80, pattern: '\S' }
         content: { type: [string, 'null'], maxLength: 255 }
         scheduledDate: { type: string, format: date }
@@ -672,6 +790,7 @@ components:
       type: object
       required: [id, planName, scheduledDate, scheduledTime, completed]
       properties:
+        durationMinutes: { type: [integer, 'null'], minimum: 1, maximum: 1440, description: Optional for legacy compatibility. Must end within the same day. Omission/null on PUT preserves the stored value. Unknown durations must be supplied before AI generation for that date. }
         completed: { type: boolean }
         id: { type: integer, format: int64 }
         planName: { type: string, maxLength: 80 }
@@ -727,6 +846,26 @@ components:
           enum: [INVALID_REQUEST, BAD_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
         message: { type: string }
   responses:
+    ScheduleConflict:
+      description: Existing duration is unknown, or schedule/profile conditions conflict; inspect and regenerate
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ScheduleUpstreamError:
+      description: Invalid worker response or upstream failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ScheduleUnavailable:
+      description: Worker is unconfigured or cannot be reached
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ScheduleTimeout:
+      description: Worker/model timeout
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     ChildProfile:
       description: Child profile for the authenticated account
       content:

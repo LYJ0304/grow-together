@@ -19,6 +19,9 @@ const page = await context.newPage();
 await page.clock.setFixedTime(new Date('2026-10-31T00:30:00+09:00'));
 page.setDefaultTimeout(15000);
 page.setDefaultNavigationTimeout(120000);
+await page.route('**/api/v1/children/me', (route) =>
+  route.fulfill({ json: { name: '하늘', birthday: '2024-01-01' } }),
+);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const records = [
@@ -214,6 +217,7 @@ try {
       content: '준비물',
       scheduledDate: '2026-10-31',
       scheduledTime: '09:30:00',
+      durationMinutes: 30,
     });
     const labels = await page
       .getByRole('button')

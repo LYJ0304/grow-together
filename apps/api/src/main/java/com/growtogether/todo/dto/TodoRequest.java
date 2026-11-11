@@ -17,9 +17,16 @@ public record TodoRequest(
     @NotNull 
     LocalDate scheduledDate,
     @NotNull 
-    LocalTime scheduledTime
+    LocalTime scheduledTime,
+    @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(1440)
+    Integer durationMinutes
 ) {
+    public TodoRequest(String name, String content, LocalDate date, LocalTime time) {
+        this(name, content, date, time, null);
+    }
     public Todo toEntity(Long userId) {
-        return new Todo(userId, planName, content, scheduledDate, scheduledTime);
+        Todo todo = new Todo(userId, planName, content, scheduledDate, scheduledTime);
+        todo.setDurationMinutes(durationMinutes);
+        return todo;
     }
 }

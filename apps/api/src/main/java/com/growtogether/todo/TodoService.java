@@ -18,7 +18,10 @@ import java.time.LocalDate;
 public class TodoService {
     private final TodoRepository todoRepository;
 
+    @Transactional
     public void create(Long userId, TodoRequest request) {
+        lockOwner(userId);
+        validateDuration(request.scheduledTime(), request.durationMinutes());
         todoRepository.save(request.toEntity(userId));
     }
 
@@ -33,7 +36,11 @@ public class TodoService {
 
     @Transactional
     public TodoResponse updateTodo(Long userId, Long id, TodoRequest request) {
+        lockOwner(userId);
         Todo todo = findTodo(userId, id);
+        Integer duration = request.durationMinutes() == null ? todo.getDurationMinutes() : request.durationMinutes();
+        validateDuration(request.scheduledTime(), duration);
+        todo.setDurationMinutes(duration);
         todo.update(request.planName(), request.content(), request.scheduledDate(), request.scheduledTime());
         return TodoResponse.from(todo);
     }
@@ -47,7 +54,18 @@ public class TodoService {
 
     @Transactional
     public void deleteTodo(Long userId, Long id) {
+        lockOwner(userId);
         todoRepository.delete(findTodo(userId, id));
+    }
+
+    public void lockOwner(Long userId) {
+        todoRepository.lockOwner(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
+
+    public static void validateDuration(java.time.LocalTime start, Integer minutes) {
+        if (minutes != null && (minutes < 1 || minutes > 1440 ||
+                start.toNanoOfDay() + minutes * 60_000_000_000L > 86_400_000_000_000L))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "일정은 같은 날짜 안에 끝나야 해요.");
     }
 
     private Todo findTodo(Long userId, Long id) {

@@ -1,9 +1,11 @@
 import { env } from '../../config/env';
 import { ApiError, messages } from './errors';
 
+export type HttpRequestInit = RequestInit & { timeoutMs?: number };
+
 export async function http<T>(
   path: string,
-  init: RequestInit = {},
+  init: HttpRequestInit = {},
 ): Promise<T> {
   if (!env.apiBaseUrl) {
     throw new ApiError(
@@ -12,13 +14,17 @@ export async function http<T>(
       'API 연결이 설정되지 않았어요. 미리보기를 이용해 주세요.',
     );
   }
+  const { timeoutMs = 15000, ...fetchInit } = init;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const abort = () => controller.abort();
+  if (init.signal?.aborted) abort();
+  init.signal?.addEventListener('abort', abort);
+  const timeout = setTimeout(abort, timeoutMs);
   try {
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
     const response = await fetch(`${env.apiBaseUrl}${path}`, {
-      ...init,
+      ...fetchInit,
       signal: controller.signal,
       headers,
     });
@@ -42,5 +48,6 @@ export async function http<T>(
     );
   } finally {
     clearTimeout(timeout);
+    init.signal?.removeEventListener('abort', abort);
   }
 }
