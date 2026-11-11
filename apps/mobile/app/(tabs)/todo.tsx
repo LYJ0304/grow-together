@@ -1,3 +1,4 @@
+import { useChildRegistration } from '../../src/components/child-registration';
 import { ScheduleCheck } from '../../src/components/schedule-check';
 import { colors } from '../../src/theme/colors';
 import { successFeedback } from '../../src/lib/haptics';
@@ -51,6 +52,7 @@ function getWeek(date: Date) {
 }
 
 export default function TodoScreen() {
+  const requestChild = useChildRegistration();
   const insets = useSafeAreaInsets();
   const { client, status } = useAuth();
   const scroll = useRef<ScrollView>(null);
@@ -308,7 +310,11 @@ export default function TodoScreen() {
             <ActionButton
               label="활동 추천받기"
               secondary
-              onPress={() => setRecommendations(localDateKey(selectedDate))}
+              onPress={() =>
+                void requestChild(() =>
+                  setRecommendations(localDateKey(selectedDate)),
+                )
+              }
             />
           </View>
           <View style={styles.timeline}>

@@ -196,6 +196,10 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
       });
       if (!current()) return;
       queryClient.setQueryData(profileQuery.queryKey, result);
+      void queryClient.invalidateQueries({
+        queryKey: profileQuery.queryKey,
+        exact: true,
+      });
       setDestination(editing ? '/children' : '/main');
     } catch {
       if (current())
@@ -315,6 +319,17 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
         >
           <View style={styles.top}>
             <Text style={styles.brand}>같이 키우기</Text>
+            {!editing ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="메인으로 돌아가기"
+                disabled={busy}
+                style={styles.exit}
+                onPress={() => router.dismissTo('/main')}
+              >
+                <Text style={styles.hint}>뒤로</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               disabled={busy}
