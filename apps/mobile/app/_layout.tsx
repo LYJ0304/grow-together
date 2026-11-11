@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReduceMotion } from '../src/theme/motion';
 import {
@@ -84,7 +85,7 @@ function AuthenticatedStack() {
             headerShown: false,
             animation: reduced ? 'none' : 'default',
             gestureEnabled: true,
-            contentStyle: { backgroundColor: '#FAF9F9' },
+            contentStyle: { backgroundColor: colors.background },
           }}
         >
           <Stack.Protected guard={!hasAccess}>
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#FAF9F9',
+    backgroundColor: colors.background,
   },
   button: { minHeight: 44, padding: 12, justifyContent: 'center' },
 });

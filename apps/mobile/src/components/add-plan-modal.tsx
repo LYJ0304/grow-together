@@ -216,6 +216,7 @@ export function AddPlanModal({
               </Text>
               <Text style={styles.label}>소요 시간 (분 · AI 추천 시 필요)</Text>
               <TextInput
+                placeholderTextColor={colors.muted}
                 accessibilityLabel="계획 소요 시간"
                 value={duration}
                 onChangeText={setDuration}
@@ -315,7 +316,7 @@ export function AddPlanModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' },
+  overlay: { flex: 1, backgroundColor: colors.overlay },
   keyboard: {
     flex: 1,
     justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   input: {
     outlineColor: colors.primary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 12,
     padding: 14,
     ...typography.body,

@@ -406,7 +406,7 @@ function ChildrenEditor() {
             flex: 1,
             justifyContent: 'center',
             padding: 24,
-            backgroundColor: '#00000055',
+            backgroundColor: colors.childOverlay,
           }}
         >
           <View accessibilityRole="alert" style={styles.card}>
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 13,
     lineHeight: 20,
-    color: colors.primary,
+    color: colors.onTint,
   },
   card: {
     padding: 20,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     outlineColor: colors.primary,
     minHeight: 48,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 12,
     padding: 14,
     ...typography.body,

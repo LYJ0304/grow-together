@@ -16,6 +16,12 @@
    follow the [contract sync procedure](.harness/references/openapi.md).
 10. Preserve module boundaries when extending the system.
 
+## Mobile visual rules
+
+Before changing mobile colors or adding screens, read the
+[brand color reference](.harness/references/brand-colors.md). Use semantic tokens
+from `apps/mobile/src/theme/colors.ts`; preserve the `mobile/v0.1.0` palette.
+
 ## Harness workflow
 
 The repository skills live in `.harness/skills/`. `.agents/skills/` links to

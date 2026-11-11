@@ -3,6 +3,11 @@
 AGENTS.md remains the source of development rules. Read only the skill needed
 for the current request. Requirements in the user's request take precedence.
 
+## Mobile colors
+
+Read the [brand color reference](references/brand-colors.md) for mobile UI work.
+Use the shared runtime tokens and validate contrast and static launch assets.
+
 ## Stage handoffs
 
 `plan → raise → start <issue-number> → ship`

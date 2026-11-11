@@ -15,6 +15,11 @@ const browser = await engine.launch({
 const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
 page.setDefaultTimeout(15000);
 await page.addInitScript(authenticatedSessionFixture);
+// The authenticated app now gates entry on a saved child profile.
+await page.route('**/api/v1/children/me', (route) =>
+  route.fulfill({ json: { name: '하늘', birthday: '2025-01-01' } }),
+);
+await page.route('**/api/v1/todos**', (route) => route.fulfill({ json: [] }));
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const input = page.getByRole('textbox', {

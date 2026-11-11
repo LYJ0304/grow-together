@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 37,
     textAlign: 'center',
-    color: colors.primary,
+    color: colors.brand,
   },
   subtitle: {
     marginTop: 5,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     minHeight: 55,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 15,
     backgroundColor: colors.surface,
     flexDirection: 'row',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewLabel: { ...typography.button, fontSize: 16, color: colors.primary },
+  previewLabel: { ...typography.button, fontSize: 16, color: colors.onTint },
   notice: {
     marginTop: 1,
     marginBottom: 5,

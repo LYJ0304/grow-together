@@ -202,6 +202,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chosenButton: { backgroundColor: colors.tint },
-  chooseLabel: { ...typography.caption, fontSize: 13, color: colors.primary },
+  chooseLabel: { ...typography.caption, fontSize: 13, color: colors.onTint },
   pressed: { opacity: 0.75 },
 });

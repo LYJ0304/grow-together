@@ -596,7 +596,7 @@ export default function TodoScreen() {
 const styles = StyleSheet.create({
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: 24,
   },
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     backgroundColor: colors.tint,
   },
-  addLabel: { ...typography.button, fontSize: 16, color: colors.primary },
+  addLabel: { ...typography.button, fontSize: 16, color: colors.onTint },
   scheduleToolbar: {
     backgroundColor: colors.surface,
     zIndex: 1,

@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import { router, usePathname } from 'expo-router';
 import {
   createContext,
@@ -320,13 +321,13 @@ export function useLaunchIntro() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   title: {
     fontFamily: 'Jua',
     fontSize: 35,
     lineHeight: 44,
     letterSpacing: -0.7,
-    color: '#D26A5C',
+    color: colors.brand,
     textAlign: 'center',
   },
 });

@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
@@ -12,7 +13,7 @@ export default function RootHtml({ children }: PropsWithChildren) {
         />
         <ScrollViewStyleReset />
         <style>{`
-          html, body { background-color: #FAF9F9; }
+          html, body { background-color: ${colors.background}; }
           #root { height: 100vh; height: 100dvh; }
         `}</style>
       </head>

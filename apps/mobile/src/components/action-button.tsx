@@ -32,7 +32,7 @@ export function ActionButton({
         style={[
           typography.button,
           {
-            color: secondary ? colors.primary : colors.surface,
+            color: secondary ? colors.onTint : colors.surface,
             textAlign: 'center',
           },
         ]}
