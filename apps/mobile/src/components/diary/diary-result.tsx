@@ -104,6 +104,7 @@ export function DiaryResultView({
         ) : (
           <>
             <TextInput
+              placeholderTextColor={colors.muted}
               selectionColor={colors.primary}
               accessibilityLabel="일기 본문 수정"
               multiline
@@ -370,7 +371,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     ...typography.caption,
-    color: '#914C41',
+    color: colors.onTint,
   },
   sources: {
     borderTopWidth: StyleSheet.hairlineWidth,

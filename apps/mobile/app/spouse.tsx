@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 12,
   },
   searchIcon: { width: 18, height: 18 },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.tint,
     gap: 6,
   },
-  sampleTitle: { ...typography.label, fontSize: 15, color: colors.primary },
+  sampleTitle: { ...typography.label, fontSize: 15, color: colors.onTint },
   resultsTitle: { ...typography.section, fontSize: 20, color: colors.text },
   queryLabel: {
     ...typography.label,

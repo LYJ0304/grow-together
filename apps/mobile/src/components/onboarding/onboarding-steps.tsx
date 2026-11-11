@@ -92,6 +92,7 @@ export function OnboardingStep({
         <>
           <Text style={styles.label}>아이 이름 또는 애칭 · 필수</Text>
           <TextInput
+            placeholderTextColor={colors.muted}
             accessibilityLabel="아이 이름 또는 애칭"
             placeholder="아이를 어떻게 부르시나요?"
             value={value.name}

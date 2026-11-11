@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import { StatusBar } from 'expo-status-bar';
 import {
   Animated,
@@ -44,7 +45,7 @@ export default function AppNameScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 21 },
   nextScreen: { flex: 1, alignItems: 'center' },
   titleSection: {
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     lineHeight: 44,
     letterSpacing: -0.7,
-    color: '#D26A5C',
+    color: colors.brand,
     textAlign: 'center',
   },
   version: {
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: -0.28,
-    color: '#C2C3CB',
+    color: colors.muted,
   },
   versionNumber: { fontSize: 14 },
 });

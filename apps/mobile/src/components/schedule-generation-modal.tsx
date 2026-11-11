@@ -160,7 +160,7 @@ export function ScheduleGenerationModal({
   };
   const inputStyle = {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 12,
     padding: 12,
     minHeight: 48,
@@ -178,7 +178,7 @@ export function ScheduleGenerationModal({
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.35)',
+          backgroundColor: colors.overlay,
           justifyContent: 'center',
           padding: 16,
         }}
@@ -212,13 +212,16 @@ export function ScheduleGenerationModal({
               {date} · 확정하기 전에는 저장하지 않아요.
             </Text>
             {status !== 'authenticated' ? (
-              <Text accessibilityRole="alert">
+              <Text accessibilityRole="alert" style={{ color: colors.danger }}>
                 AI 일정 생성은 로그인 후 이용할 수 있어요.
               </Text>
             ) : (
               <>
-                <Text>함께할 수 있는 시간대</Text>
+                <Text style={{ color: colors.text }}>
+                  함께할 수 있는 시간대
+                </Text>
                 <TextInput
+                  placeholderTextColor={colors.muted}
                   accessibilityLabel="가능 시간 시작"
                   value={start}
                   onChangeText={(value) => {
@@ -233,6 +236,7 @@ export function ScheduleGenerationModal({
                   style={inputStyle}
                 />
                 <TextInput
+                  placeholderTextColor={colors.muted}
                   accessibilityLabel="가능 시간 종료"
                   value={end}
                   onChangeText={(value) => {
@@ -247,6 +251,7 @@ export function ScheduleGenerationModal({
                   style={inputStyle}
                 />
                 <TextInput
+                  placeholderTextColor={colors.muted}
                   accessibilityLabel="일정 생성 요청사항"
                   value={instructions}
                   onChangeText={(value) => {
@@ -278,11 +283,14 @@ export function ScheduleGenerationModal({
                 />
                 {preview ? (
                   <>
-                    <Text accessibilityRole="header">
+                    <Text
+                      accessibilityRole="header"
+                      style={{ color: colors.heading }}
+                    >
                       저장할 후보를 골라주세요
                     </Text>
                     {!preview.candidates.length ? (
-                      <Text>
+                      <Text style={{ color: colors.text }}>
                         시간대에 배치할 수 있는 후보가 없어요. 시간대를 바꿔
                         다시 생성할 수 있어요.
                       </Text>
@@ -314,12 +322,16 @@ export function ScheduleGenerationModal({
                           },
                         ]}
                       >
-                        <Text>
+                        <Text style={{ color: colors.text }}>
                           {selected.includes(i) ? '✓ ' : ''}
                           {c.scheduledTime.slice(0, 5)} · {c.planName} ·{' '}
                           {c.durationMinutes}분
                         </Text>
-                        {c.content ? <Text>{c.content}</Text> : null}
+                        {c.content ? (
+                          <Text style={{ color: colors.text }}>
+                            {c.content}
+                          </Text>
+                        ) : null}
                       </Pressable>
                     ))}
                     {preview.unscheduled.map((c, i) => (
@@ -354,17 +366,24 @@ export function ScheduleGenerationModal({
                 ) : null}
                 {serverRows ? (
                   <View style={{ gap: 8 }}>
-                    <Text accessibilityRole="header">현재 서버 일정</Text>
+                    <Text
+                      accessibilityRole="header"
+                      style={{ color: colors.heading }}
+                    >
+                      현재 서버 일정
+                    </Text>
                     {serverRows.length ? (
                       serverRows.map((row) => (
-                        <Text key={row.id}>
+                        <Text key={row.id} style={{ color: colors.text }}>
                           {row.scheduledTime.slice(0, 5)} · {row.planName}
                         </Text>
                       ))
                     ) : (
-                      <Text>등록된 일정이 없어요.</Text>
+                      <Text style={{ color: colors.text }}>
+                        등록된 일정이 없어요.
+                      </Text>
                     )}
-                    <Text>
+                    <Text style={{ color: colors.text }}>
                       결과를 확인한 뒤 창을 닫아주세요. 자동으로 다시 저장하지
                       않아요.
                     </Text>

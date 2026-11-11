@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import { Image } from 'expo-image';
 import { typography } from './typography';
 import { useIsFocused } from '@react-navigation/native';
@@ -22,8 +23,8 @@ import Animated, {
 export function RoutineProgress({ progress }: { progress: number }) {
   const circumference = 2 * Math.PI * 90;
   const ring = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-    <circle cx="100" cy="100" r="90" fill="#FFF9F7" stroke="#F2E7E2" stroke-width="8"/>
-    ${progress > 0 ? `<circle cx="100" cy="100" r="90" stroke="#D26A5C" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(progress / 100) * circumference} ${circumference}" transform="rotate(-90 100 100)"/>` : ''}
+    <circle cx="100" cy="100" r="90" fill="${colors.surface}" stroke="${colors.border}" stroke-width="8"/>
+    ${progress > 0 ? `<circle cx="100" cy="100" r="90" stroke="${colors.brand}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(progress / 100) * circumference} ${circumference}" transform="rotate(-90 100 100)"/>` : ''}
   </svg>`;
   const focused = useIsFocused();
   const [reducedMotion, setReducedMotion] = useState(true);
@@ -168,13 +169,13 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 8,
   },
-  label: { ...typography.caption, color: '#706C69' },
+  label: { ...typography.caption, color: colors.muted },
   value: {
     ...typography.button,
     fontSize: 30,
     lineHeight: 38,
     fontWeight: '600',
-    color: '#292929',
+    color: colors.heading,
     fontVariant: ['tabular-nums'],
   },
   percent: { fontSize: 17, fontWeight: '400' },

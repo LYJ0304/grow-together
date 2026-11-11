@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     minHeight: 130,
     padding: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     borderRadius: 12,
     backgroundColor: colors.background,
   },
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: 20,
   },

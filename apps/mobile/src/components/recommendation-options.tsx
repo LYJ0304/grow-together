@@ -23,11 +23,12 @@ export function RecommendationOptions({ onDirect }: { onDirect: () => void }) {
               padding: 12,
               borderRadius: 14,
               borderWidth: 1,
-              borderColor: choice === label ? colors.primary : colors.border,
+              borderColor:
+                choice === label ? colors.primary : colors.controlBorder,
               backgroundColor: choice === label ? colors.tint : colors.surface,
             }}
           >
-            <Text style={[typography.label, { color: colors.primary }]}>
+            <Text style={[typography.label, { color: colors.onTint }]}>
               {choice === label ? '✓ ' : ''}
               {label}
             </Text>

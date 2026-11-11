@@ -32,7 +32,7 @@ export function DateField({
           minHeight: 52,
           borderRadius: 12,
           borderWidth: 1,
-          borderColor: colors.border,
+          borderColor: colors.controlBorder,
         }}
       >
         <Text style={{ color: colors.text }}>{value || '날짜 선택'}</Text>

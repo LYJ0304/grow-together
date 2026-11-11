@@ -1,3 +1,4 @@
+import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -84,7 +85,7 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F9' },
+  container: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 26, alignItems: 'center' },
   animatedContent: { flexGrow: 1, width: '100%', alignItems: 'center' },
   headingBlock: { alignItems: 'center' },
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Jua',
     fontSize: 35,
     lineHeight: 56,
-    color: '#D26A5C',
+    color: colors.brand,
     textAlign: 'center',
   },
   buttons: { width: '100%', gap: 24 },
@@ -111,10 +112,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: '#D26A5C',
-    boxShadow: '0px 4px 2px rgba(160, 163, 177, 0.3)',
+    backgroundColor: colors.primary,
+    boxShadow: colors.welcomeShadow,
   },
-  secondaryButton: { backgroundColor: '#FDEDE6' },
+  secondaryButton: { backgroundColor: colors.tint },
   pressed: { opacity: 0.8 },
   buttonLabel: {
     fontFamily: 'Jua',
@@ -122,6 +123,6 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     textAlign: 'center',
   },
-  primaryLabel: { color: '#FFFFFF' },
-  secondaryLabel: { color: '#D26A5C' },
+  primaryLabel: { color: colors.surface },
+  secondaryLabel: { color: colors.onTint },
 });
