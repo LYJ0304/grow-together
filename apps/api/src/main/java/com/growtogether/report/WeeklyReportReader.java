@@ -62,6 +62,31 @@ public class WeeklyReportReader {
     private record HashSource(Long owner, LocalDate start, boolean current, LocalDate referenceDay,
                               List<TodoSource> todos, List<Long> eligibleIds, List<DiarySource> diaries, ProfileSource profile) {}
 
+    /*
+     * TODO(refactor): 리뷰 합의에 따라 구조 분리는 후속 작업으로 미룬다.
+     * https://github.com/LYJ0304/grow-together/pull/190#discussion_r4546614913
+     *
+     * 문제: read()에 기간/월령 정책, JPA 조회, 집계, API/Worker 투영, hash 생성이 섞여 있다.
+     * 단순히 메서드 길이를 줄이는 대신, 서로 다른 변경 이유(SRP)를 격리하는 방향으로 진행한다.
+     * 1. 먼저 의미 있는 private 함수부터 추출해 read()를 단계 조율자로 만든다. 기간 결정 ->
+     *    owner 범위 원본 수집 -> 순수 집계 -> API/Worker 투영 순서와 입력/출력을 드러낸다.
+     *    재사용/응집도상 필요가 확인될 때만 별도 컴포넌트로 옮기며 단계마다 클래스를 만들지 않는다.
+     * 2. Clock의 now는 한 번만 읽어 모든 단계에 전달한다. owner 조회와 lazy 관계 복사는 기존
+     *    read-only 트랜잭션 안에서 끝내고, 계산 단계에는 변경하지 않는 값 스냅샷을 전달한다.
+     *    계산 함수가 Repository/Clock을 다시 호출하거나 JPA 관계를 변경하지 않도록 한다.
+     * 3. 통계/순위/기억 생성과 Worker 입력 선별은 별도 이름으로 표현한다. 전체 planned와 경과
+     *    eligible 분모, 0분모 null, 일기 날짜 distinct, 실제 owner+주간 연결만 사용하는 규칙,
+     *    날짜 없는 legacy 제외, 결정적 정렬/동률 및 Unicode 발췌/개수 제한을 그대로 보존한다.
+     * 4. sourceHash는 출력/Worker 샘플로 줄이기 전의 전체 원본, eligible IDs, 프로필, 기준일을
+     *    계속 반영해야 한다. DTO 조립 편의를 위해 hash 근거를 발췌 목록으로 대체하지 않는다.
+     *    내부 hash 재료와 외부 전송 재료를 구분해 Worker로 이름/생일/사진 URL이 새지 않게 한다.
+     * 완료 검증: Reader 단위 테스트로 시간 경계/미래 일정/0분모/순위/샘플 밖 변경을 고정한 뒤
+     * 작은 추출마다 실행한다. Repository/Integration/Postgres 테스트로 소유권·실제 관계를,
+     * Contract 테스트로 JSON fixture와 동일한 응답/Worker 입력을 확인하고 이 TODO를 제거한다.
+     * 아래 자료의 원칙을 현재 코드에 적용한 제안이며, 특정 클래스 분할을 강제하는 규칙은 아니다.
+     * SRP: https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html
+     * Extract Function: https://refactoring.com/catalog/extractFunction.html
+     */
     @Transactional(readOnly = true)
     public Snapshot read(Long owner, LocalDate requested) {
         var now = OffsetDateTime.ofInstant(clock.instant(), SEOUL);
