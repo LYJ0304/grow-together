@@ -114,17 +114,15 @@ try {
         for (const tab of await tabs.all()) {
           const box = await tab.boundingBox();
           assert(box.height >= 48 && box.width >= 44, 'tab touch target');
-          const icon = await tab.locator('img:visible').first().boundingBox();
-          const label = await tab
-            .getByText(await tab.getAttribute('aria-label'), { exact: true })
-            .boundingBox();
-          assert(
-            icon.y + icon.height <= label.y + 1,
-            `${width}: tab label must be below its icon`,
+          const icon = await tab.locator('img').first().boundingBox();
+          assert.equal(
+            (await tab.innerText()).trim(),
+            '',
+            'Tab labels stay visually hidden',
           );
           assert(
-            Math.abs(icon.x + icon.width / 2 - label.x - label.width / 2) < 2,
-            'centered tab label',
+            Math.abs(icon.y + icon.height / 2 - (box.y + box.height / 2)) < 2,
+            'Icons stay vertically centered',
           );
         }
       }

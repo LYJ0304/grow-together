@@ -26,13 +26,14 @@ page.on('pageerror', (e) => errors.push(e.message));
 try {
   await page.goto(base + '/main', { timeout: 120000 });
   await page.getByRole('tablist').waitFor();
-  assert.deepEqual(await page.getByRole('tab').allTextContents(), [
-    '오늘',
-    '일정',
-    '기록',
-    '리포트',
-    '질문',
-  ]);
+  assert.deepEqual(
+    await page
+      .getByRole('tab')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('aria-label')),
+      ),
+    ['오늘', '일정', '기록', '리포트', '질문'],
+  );
   await page.getByRole('tab', { name: '리포트', exact: true }).click();
   await page.getByRole('heading', { name: '리포트', exact: true }).waitFor();
   await page.getByText('11월 16일 – 11월 22일', { exact: true }).waitFor();

@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { TabIcon } from '../../src/components/tab-icon';
 import { useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { TabButton } from '../../src/components/tab-button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../src/theme/colors';
@@ -38,7 +38,6 @@ const tabs = [
 ];
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
   const reduced = useReduceMotion();
   const [interaction, setInteraction] = useState({
     blocked: false,
@@ -72,13 +71,11 @@ export default function TabLayout() {
               config: { duration: reduced ? 0 : motion.quick },
             },
           },
-          tabBarLabelPosition: 'below-icon',
-          tabBarShowLabel: true,
-          tabBarLabelStyle: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
-          tabBarItemStyle: { minHeight: 56, paddingVertical: 4 },
+          tabBarShowLabel: false,
+          tabBarIconStyle: { margin: 0, flex: 1 },
+          tabBarItemStyle: { minHeight: 56, paddingVertical: 0 },
           tabBarStyle: {
-            height:
-              Math.max(64, 40 + Math.ceil(20 * fontScale)) + insets.bottom,
+            height: 56 + insets.bottom,
             paddingBottom: insets.bottom,
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
