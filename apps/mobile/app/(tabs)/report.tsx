@@ -3,6 +3,7 @@ import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { PageIntro } from '../../src/components/page-intro';
 import { AppHeader } from '../../src/components/app-header';
 import { MotionPressable } from '../../src/components/motion-pressable';
 import { ReportContent } from '../../src/components/report/report-content';
@@ -47,8 +48,13 @@ export default function ReportScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <AppHeader title="리포트" subtitle="아이와 함께한 시간을 돌아보세요." />
+      <AppHeader section="리포트" />
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+        <PageIntro
+          eyebrow="OUR WEEKLY STORY"
+          title="한 주의 이야기"
+          description="함께한 활동과 남긴 기록을 돌아보는 공간이에요."
+        />
         <View style={styles.week}>
           <MotionPressable
             accessibilityRole="button"

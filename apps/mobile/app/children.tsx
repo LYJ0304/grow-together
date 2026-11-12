@@ -1,3 +1,4 @@
+import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/components/typography';
 import { router, useNavigation } from 'expo-router';
@@ -452,12 +453,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backLabel: { ...typography.button, fontSize: 16, color: colors.text },
-  title: {
-    ...typography.title,
-    fontSize: 26,
-    lineHeight: 34,
-    color: colors.text,
-  },
+  title: { ...editorial.title },
   subtitle: {
     marginTop: 8,
     ...typography.label,
@@ -477,11 +473,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.onTint,
   },
-  card: {
-    padding: 20,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-  },
+  card: { ...editorial.card },
   label: {
     marginTop: 12,
     marginBottom: 8,

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { editorial } from '../../theme/editorial';
 import { colors } from '../../theme/colors';
 import { typography } from '../typography';
 import { ActionButton } from '../action-button';
@@ -31,7 +32,10 @@ export function ReportContent({
 }) {
   if (resource.state !== 'ready')
     return (
-      <View style={styles.card}>
+      <View
+        style={[styles.card, resource.state === 'unavailable' && styles.tint]}
+      >
+        <Text style={editorial.eyebrow}>OUR WEEKLY STORY</Text>
         <Text accessibilityRole="header" style={styles.heading}>
           {resource.state === 'loading'
             ? '한 주의 기록을 불러오고 있어요'
@@ -251,9 +255,7 @@ const styles = StyleSheet.create({
   sections: { gap: 28 },
   section: { gap: 12 },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 20,
+    ...editorial.card,
     gap: 14,
   },
   tint: { backgroundColor: colors.tint },

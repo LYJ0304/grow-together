@@ -7,57 +7,63 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
+import { editorial } from '../theme/editorial';
 
 export function AppHeader({
   disabled = false,
   polished = false,
   title,
   subtitle,
+  section,
 }: {
   disabled?: boolean;
   polished?: boolean;
   title?: string;
   subtitle?: string;
+  section?: string;
 }) {
   return (
     <View testID="app-header" style={styles.header}>
-      <HeaderButton
-        polished={polished}
-        accessibilityRole="button"
-        accessibilityLabel="아이 프로필 열기"
-        disabled={disabled}
-        accessibilityState={{ disabled }}
-        onPress={() => router.push('/children')}
-      >
-        <Image
-          source={require('../../assets/images/main/user.svg')}
-          style={styles.icon}
-          tintColor={colors.brand}
-          accessible={false}
-        />
-        {!title ? <Text style={styles.label}>아이 프로필</Text> : null}
-      </HeaderButton>
+      <View style={styles.brandRow}>
+        <Text style={styles.wordmark}>
+          grow together{section ? ` / ${section}` : ''}
+        </Text>
+        <View style={styles.tools}>
+          <HeaderButton
+            polished={polished}
+            accessibilityRole="button"
+            accessibilityLabel="아이 프로필 열기"
+            disabled={disabled}
+            accessibilityState={{ disabled }}
+            onPress={() => router.push('/children')}
+          >
+            <Image
+              source={require('../../assets/images/main/user.svg')}
+              style={styles.icon}
+              tintColor={colors.brand}
+              accessible={false}
+            />
+          </HeaderButton>
+          <HeaderButton
+            polished={polished}
+            accessibilityRole="button"
+            accessibilityLabel="앱 설정"
+            disabled={disabled}
+            accessibilityState={{ disabled }}
+            onPress={() => router.push('/mypage')}
+          >
+            <Image
+              source={require('../../assets/images/chat/settings.svg')}
+              style={styles.icon}
+              tintColor={colors.brand}
+              accessible={false}
+            />
+          </HeaderButton>
+        </View>
+      </View>
       {title ? (
         <Greeting title={title} subtitle={subtitle} polished={polished} />
-      ) : (
-        <View style={{ flex: 1 }} />
-      )}
-      <HeaderButton
-        polished={polished}
-        accessibilityRole="button"
-        accessibilityLabel="앱 설정"
-        disabled={disabled}
-        accessibilityState={{ disabled }}
-        onPress={() => router.push('/mypage')}
-      >
-        <Image
-          source={require('../../assets/images/chat/settings.svg')}
-          style={styles.icon}
-          tintColor={colors.brand}
-          accessible={false}
-        />
-        {!title ? <Text style={styles.label}>설정</Text> : null}
-      </HeaderButton>
+      ) : null}
     </View>
   );
 }
@@ -122,16 +128,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     gap: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.background,
     flexShrink: 0,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  wordmark: {
+    ...editorial.eyebrow,
+    letterSpacing: 0,
+    fontSize: 12,
+    flexShrink: 1,
+  },
+  tools: { flexDirection: 'row', gap: 8 },
   button: {
-    minWidth: 48,
-    minHeight: 48,
+    minWidth: 44,
+    minHeight: 44,
     padding: 10,
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     gap: 6,
     flexDirection: 'row',
@@ -141,7 +160,7 @@ const styles = StyleSheet.create({
   icon: { width: 22, height: 22 },
   label: { ...typography.label, color: colors.primary, flexShrink: 1 },
   copy: { flex: 1, minWidth: 0, gap: 2, paddingHorizontal: 4 },
-  title: { ...typography.section, color: colors.text, flexShrink: 1 },
+  title: { ...editorial.title, flexShrink: 1 },
   greetingLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   warmTitle: { fontSize: 22, lineHeight: 30, fontWeight: '600' },
   brandPoint: {

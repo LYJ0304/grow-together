@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { editorial } from '../../theme/editorial';
 import { colors } from '../../theme/colors';
 import { typography } from '../typography';
 export const styles = StyleSheet.create({
@@ -23,16 +24,13 @@ export const styles = StyleSheet.create({
   progress: { flexDirection: 'row', gap: 6 },
   progressPart: {
     flex: 1,
-    height: 4,
+    height: 5,
     borderRadius: 3,
     backgroundColor: colors.border,
   },
   eyebrow: { ...typography.caption, color: colors.muted },
   title: {
-    ...typography.title,
-    color: colors.text,
-    fontSize: 29,
-    lineHeight: 39,
+    ...editorial.title,
   },
   subtitle: {
     ...typography.button,
@@ -43,9 +41,7 @@ export const styles = StyleSheet.create({
   body: { ...typography.body, color: colors.muted, lineHeight: 25 },
   hint: { ...typography.caption, color: colors.muted, lineHeight: 20 },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 20,
+    ...editorial.card,
     gap: 16,
     borderWidth: 1,
     borderColor: colors.border,

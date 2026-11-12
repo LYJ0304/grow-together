@@ -55,7 +55,9 @@
     "test:report": "node tests/report-week.mjs && node tests/report-content.mjs",
     "test:report:ui": "node tests/report-ui.mjs",
     "test:tabs:ui": "node tests/tab-feedback.mjs && node tests/floating-tabs.mjs",
-    "test:brand:ui": "node tests/brand-roles-ui.mjs"
+    "test:brand:ui": "node tests/brand-roles-ui.mjs",
+    "test:editorial:ui": "node tests/editorial-journey.mjs",
+    "test:editorial:captures": "node tests/editorial-captures.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

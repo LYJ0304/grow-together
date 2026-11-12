@@ -8,6 +8,8 @@ import { ScheduleGenerationModal } from '../../src/components/schedule-generatio
 import { ActionButton } from '../../src/components/action-button';
 import { typography } from '../../src/components/typography';
 import { useSessionValue } from '../../src/lib/session-state';
+import { PageIntro } from '../../src/components/page-intro';
+import { editorial } from '../../src/theme/editorial';
 import { AppHeader } from '../../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -61,7 +63,11 @@ export default function TodoScreen() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
-  const params = useLocalSearchParams<{ date?: string; add?: string }>();
+  const params = useLocalSearchParams<{
+    date?: string;
+    add?: string;
+    recommend?: string;
+  }>();
   const [reactionTodo, setReactionTodo] = useState<TodoResponse | null>(null);
   const [recommendations, setRecommendations] = useState<string | null>(null);
   useEffect(() => {
@@ -72,8 +78,21 @@ export default function TodoScreen() {
       );
     if (params.add === 'true' && status === 'authenticated')
       setForm({ date: fromRoute ?? selectedDate });
-    if (params.date || params.add) router.setParams({ date: '', add: '' });
-  }, [params.date, params.add, status, selectedDate, setSelectedDate]);
+    if (params.recommend === 'true' && status === 'authenticated')
+      void requestChild(() =>
+        setRecommendations(params.date || localDateKey(selectedDate)),
+      );
+    if (params.date || params.add || params.recommend)
+      router.setParams({ date: '', add: '', recommend: '' });
+  }, [
+    params.date,
+    params.add,
+    params.recommend,
+    status,
+    selectedDate,
+    setSelectedDate,
+    requestChild,
+  ]);
   const [view, setView] = useState<'시간' | '할 일'>('시간');
   const [notice, setNotice] = useState('');
   const [form, setForm] = useState<{ date: Date; todo?: TodoResponse } | null>(
@@ -195,13 +214,20 @@ export default function TodoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
-      <AppHeader />
+      <AppHeader section="일정" />
       <View style={styles.scheduleContent}>
         <ScrollView
           ref={scroll}
-          stickyHeaderIndices={[1]}
+          stickyHeaderIndices={[2]}
           contentContainerStyle={styles.content}
         >
+          <View style={{ paddingHorizontal: 22, paddingTop: 20 }}>
+            <PageIntro
+              eyebrow="PLAN THE DAY"
+              title="함께할 시간"
+              description="부담 없는 하루 계획을 만들고, 하나씩 실행해요."
+            />
+          </View>
           <View
             style={[
               styles.dateHeader,
@@ -285,7 +311,10 @@ export default function TodoScreen() {
                     accessibilityRole="tab"
                     aria-selected={view === label}
                     onPress={() => setView(label)}
-                    style={styles.tabButton}
+                    style={[
+                      styles.tabButton,
+                      view === label && editorial.segmentActive,
+                    ]}
                   >
                     <Text
                       style={[
@@ -297,11 +326,6 @@ export default function TodoScreen() {
                     </Text>
                   </Pressable>
                 ))}
-              </View>
-              <View style={styles.filters}>
-                <Text style={styles.filterIcon}>✧♙</Text>
-                <Text style={styles.filterIcon}>♕</Text>
-                <Text style={styles.sortIcon}>☷</Text>
               </View>
             </View>
           </View>
@@ -616,24 +640,29 @@ const styles = StyleSheet.create({
   menuTitle: { ...typography.section, fontSize: 20, color: colors.text },
   menuAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, backgroundColor: colors.background },
-  scheduleContent: { flex: 1 },
+  scheduleContent: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
   content: { paddingBottom: 32 },
   dateHeader: {
-    minHeight: 96,
+    minHeight: 64,
     paddingHorizontal: 24,
     paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   dateSummary: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dateNumber: {
     ...typography.body,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
-    fontSize: 36,
-    lineHeight: 46,
+    fontSize: 26,
+    lineHeight: 36,
     color: colors.text,
   },
   dateMeta: {
@@ -651,19 +680,19 @@ const styles = StyleSheet.create({
   },
   addLabel: { ...typography.button, fontSize: 16, color: colors.onTint },
   scheduleToolbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     zIndex: 1,
   },
   weekStrip: {
     minHeight: 80,
-    paddingHorizontal: 17,
+    paddingHorizontal: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   weekDay: {
     flex: 1,
-    minWidth: 38,
+    minWidth: 44,
     minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
@@ -692,13 +721,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  tabLabels: { flexDirection: 'row', gap: 20 },
-  tabButton: { minWidth: 34, paddingVertical: 10 },
+  tabLabels: { ...editorial.segment, flex: 1 },
+  tabButton: { ...editorial.segmentButton },
   tabLabel: { ...typography.label, fontSize: 14, color: colors.muted },
   activeTabLabel: { color: colors.primary, fontWeight: '700' },
-  filters: { flexDirection: 'row', alignItems: 'center', gap: 17 },
-  filterIcon: { fontSize: 18, color: colors.muted },
-  sortIcon: { fontSize: 21, color: colors.muted },
   timeline: {
     paddingTop: 18,
     paddingHorizontal: 22,
@@ -731,7 +757,7 @@ const styles = StyleSheet.create({
   taskCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    minHeight: 96,
+    minHeight: 64,
     paddingVertical: 13,
     paddingHorizontal: 12,
     borderRadius: 16,

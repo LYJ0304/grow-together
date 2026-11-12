@@ -164,8 +164,10 @@ try {
     await other.route('**/api/v1/children/me', handleProfile);
     const second = await other.newPage();
     await second.goto(`${url}/children`);
+    await second.getByText('등록된 아이가 없어요.', { exact: true }).waitFor();
+    assert.equal(await second.getByText('바다', { exact: true }).count(), 0);
     await second
-      .getByRole('heading', { name: '아이를 소개해 주세요', exact: true })
+      .getByRole('button', { name: '아이 추가', exact: true })
       .waitFor();
     await other.close();
     for (const width of [320, 390, 1024]) {
@@ -191,7 +193,7 @@ try {
     // Failed reads must not become an empty registration form.
     readFailure = true;
     await page.reload();
-    await alert('아이 정보를 확인하지 못했어요');
+    await alert('요청을 처리하지 못했어요. 다시 시도해주세요.');
     assert.equal(
       await page
         .getByRole('button', { name: '아이 추가', exact: true })
@@ -199,7 +201,7 @@ try {
       0,
     );
     readFailure = false;
-    await click('아이 정보 다시 확인');
+    await click('다시 시도');
     await screen().getByText('바다', { exact: true }).waitFor();
     // New-user registration and 409 checks moved to onboarding UI regressions.
     assert.equal(profiles.get('1').name, '바다');

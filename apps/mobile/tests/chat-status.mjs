@@ -26,7 +26,9 @@ try {
     0,
     'No fake online status',
   );
-  assert.ok(await page.getByText('연결 준비 중', { exact: true }).isVisible());
+  assert.ok(
+    await page.getByText('현재 연결 준비 중', { exact: true }).isVisible(),
+  );
   assert.equal(
     await page.getByRole('button', { name: '음성 입력', exact: true }).count(),
     0,

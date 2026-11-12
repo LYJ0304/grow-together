@@ -15,6 +15,7 @@ import { ActionButton } from './action-button';
 import { createTodoApi } from '../lib/features/todo/todoApi';
 import type { SchedulePreview, TodoResponse } from '../lib/features/todo/types';
 import { ApiError } from '../lib/api/errors';
+import { editorial } from '../theme/editorial';
 import { colors } from '../theme/colors';
 import { useReduceMotion } from '../theme/motion';
 
@@ -195,17 +196,12 @@ export function ScheduleGenerationModal({
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
-              padding: 20,
+              ...editorial.card,
               gap: 16,
-              backgroundColor: colors.surface,
-              borderRadius: 20,
             }}
             accessibilityViewIsModal
           >
-            <Text
-              accessibilityRole="header"
-              style={{ fontSize: 22, color: colors.text }}
-            >
+            <Text accessibilityRole="header" style={editorial.section}>
               AI 일정 미리보기
             </Text>
             <Text style={{ color: colors.muted }}>

@@ -33,6 +33,7 @@ import { useReduceMotion } from '../../theme/motion';
 import { ActionButton } from '../action-button';
 import { OnboardingStep, titles, descriptions } from './onboarding-steps';
 import { styles } from './onboarding-styles';
+import { editorial } from '../../theme/editorial';
 import { colors } from '../../theme/colors';
 
 export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
@@ -385,6 +386,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
             </View>
           ) : (
             <>
+              <Text style={editorial.eyebrow}>PERSONALIZE OUR DAY</Text>
               <View
                 accessibilityRole="progressbar"
                 accessibilityLabel={`자녀 등록 ${step + 1}/5단계`}

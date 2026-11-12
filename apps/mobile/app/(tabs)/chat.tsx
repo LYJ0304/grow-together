@@ -1,3 +1,5 @@
+import { PageIntro } from '../../src/components/page-intro';
+import { editorial } from '../../src/theme/editorial';
 import { colors } from '../../src/theme/colors';
 import { useTabInteraction } from '../../src/components/tab-interaction';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
@@ -103,7 +105,7 @@ export default function CounselorChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
-        <AppHeader title="육아 도우미" subtitle="연결 준비 중" />
+        <AppHeader section="질문" />
 
         <ScrollView
           ref={scroll}
@@ -111,6 +113,18 @@ export default function CounselorChatScreen() {
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
+          <PageIntro
+            eyebrow="ASK & REFLECT"
+            title="육아 도우미"
+            description="함께 고민해요. 궁금한 점과 기억하고 싶은 순간을 질문으로 남겨보세요."
+          />
+          <View style={editorial.hero}>
+            <Text style={editorial.section}>현재 연결 준비 중</Text>
+            <Text style={editorial.description}>
+              아직 AI 답변을 연결하지 않았어요. 질문 초안은 이 세션에서
+              유지돼요.
+            </Text>
+          </View>
           <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
           <View style={styles.suggestions}>
             {suggestions.map((item) => (
@@ -251,21 +265,22 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   intro: {
-    marginBottom: 20,
+    marginBottom: 12,
+    marginTop: 24,
     textAlign: 'left',
     ...typography.button,
     fontSize: 17,
     lineHeight: 24,
     color: colors.text,
   },
-  suggestions: { gap: 12 },
+  suggestions: { gap: 10 },
   suggestion: {
-    minHeight: 104,
+    minHeight: 88,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.controlBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
