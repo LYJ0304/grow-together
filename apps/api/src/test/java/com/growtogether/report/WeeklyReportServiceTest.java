@@ -10,6 +10,10 @@ import java.time.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 class WeeklyReportServiceTest {
     final WeeklyReportReader reader=mock(WeeklyReportReader.class);
@@ -34,7 +38,7 @@ class WeeklyReportServiceTest {
         service.generate(1L,WEEK); verify(worker,times(2)).generate(any());
     }
     @Test void failuresRemainSeparateFromAggregatesAndExplicitRetryWorks() {
-        doThrow(new ReportGenerationException("TIMEOUT")).doAnswer(i->result(i.getArgument(0))).when(worker).generate(any());
+        doThrow(new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Report generation unavailable")).doAnswer(i->result(i.getArgument(0))).when(worker).generate(any());
         var failed=service.generate(1L,WEEK);
         assertThat(failed.insight().state()).isEqualTo(ReportInsightState.UNAVAILABLE);
         assertThat(failed.insight().reason()).isEqualTo("TIMEOUT");
@@ -82,4 +86,22 @@ class WeeklyReportServiceTest {
         } finally { release.countDown(); }
         verify(worker,times(16)).generate(any());
     }
+    @ParameterizedTest
+    @CsvSource({"BAD_GATEWAY,INVALID_RESULT,INVALID_RESULT", "SERVICE_UNAVAILABLE,UNAVAILABLE,WORKER_UNAVAILABLE", "GATEWAY_TIMEOUT,UNAVAILABLE,TIMEOUT"})
+    void standardWorkerFailuresPreserveInsightStates(HttpStatus status, ReportInsightState expected, String reason) {
+        doThrow(new ResponseStatusException(status, "Worker request failed")).when(worker).generate(any());
+        var report = service.generate(1L, WEEK);
+        assertThat(report.insight().state()).isEqualTo(expected);
+        assertThat(report.insight().reason()).isEqualTo(reason);
+        assertThat(report.insight().result()).isNull();
+        assertThat(report.metrics().completed()).isEqualTo(1);
+    }
+
+    @Test
+    void unrelatedHttpErrorsAreNotReclassifiedAsWorkerFailures() {
+        var failure = new ResponseStatusException(HttpStatus.CONFLICT, "Conflict");
+        doThrow(failure).when(worker).generate(any());
+        assertThatThrownBy(() -> service.generate(1L, WEEK)).isSameAs(failure);
+    }
+
 }

@@ -1,5 +1,9 @@
 package com.growtogether.report;
 
+import org.springframework.web.server.ResponseStatusException;
+
+import org.springframework.http.HttpStatus;
+
 import com.growtogether.report.dto.ReportEvidence;
 import com.growtogether.report.dto.ReportEvidenceType;
 import com.growtogether.report.dto.ReportNextStep;
@@ -125,7 +129,7 @@ class WeeklyReportIntegrationTest {
         children.saveAndFlush(new ChildProfile(owner.getId(),"아이",LocalDate.of(2025,1,1)));
         diaries.saveAndFlush(new Diary(owner.getId(),"날짜 없는 과거 기록"));
         diaries.saveAndFlush(new Diary(owner.getId(),ReportTestData.WEEK,"오늘의 실제 기록"));
-        when(worker.generate(any())).thenThrow(new ReportGenerationException("TIMEOUT"));
+        when(worker.generate(any())).thenThrow(new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Report generation unavailable"));
         mvc.perform(post("/api/v1/reports/weekly/insights").param("weekStart",ReportTestData.WEEK.toString())
                 .with(jwt().jwt(j->j.subject(owner.getId().toString()))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.metrics.diaryDays").value(1))

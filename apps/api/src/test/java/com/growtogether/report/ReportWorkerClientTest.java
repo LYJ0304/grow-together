@@ -1,5 +1,9 @@
 package com.growtogether.report;
 
+import org.springframework.web.server.ResponseStatusException;
+
+import org.springframework.http.HttpStatus;
+
 import com.growtogether.report.dto.ReportWorkerRequest;
 
 import static org.assertj.core.api.Assertions.*;
@@ -60,27 +64,27 @@ class ReportWorkerClientTest {
                     .valid(input,client("test").generate(input))).isFalse();
         } else if("null".equals(invalid)) {
             assertThat(client("test").generate(input)).isNull();
-        } else assertThatThrownBy(()->client("test").generate(input)).isInstanceOf(ReportGenerationException.class);
+        } else assertThatThrownBy(()->client("test").generate(input)).isInstanceOf(ResponseStatusException.class);
     }
     @Test void responseBodyLimitAndWorkerStatusAreSanitized() {
         body.set("x".repeat(32769));
-        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ReportGenerationException.class,
-                e->assertThat(e.reason()).isEqualTo("INVALID_RESULT"));
+        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ResponseStatusException.class,
+                e->assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
         status=504;body.set("private provider error");
-        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ReportGenerationException.class,
-                e->{assertThat(e.reason()).isEqualTo("TIMEOUT");assertThat(e.getMessage()).doesNotContain("private");});
+        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ResponseStatusException.class,
+                e->{assertThat(e.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);assertThat(e.getMessage()).doesNotContain("private");});
         status=500;
-        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ReportGenerationException.class,
-                e->assertThat(e.reason()).isEqualTo("WORKER_UNAVAILABLE"));
+        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ResponseStatusException.class,
+                e->assertThat(e.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
     }
     @Test void missingKeyDoesNotSendARequest() {
-        assertThatThrownBy(()->client("").generate(input)).isInstanceOf(ReportGenerationException.class);
+        assertThatThrownBy(()->client("").generate(input)).isInstanceOf(ResponseStatusException.class);
         assertThat(received.get()).isNull();
     }
     @Test void invalidMediaTypeIsAnInvalidResultRatherThanAnUnhandledError() {
         contentType="not a media type";
-        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ReportGenerationException.class,
-                e->assertThat(e.reason()).isEqualTo("INVALID_RESULT"));
+        assertThatThrownBy(()->client("test").generate(input)).isInstanceOfSatisfying(ResponseStatusException.class,
+                e->assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
     }
 
     @Test void stalledResponseBodyHonorsDeadlineAndReportsTimeout() {
@@ -91,8 +95,8 @@ class ReportWorkerClientTest {
         var client=new ReportWorkerClient(rest,"test",mapper,java.time.Duration.ofMillis(150));
         try {
             org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(2),()->
-                assertThatThrownBy(()->client.generate(input)).isInstanceOfSatisfying(ReportGenerationException.class,
-                    e->assertThat(e.reason()).isEqualTo("TIMEOUT")));
+                assertThatThrownBy(()->client.generate(input)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    e->assertThat(e.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT)));
         } finally { holdBody.countDown(); }
     }
 

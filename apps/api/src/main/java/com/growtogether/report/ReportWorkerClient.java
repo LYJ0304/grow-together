@@ -9,6 +9,8 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.*;
@@ -42,19 +44,19 @@ public class ReportWorkerClient {
         this.readTimeoutNanos = readTimeout.toNanos();
     }
     public ReportWorkerResponse generate(ReportWorkerRequest input) {
-        if (key.isBlank()) throw new ReportGenerationException("WORKER_UNAVAILABLE");
+        if (key.isBlank()) throw failure(HttpStatus.SERVICE_UNAVAILABLE);
         long started = System.nanoTime();
         try {
             return client.post().uri("/internal/v1/reports/weekly/generate")
                     .header("X-API-Key", key).contentType(MediaType.APPLICATION_JSON).body(input)
                     .exchange((request, response) -> {
                         if (!response.getStatusCode().is2xxSuccessful())
-                            throw new ReportGenerationException(response.getStatusCode().value() == 504 ? "TIMEOUT" : "WORKER_UNAVAILABLE");
+                            throw failure(response.getStatusCode().value() == 504 ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.SERVICE_UNAVAILABLE);
                         var type = response.getHeaders().getContentType();
                         if (type == null || !MediaType.APPLICATION_JSON.isCompatibleWith(type))
-                            throw new ReportGenerationException("INVALID_RESULT");
+                            throw failure(HttpStatus.BAD_GATEWAY);
                         var bytes = response.getBody().readNBytes(32 * 1024 + 1);
-                        if (bytes.length > 32 * 1024) throw new ReportGenerationException("INVALID_RESULT");
+                        if (bytes.length > 32 * 1024) throw failure(HttpStatus.BAD_GATEWAY);
                         return mapper.readerFor(ReportWorkerResponse.class)
                                 .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                                 .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
@@ -64,11 +66,16 @@ public class ReportWorkerClient {
             Throwable cause = ex;
             while (cause.getCause() != null && !(cause instanceof HttpTimeoutException)) cause = cause.getCause();
             // Streaming-body deadline expiry may be reported as a generic closed-stream IOException.
-            throw new ReportGenerationException(cause instanceof HttpTimeoutException
-                    || System.nanoTime() - started >= readTimeoutNanos ? "TIMEOUT" : "WORKER_UNAVAILABLE");
+            throw failure(cause instanceof HttpTimeoutException
+                    || System.nanoTime() - started >= readTimeoutNanos ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.SERVICE_UNAVAILABLE);
         } catch (org.springframework.http.InvalidMediaTypeException ex) {
-            throw new ReportGenerationException("INVALID_RESULT");
-        } catch (JacksonException ex) { throw new ReportGenerationException("INVALID_RESULT");
-        } catch (RestClientException ex) { throw new ReportGenerationException("WORKER_UNAVAILABLE"); }
+            throw failure(HttpStatus.BAD_GATEWAY);
+        } catch (JacksonException ex) { throw failure(HttpStatus.BAD_GATEWAY);
+        } catch (RestClientException ex) { throw failure(HttpStatus.SERVICE_UNAVAILABLE); }
     }
+
+    private static ResponseStatusException failure(HttpStatus status) {
+        return new ResponseStatusException(status, "Report generation unavailable");
+    }
+
 }

@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -115,9 +117,15 @@ public class WeeklyReportService {
             return validation.valid(input, output)
                     ? new ReportInsight(ReportInsightState.AVAILABLE, null, output.result().external())
                     : ReportInsight.of(ReportInsightState.INVALID_RESULT, "INVALID_RESULT");
-        } catch (ReportGenerationException ex) {
-            return ReportInsight.of("INVALID_RESULT".equals(ex.reason())
-                    ? ReportInsightState.INVALID_RESULT : ReportInsightState.UNAVAILABLE, ex.reason());
+        } catch (ResponseStatusException ex) {
+            var status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) throw ex;
+            return switch (status) {
+                case BAD_GATEWAY -> ReportInsight.of(ReportInsightState.INVALID_RESULT, "INVALID_RESULT");
+                case SERVICE_UNAVAILABLE -> ReportInsight.of(ReportInsightState.UNAVAILABLE, "WORKER_UNAVAILABLE");
+                case GATEWAY_TIMEOUT -> ReportInsight.of(ReportInsightState.UNAVAILABLE, "TIMEOUT");
+                default -> throw ex;
+            };
         }
     }
 
