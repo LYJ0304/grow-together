@@ -4,6 +4,9 @@ For the default Docker setup, follow the
 [local development guide](../../../infra/docs/local-development.md).
 The API is available at `http://localhost:8080`.
 
+For weekly aggregation, generation states, source bounds and the Worker contract,
+see [weekly reports](weekly-reports.md).
+
 ## Run outside Docker
 
 Use Java 21 and the module's [environment template](../.env.example).

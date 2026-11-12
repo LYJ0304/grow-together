@@ -17,6 +17,9 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     List<Todo> findByUserIdAndScheduledDateOrderByScheduledTimeAsc(Long userId, LocalDate date);
 
+    List<Todo> findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(
+            Long userId, LocalDate start, LocalDate end);
+
     Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

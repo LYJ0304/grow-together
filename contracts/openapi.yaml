@@ -3,6 +3,98 @@ info:
   title: GrowTogether API
   version: 0.1.0
 paths:
+  /api/v1/reports/weekly:
+    get:
+      operationId: getWeeklyReport
+      summary: Read owner-scoped weekly records
+      description: GET never calls the Worker. Weeks begin on Monday in Asia/Seoul;
+        omitted weekStart selects the current week. Invalid/non-Monday/future weeks
+        return 400. Current-week eligible Todos are scheduled at or before asOf; future
+        plans remain in planned only. completionRate is completed/eligible or null.
+        No actual completion timestamp exists. Legacy undated diaries are excluded.
+        Responses are private and no-store. Full policies and the shared internal contract
+        are in apps/api/docs/weekly-reports.md.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: weekStart
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        example: '2026-11-09'
+      responses:
+        '200':
+          description: Weekly report; all normal and failure insight states preserve
+            metrics/memories
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyReport'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Authenticated owner no longer exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/reports/weekly/insights:
+    post:
+      operationId: generateWeeklyReportInsights
+      summary: Explicitly generate insights from current owner evidence
+      description: No request body. Generation failures return 200 with an insight state;
+        aggregate data stays available. Weeks begin on Monday in Asia/Seoul; omitted
+        weekStart selects the current week. Invalid/non-Monday/future weeks return 400.
+        Current-week eligible Todos are scheduled at or before asOf; future plans remain
+        in planned only. completionRate is completed/eligible or null. No actual completion
+        timestamp exists. Legacy undated diaries are excluded. Responses are private
+        and no-store. Full policies and the shared internal contract are in apps/api/docs/weekly-reports.md.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: weekStart
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        example: '2026-11-09'
+      responses:
+        '200':
+          description: Weekly report; all normal and failure insight states preserve
+            metrics/memories
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyReport'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Authenticated owner no longer exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/children/me:
     post:
       operationId: createChildProfile
@@ -845,6 +937,362 @@ components:
           type: string
           enum: [INVALID_REQUEST, BAD_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_ERROR]
         message: { type: string }
+    ReportPeriod:
+      type: object
+      additionalProperties: false
+      required:
+      - start
+      - end
+      - endExclusive
+      - asOf
+      - current
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        endExclusive:
+          type: string
+          format: date
+        asOf:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+    ReportDaily:
+      type: object
+      additionalProperties: false
+      required:
+      - date
+      - completed
+      properties:
+        date:
+          type: string
+          format: date
+        completed:
+          type: integer
+          format: int64
+          minimum: 0
+    ReportMetrics:
+      type: object
+      additionalProperties: false
+      required:
+      - planned
+      - eligible
+      - completed
+      - diaryDays
+      - completionRate
+      - daily
+      properties:
+        planned:
+          type: integer
+          format: int64
+          minimum: 0
+        eligible:
+          type: integer
+          format: int64
+          minimum: 0
+        completed:
+          type: integer
+          format: int64
+          minimum: 0
+        diaryDays:
+          type: integer
+          format: int64
+          minimum: 0
+        completionRate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportDaily'
+          maxItems: 7
+    ReportActivity:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - count
+      properties:
+        title:
+          type: string
+          maxLength: 80
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+    ReportLinkedTodo:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        title:
+          type: string
+          maxLength: 80
+    ReportMemory:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - date
+      - excerpt
+      - activities
+      - activitiesTruncated
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        date:
+          type: string
+          format: date
+        excerpt:
+          type: string
+          maxLength: 240
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLinkedTodo'
+          maxItems: 20
+        activitiesTruncated:
+          type: boolean
+    ReportEvidence:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+          enum:
+          - TODO
+          - DIARY
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+    ReportObservation:
+      type: object
+      additionalProperties: false
+      required:
+      - text
+      - evidence
+      properties:
+        text:
+          type: string
+          maxLength: 300
+          minLength: 1
+          pattern: \S
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportEvidence'
+          maxItems: 5
+          minItems: 1
+    ReportNextStep:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - description
+      - reason
+      - evidence
+      properties:
+        title:
+          type: string
+          maxLength: 80
+          minLength: 1
+          pattern: \S
+        description:
+          type: string
+          maxLength: 255
+          minLength: 1
+          pattern: \S
+        reason:
+          type: string
+          maxLength: 240
+          minLength: 1
+          pattern: \S
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportEvidence'
+          maxItems: 5
+          minItems: 1
+    ReportInsightResult:
+      type: object
+      additionalProperties: false
+      required:
+      - summary
+      - observations
+      - nextSteps
+      properties:
+        summary:
+          type: string
+          maxLength: 500
+          minLength: 1
+          pattern: \S
+        observations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportObservation'
+          maxItems: 3
+          minItems: 1
+        nextSteps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportNextStep'
+          maxItems: 2
+          minItems: 1
+    ReportInsight:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - reason
+      - result
+      properties:
+        state:
+          type: string
+          enum:
+          - NOT_GENERATED
+          - INSUFFICIENT_EVIDENCE
+          - AVAILABLE
+          - STALE
+          - UNAVAILABLE
+          - INVALID_RESULT
+        reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - PROFILE_UNAVAILABLE
+          - NO_EVIDENCE
+          - BUSY
+          - TIMEOUT
+          - WORKER_UNAVAILABLE
+          - INVALID_RESULT
+          - SOURCE_CHANGED
+          - null
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/ReportInsightResult'
+          - type: 'null'
+      allOf:
+      - if:
+          properties:
+            state:
+              const: AVAILABLE
+        then:
+          properties:
+            result:
+              $ref: '#/components/schemas/ReportInsightResult'
+        else:
+          properties:
+            result:
+              type: 'null'
+    WeeklyReport:
+      type: object
+      additionalProperties: false
+      required:
+      - period
+      - metrics
+      - majorActivities
+      - activitiesTruncated
+      - memories
+      - sourceHash
+      - promptVersion
+      - insight
+      properties:
+        period:
+          $ref: '#/components/schemas/ReportPeriod'
+        metrics:
+          $ref: '#/components/schemas/ReportMetrics'
+        majorActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportActivity'
+          maxItems: 5
+        activitiesTruncated:
+          type: boolean
+        memories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportMemory'
+          maxItems: 7
+        sourceHash:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        promptVersion:
+          type: string
+          const: weekly-v1
+        insight:
+          $ref: '#/components/schemas/ReportInsight'
+      example:
+        period:
+          start: '2026-11-09'
+          end: '2026-11-15'
+          endExclusive: '2026-11-16'
+          asOf: '2026-11-11T12:00:00+09:00'
+          current: true
+        metrics:
+          planned: 1
+          eligible: 1
+          completed: 1
+          diaryDays: 0
+          completionRate: 1.0
+          daily:
+          - date: '2026-11-09'
+            completed: 1
+          - date: '2026-11-10'
+            completed: 0
+          - date: '2026-11-11'
+            completed: 0
+          - date: '2026-11-12'
+            completed: 0
+          - date: '2026-11-13'
+            completed: 0
+          - date: '2026-11-14'
+            completed: 0
+          - date: '2026-11-15'
+            completed: 0
+        majorActivities:
+        - title: 그림책 읽기
+          count: 1
+        activitiesTruncated: false
+        memories: []
+        sourceHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        promptVersion: weekly-v1
+        insight:
+          state: AVAILABLE
+          reason: null
+          result:
+            summary: 함께한 활동을 기록했어요.
+            observations:
+            - text: 그림책 읽기
+              evidence:
+              - type: TODO
+                id: 10
+            nextSteps:
+            - title: 그림책 함께 보기
+              description: 부담 없이 책을 펼쳐보세요.
+              reason: 기록한 활동을 이어가는 제안이에요.
+              evidence:
+              - type: TODO
+                id: 10
   responses:
     ScheduleConflict:
       description: Existing duration is unknown, or schedule/profile conditions conflict; inspect and regenerate
