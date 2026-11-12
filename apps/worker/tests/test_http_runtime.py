@@ -41,6 +41,19 @@ def test_uvicorn_serves_internal_contract_and_requires_service_key(worker_enviro
             else:
                 raise AssertionError("HTTP worker did not become ready")
             assert "/internal/v1/schedule/generate" in response.json()["paths"]
+            report_path = "/internal/v1/reports/weekly/generate"
+            assert report_path in response.json()["paths"]
+            assert client.post(base + report_path, json={}).status_code == 401
+            assert (
+                client.post(
+                    base + report_path,
+                    json={},
+                    headers={
+                        "X-API-Key": "test-worker-key",
+                    },
+                ).status_code
+                == 422
+            )
             assert client.post(base + "/internal/v1/schedule/generate", json={}).status_code == 401
             assert (
                 client.post(

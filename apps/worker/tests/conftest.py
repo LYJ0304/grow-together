@@ -15,7 +15,11 @@ def worker_environment(monkeypatch):
 
 @pytest.fixture
 def worker_app(monkeypatch, worker_environment):
-    from app.api.dependencies import get_llm_client, get_schedule_llm_client
+    from app.api.dependencies import (
+        get_llm_client,
+        get_report_llm_client,
+        get_schedule_llm_client,
+    )
     from app.core.config import settings
     from app.main import app
 
@@ -23,6 +27,7 @@ def worker_app(monkeypatch, worker_environment):
     monkeypatch.setattr(settings, "openrouter_api_key", SecretStr("test-router-key"))
     monkeypatch.setattr(settings, "llm_diary_model", "test/model")
     previous_overrides = app.dependency_overrides.copy()
+    get_report_llm_client.cache_clear()
     get_llm_client.cache_clear()
     get_schedule_llm_client.cache_clear()
     try:
@@ -30,6 +35,7 @@ def worker_app(monkeypatch, worker_environment):
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous_overrides)
+        get_report_llm_client.cache_clear()
         get_llm_client.cache_clear()
         get_schedule_llm_client.cache_clear()
 

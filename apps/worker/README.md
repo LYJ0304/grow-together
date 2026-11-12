@@ -86,3 +86,9 @@ Chat and schedule generation accept optional, validated
 field mapping, empty/null semantics, unapproved-observation rejection and the
 aggregate 5/10/20-minute schedule budget. Worker support does not yet connect
 stored profiles to product chat/schedule requests; Spring integration remains separate.
+
+## Weekly reports
+
+The internal weekly report generator follows the API-owned `weekly-v1` contract.
+See [generation, validation, errors and limits](docs/weekly-reports.md).
+`LLM_REPORT_MODEL` is optional and falls back to `LLM_DIARY_MODEL`.
