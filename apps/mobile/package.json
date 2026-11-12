@@ -57,7 +57,8 @@
     "test:tabs:ui": "node tests/tab-feedback.mjs && node tests/floating-tabs.mjs",
     "test:brand:ui": "node tests/brand-roles-ui.mjs",
     "test:editorial:ui": "node tests/editorial-journey.mjs",
-    "test:editorial:captures": "node tests/editorial-captures.mjs"
+    "test:editorial:captures": "node tests/editorial-captures.mjs",
+    "test:main:floating-add": "node tests/main-floating-add.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

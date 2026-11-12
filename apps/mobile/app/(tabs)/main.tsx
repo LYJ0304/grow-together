@@ -13,8 +13,12 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -34,8 +38,12 @@ import { successFeedback } from '../../src/lib/haptics';
 import { ScheduleProgress } from '../../src/components/schedule-progress';
 
 const localDateKey = diaryDateKey;
+const QUICK_ADD_SIZE = 56;
+const QUICK_ADD_BOTTOM = 16;
 export default function MainScreen() {
   const scroll = useRef<ScrollView>(null);
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const quickButton = useRef<View>(null);
   const [quickOpen, setQuickOpen] = useState(false);
   useTabScrollToTop(scroll);
@@ -182,7 +190,7 @@ export default function MainScreen() {
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, marginBottom: 80 }}
+        style={{ flex: 1 }}
       >
         <ScrollView
           ref={scroll}
@@ -433,23 +441,22 @@ export default function MainScreen() {
           <HomeQuestionEntry currentDay={date === today} />
         </ScrollView>
       </KeyboardAvoidingView>
-      <View pointerEvents="box-none" style={styles.fabDock}>
-        <View pointerEvents="box-none" style={styles.fabWidth}>
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              hasDiary ? '선택한 날 일기 열기' : '선택한 날 일기 작성하기'
-            }
-            ref={quickButton}
-            onPress={() => setQuickOpen(true)}
-            style={styles.fab}
-          >
-            <Text accessible={false} style={styles.fabText}>
-              +
-            </Text>
-          </MotionPressable>
-        </View>
-      </View>
+      <MotionPressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          hasDiary ? '선택한 날 일기 열기' : '선택한 날 일기 작성하기'
+        }
+        ref={quickButton}
+        onPress={() => setQuickOpen(true)}
+        style={[
+          styles.fab,
+          { right: Math.max(insets.right + 20, (width - 600) / 2 + 20) },
+        ]}
+      >
+        <Text accessible={false} style={styles.fabText}>
+          +
+        </Text>
+      </MotionPressable>
       {quickOpen ? (
         <HomeQuickAdd
           authenticated={status === 'authenticated'}
@@ -497,7 +504,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    // End-of-scroll clearance, without shrinking the scrolling viewport.
+    paddingBottom: QUICK_ADD_SIZE + QUICK_ADD_BOTTOM + 24,
     gap: 20,
     width: '100%',
     maxWidth: 600,
@@ -527,22 +535,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   summaryRow: { flexDirection: 'row', gap: 10 },
-  fabDock: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  fabWidth: {
-    width: '100%',
-    maxWidth: 600,
-    paddingHorizontal: 20,
-    alignItems: 'flex-end',
-  },
   fab: {
-    width: 56,
-    height: 56,
+    position: 'absolute',
+    bottom: QUICK_ADD_BOTTOM,
+    width: QUICK_ADD_SIZE,
+    height: QUICK_ADD_SIZE,
     borderRadius: 28,
     backgroundColor: colors.tint,
     alignItems: 'center',
