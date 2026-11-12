@@ -29,9 +29,6 @@ public class JwtConfig {
     public static final String ISSUER = "growtogether-api";
 
     @Bean
-    Clock clock() { return Clock.systemUTC(); }
-
-    @Bean
     SecretKey jwtSigningKey(@Value("${app.jwt.secret}") String encoded) {
         byte[] bytes;
         try {
