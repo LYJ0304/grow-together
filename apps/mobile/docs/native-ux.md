@@ -6,12 +6,25 @@
 
 Expo SDK 55 / Router 55.0.18에서 Native Tabs는 `unstable-native-tabs`이다. 기존 브랜드, 웹 링크, 화면 상태 보존을 함께 지원하기 위해 이미 설치된 React Navigation 기반 Expo Router JS Tabs를 사용한다. SDK 업그레이드는 하지 않았다.
 
-- `(tabs)`에서 오늘·일정·기록·질문을 관리한다. 수동 `BottomNavigation`은 제거했다.
-- 기록 탭 안의 Stack이 Calendar와 Diary를 관리한다. `/main`, `/todo`, `/calendar`, `/diary`, `/chat` 주소와 날짜 파라미터를 유지한다.
+- `(tabs)`에서 오늘·일정·기록·리포트·질문을 관리한다. 수동 `BottomNavigation`은 제거했다.
+- 기록 탭 안의 Stack이 Calendar와 Diary를 관리한다. `/main`, `/todo`, `/calendar`, `/diary`, `/report`, `/chat` 주소와 날짜 파라미터를 유지한다.
 - 탭 왕복 시 화면의 보기 모드, 스크롤, 날짜/월, 질문/일기 초안이 유지된다. 현재 탭 재선택은 스크롤 최상단 이동 또는 기록 Stack 복귀에 사용된다.
 - 설정/프로필/페르소나는 상위 Stack의 상세 화면이다. 설정의 뒤로 가기, 프로필의 기존 변경사항 보호, 페르소나의 질문 복귀 경로를 유지한다.
 - 일기 저장/정리/사진 처리 중 탭을 실제 비활성화하고 접근성 상태도 전달한다. 기존 `usePreventRemove` 보호를 유지한다.
 - 인증 보호와 epoch 기반 Navigator/캐시/세션 메모리 초기화는 유지한다. 일반 탭 이동은 화면을 재생성하지 않는다.
+
+### Floating Pill Navigation
+
+`FloatingTabBar`가 기존 JS Tabs의 `tabBar` 렌더러를 대체한다. 화면/Stack/탭 개수는 바꾸지 않고 아이콘과 라벨을 함께 표시한다. `TabIcon`의 작은 선택 타원은 제거하고, 바 전체에서 하나의 선택 캡슐을 이동시킨다.
+
+- 흰색 `surface` 바는 높이 56px, 반경 28px, 좌우 여백 18px와 좌우 Safe Area를 사용한다. 넓은 웹에서는 최대 520px로 중앙 정렬한다.
+- 선택 배경은 기존 `tint`로 50×70px이며 바 위아래로 7px씩 돌출된다. 아이콘은 `brand`, 작은 라벨은 대비가 확보된 `onTint`를 사용한다. 비선택 라벨/아이콘은 `muted`다. 새 팔레트는 추가하지 않는다.
+- 선택 캡슐의 하단은 Safe Area보다 10px 위에 위치한다. 돌출부를 포함한 `80 + insets.bottom` 공간을 일반 레이아웃에서 확보하므로 콘텐츠를 덮지 않는다. 실제 높이를 React Navigation에 전달해 키보드 숨김과 Safe Area 변경도 반영한다.
+- 선택 위치는 Reanimated의 `motion.state`(220ms)로 전환하고 Reduce Motion에서는 즉시 확정한다. 창 크기 변경 시 각 탭의 새 중심으로 정렬한다. 터치 피드백은 기존 `TabButton`/`MotionPressable`을 재사용한다.
+- 웹 href/수정키 클릭, `tabPress`의 취소와 재선택 동작 데이터, `tabLongPress`를 유지한다. 네이티브 키보드는 공통 Keyboard 이벤트로, 웹 Chat/Diary는 기존 focused viewport 신호로 숨김을 결정한다.
+- 터치 영역은 최소 44px, 라벨은 11px이며 글꼴 확대는 1.4배까지 허용한다. iOS는 기존 Navigator와 동일하게 button 역할 및 선택 상태, Large Content Viewer를 제공하고 웹/Android는 tab 역할을 사용한다. 실제 VoiceOver/TalkBack 검증은 별도 기기에서 필요하다.
+
+`npm run test:tabs:ui`는 `tests/floating-tabs.mjs`를 실행한다. 반응형 레이아웃·Safe Area·라벨·링크/Enter 이동·선택 배경의 실제 중간 프레임·Reduce Motion을 검사한다. `test:native-ux`의 navigation 단계와 `test:diary:ui`, `test:chat:keyboard`로 기존 초안·스크롤·저장 차단·키보드 회귀를 함께 확인한다.
 
 ## 데이터와 피드백
 
