@@ -36,7 +36,7 @@ try {
   await page.screenshot({
     path: '/tmp/growtogether-header-entry/settings.png',
   });
-  for (const route of ['main', 'todo', 'calendar', 'chat']) {
+  for (const route of ['todo', 'calendar', 'chat']) {
     await page.goto(`${base}/${route}`);
     const settings = page.getByRole('button', { name: '앱 설정', exact: true });
     await settings.waitFor();
@@ -74,14 +74,9 @@ try {
     );
   }
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
-  const homeInput = page.getByRole('textbox', {
-    name: '홈 질문 입력',
-    exact: true,
-  });
-  await homeInput.fill('홈에서 이어 쓸 질문 초안');
   await page.screenshot({ path: '/tmp/growtogether-header-entry/home.png' });
   await page
-    .getByRole('button', { name: '질문 이어서 보내기', exact: true })
+    .getByRole('button', { name: '오늘 이야기 나누기', exact: true })
     .click();
   await page.waitForURL('**/chat**');
   const input = page.getByRole('textbox', {
@@ -93,7 +88,7 @@ try {
   await input.fill('홈에서 이어 쓸 질문 초안');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   await page
-    .getByRole('button', { name: '질문 이어서 보내기', exact: true })
+    .getByRole('button', { name: '오늘 이야기 나누기', exact: true })
     .click();
   assert.equal(await input.inputValue(), '홈에서 이어 쓸 질문 초안');
   assert.equal(

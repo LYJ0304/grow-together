@@ -15,7 +15,7 @@ await page.route('**/api/v1/children/me', (r) =>
 );
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 await page.route('**/api/v1/diary**', (r) => r.fulfill({ json: [] }));
-const base = process.env.MOBILE_URL ?? 'http://localhost:8193';
+const base = process.env.MOBILE_URL ?? 'http://localhost:8195';
 const labels = ['오늘', '일정', '기록', '리포트', '질문'];
 try {
   await page.goto(base + '/main', { timeout: 120000 });
@@ -27,7 +27,7 @@ try {
     ),
     labels,
   );
-  await page.screenshot({ path: '/tmp/floating-tabs-initial.png' });
+  await page.screenshot({ path: '/tmp/soft-glass-tabs-initial.png' });
   assert.deepEqual(
     (await tabs.allTextContents()).map((text) => text.trim()),
     labels,
@@ -60,7 +60,7 @@ try {
     }
     const nav = await page.getByRole('tablist').boundingBox();
     assert(
-      nav.x >= 16 && nav.x + nav.width <= width - 16,
+      nav.x >= 20 && nav.x + nav.width <= width - 20,
       'Pill has side gutters',
     );
     assert(nav.width <= 520, 'Pill stays compact on wide screens');
@@ -75,15 +75,32 @@ try {
       .getByRole('tablist')
       .getByRole('tab', { selected: true })
       .boundingBox();
-    assert.equal(Math.round(active.height), 70);
+    assert.equal(Math.round(active.height), 56);
     assert(
       Math.abs(
         active.x + active.width / 2 - (selected.x + selected.width / 2),
       ) < 1,
     );
-    assert(active.y < nav.y && active.y + active.height > nav.y + nav.height);
-    assert.equal(Math.round(nav.height), 56);
-    await page.screenshot({ path: `/tmp/floating-tabs-${width}.png` });
+    assert(
+      active.y >= nav.y + 6 &&
+        active.y + active.height <= nav.y + nav.height - 6,
+      'Selected background stays inside the glass capsule',
+    );
+    assert.equal(Math.round(nav.height), 70);
+    const surface = await page.getByRole('tablist').evaluate((node) => {
+      const style = getComputedStyle(node);
+      return {
+        background: style.backgroundColor,
+        border: style.borderTopWidth,
+      };
+    });
+    assert.match(surface.background, /^rgba\(/, 'Glass surface is translucent');
+    assert.equal(
+      parseFloat(surface.border),
+      1,
+      'Glass surface has a thin edge',
+    );
+    await page.screenshot({ path: `/tmp/soft-glass-tabs-${width}.png` });
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addStyleTag({
@@ -147,6 +164,7 @@ try {
   );
   await animated.evaluate(() => {
     window.highlightFrames = [];
+    window.iconOpacityFrames = [];
     window.highlightSampling = true;
     const sample = () => {
       if (!window.highlightSampling) return;
@@ -155,6 +173,11 @@ try {
       );
       if (element)
         window.highlightFrames.push(element.getBoundingClientRect().x);
+      const icon = document.querySelector(
+        '[aria-label="질문"] [data-testid="tab-icon-selected"]',
+      );
+      if (icon)
+        window.iconOpacityFrames.push(Number(getComputedStyle(icon).opacity));
       requestAnimationFrame(sample);
     };
     sample();
@@ -180,6 +203,11 @@ try {
   assert(
     frames.some((x) => x > startX + 2 && x < endX - 2),
     'Motion renders intermediate positions',
+  );
+  const iconFrames = await animated.evaluate(() => window.iconOpacityFrames);
+  assert(
+    iconFrames.some((opacity) => opacity > 0.01 && opacity < 0.99),
+    'Icon tint crossfade renders intermediate states',
   );
   await animated.emulateMedia({ reducedMotion: 'reduce' });
   await animated.getByRole('tab', { name: '오늘', exact: true }).click();
@@ -207,7 +235,7 @@ try {
     'PASS floating pill, visible labels, five links/selected states, keyboard navigation, moving highlight, 44px targets, safe area and responsive gutters',
   );
 } catch (error) {
-  await page.screenshot({ path: '/tmp/floating-tabs-failure.png' });
+  await page.screenshot({ path: '/tmp/soft-glass-tabs-failure.png' });
   throw error;
 } finally {
   await browser.close();

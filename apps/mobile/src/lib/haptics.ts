@@ -8,3 +8,10 @@ export function successFeedback() {
     ).catch(() => {});
   }
 }
+
+// Selection is distinct from successful persistence. Unsupported devices are a no-op.
+export function selectionFeedback() {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    void Haptics.selectionAsync().catch(() => {});
+  }
+}

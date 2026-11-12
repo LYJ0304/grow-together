@@ -9,7 +9,13 @@ import Animated, {
 import { colors } from '../theme/colors';
 import { motion, useReduceMotion } from '../theme/motion';
 
-export function ScheduleProgress({ progress }: { progress: number }) {
+export function ScheduleProgress({
+  progress,
+  accessibilityLabel = '오늘 일정 완료율',
+}: {
+  progress: number;
+  accessibilityLabel?: string;
+}) {
   const reduced = useReduceMotion();
   const value = useSharedValue(progress);
   useEffect(() => {
@@ -23,7 +29,7 @@ export function ScheduleProgress({ progress }: { progress: number }) {
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel="오늘 일정 완료율"
+      accessibilityLabel={accessibilityLabel}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={progress}

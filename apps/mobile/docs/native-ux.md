@@ -1,6 +1,12 @@
 # Native UX와 홈 화면
 
-홈은 질문 초안 작성과 오늘 일정 확인/완료에 집중한다. 실제 AI 연결은 준비 중이며, 홈의 보내기 버튼은 같은 세션의 초안을 유지한 채 Chat 입력창으로 이동한다. 추천 질문은 비어 있지 않은 초안을 덮어쓰지 않는다.
+홈은 날짜 중심의 일기 대시보드로 구성한다. 우측 프로필/설정 도구, 날짜 제목과 이전/다음 이동, 일기·일정 요약 버튼, 하루 대화 CTA, 하루의 순간 목록, 일정 상세/완료 영역 순서다. 하단 + 버튼은 선택한 날짜의 기존 일기를 열거나 작성 화면으로 이동한다. 대화 CTA는 기존 Chat 초안을 변경하지 않고 입력창으로 이동하며, 홈에 별도 입력창이나 추천 질문 Chip을 중복 표시하지 않는다.
+
+사진 예시의 장소·과거 같은 날 집계는 구현하지 않는다. 일기·사진 수는 기존 날짜별 일기 API를 재사용하고 404만 기록 없음으로 처리한다. 로딩/실패는 0개로 표시하지 않는다. 완료한 활동 수는 해당 날짜의 전체 일정에서 계산하며, 리포트 행은 기존 리포트 화면의 진입점이다. API·DB·Worker 계약을 추가하지 않는다.
+
+오늘을 보고 있으면 자정/foreground에 오늘 날짜를 따라가고, 이전 날짜를 명시적으로 선택했다면 그 날짜를 유지한다. 다음 날 버튼은 오늘에서 비활성화한다. 일기는 기존 `diaryByDate` query key와 epoch를 재사용하고 홈 복귀/날짜 이동에 새 상태를 반영한다. 기존 일정 완료 mutation·서버 성공 후 캐시 반영과 Haptic 로직은 유지한다.
+
++ 버튼이 본문을 가리지 않도록 메인 안에 80px 공간을 별도로 예약하며 탭 바의 Safe Area 공간과 중복 적용하지 않는다. 긴 목록과 작은 화면은 ScrollView로 접근한다. 다른 화면의 AppHeader 구조는 유지한다.
 
 ## 내비게이션
 
@@ -13,18 +19,21 @@ Expo SDK 55 / Router 55.0.18에서 Native Tabs는 `unstable-native-tabs`이다. 
 - 일기 저장/정리/사진 처리 중 탭을 실제 비활성화하고 접근성 상태도 전달한다. 기존 `usePreventRemove` 보호를 유지한다.
 - 인증 보호와 epoch 기반 Navigator/캐시/세션 메모리 초기화는 유지한다. 일반 탭 이동은 화면을 재생성하지 않는다.
 
-### Floating Pill Navigation
+### Shared soft-glass Floating Tab Bar
 
-`FloatingTabBar`가 기존 JS Tabs의 `tabBar` 렌더러를 대체한다. 화면/Stack/탭 개수는 바꾸지 않고 아이콘과 라벨을 함께 표시한다. `TabIcon`의 작은 선택 타원은 제거하고, 바 전체에서 하나의 선택 캡슐을 이동시킨다.
+`FloatingTabBar`는 기존 Expo Router JS Tabs의 공통 렌더러다. iOS·Android·Web에서 같은 아이콘, 라벨, 배치와 피치색 선택 영역을 사용한다. OS별 Native Tabs나 Liquid Glass, 별도 navigation 라이브러리로 전환하지 않는다.
 
-- 흰색 `surface` 바는 높이 56px, 반경 28px, 좌우 여백 18px와 좌우 Safe Area를 사용한다. 넓은 웹에서는 최대 520px로 중앙 정렬한다.
-- 선택 배경은 기존 `tint`로 50×70px이며 바 위아래로 7px씩 돌출된다. 아이콘은 `brand`, 작은 라벨은 대비가 확보된 `onTint`를 사용한다. 비선택 라벨/아이콘은 `muted`다. 새 팔레트는 추가하지 않는다.
-- 선택 캡슐의 하단은 Safe Area보다 10px 위에 위치한다. 돌출부를 포함한 `80 + insets.bottom` 공간을 일반 레이아웃에서 확보하므로 콘텐츠를 덮지 않는다. 실제 높이를 React Navigation에 전달해 키보드 숨김과 Safe Area 변경도 반영한다.
-- 선택 위치는 Reanimated의 `motion.state`(220ms)로 전환하고 Reduce Motion에서는 즉시 확정한다. 창 크기 변경 시 각 탭의 새 중심으로 정렬한다. 터치 피드백은 기존 `TabButton`/`MotionPressable`을 재사용한다.
-- 웹 href/수정키 클릭, `tabPress`의 취소와 재선택 동작 데이터, `tabLongPress`를 유지한다. 네이티브 키보드는 공통 Keyboard 이벤트로, 웹 Chat/Diary는 기존 focused viewport 신호로 숨김을 결정한다.
-- 터치 영역은 최소 44px, 라벨은 11px이며 글꼴 확대는 1.4배까지 허용한다. iOS는 기존 Navigator와 동일하게 button 역할 및 선택 상태, Large Content Viewer를 제공하고 웹/Android는 tab 역할을 사용한다. 실제 VoiceOver/TalkBack 검증은 별도 기기에서 필요하다.
+- 바는 높이 70px·반경 35px, 좌우 여백 20px + 좌우 Safe Area, 최대 너비 520px로 중앙 정렬한다. 흰색 반투명 `navigationSurface`와 1px `navigationEdge`, 약한 그림자로 표현한다.
+- 선택 영역은 바 내부 행의 실제 너비를 탭 수로 나눈 크기이며 높이 56px다. 테두리와 padding 안에서 정렬되므로 바 밖으로 돌출되지 않는다. 기존 `tint`와 `brand` 아이콘, 대비를 확보한 `onTint` 라벨을 사용한다.
+- 선택 배경은 Reanimated `motion.state`(220ms)로 이동한다. 아이콘은 동일한 SVG의 muted/brand 색상 레이어를 교차 페이드해 플랫폼별 SVG tint 애니메이션 차이를 피한다. Reduce Motion에서는 위치와 색상을 즉시 확정한다.
+- 다른 탭으로의 일반 이동이 허용되면 native `selectionAsync`로 가벼운 선택 피드백을 제공한다. 웹·재선택·차단·취소된 tabPress에는 호출하지 않는다. 장치에서 피드백이 불가능해도 이동에는 영향을 주지 않으며 저장 성공 알림과 구분한다.
+- 하단 Safe Area + 10px와 바를 포함한 `80 + insets.bottom` 공간을 기존 일반 레이아웃에서 예약한다. 각 ScrollView에 임의의 100~120px padding을 추가하거나 바를 콘텐츠 위에 덮지 않는다. 키보드 숨김 시 실제 높이를 0으로 React Navigation에 전달한다.
+- 기존 `TabButton`/Press Feedback, href·수정키 링크, 취소 가능한 tabPress와 재선택 스크롤/Stack 동작 데이터, tabLongPress, 저장 중 이동 차단과 초안 보존을 유지한다.
+- 터치 영역은 최소 44px, 라벨은 11px이며 글꼴 확대는 1.4배까지 지원한다. iOS의 기존 button 역할·선택 상태·Large Content Viewer와 Web/Android의 tab 역할을 유지한다.
 
-`npm run test:tabs:ui`는 `tests/floating-tabs.mjs`를 실행한다. 반응형 레이아웃·Safe Area·라벨·링크/Enter 이동·선택 배경의 실제 중간 프레임·Reduce Motion을 검사한다. `test:native-ux`의 navigation 단계와 `test:diary:ui`, `test:chat:keyboard`로 기존 초안·스크롤·저장 차단·키보드 회귀를 함께 확인한다.
+이번 단계는 세 플랫폼의 동일한 반투명 색상 표현이며 실제 배경 blur/refraction은 아니다. `expo-blur`/`BlurTargetView`나 플랫폼별 glass 효과는 추가하지 않는다. 향후 blur가 필요하면 content-overlap, 플랫폼 지원, Reduce Transparency, 성능을 별도 검토한다. VoiceOver/TalkBack과 실제 native 키보드·햅틱은 기기 검증이 필요하다.
+
+`npm run test:tabs:ui`는 `tab-feedback.mjs`의 native/web 피드백 분기 검사와 `floating-tabs.mjs`의 반응형·Safe Area·라벨·링크/Enter·수정키 이동·선택 배경과 아이콘의 실제 중간 프레임·Reduce Motion 검사를 실행한다. `test:native-ux` navigation 단계, `test:diary:ui`, `test:chat:keyboard`로 초안·스크롤·저장 차단·키보드 회귀를 확인한다.
 
 ## 데이터와 피드백
 

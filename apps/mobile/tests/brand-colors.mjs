@@ -33,6 +33,13 @@ assert.equal(
   ).size,
   5,
 );
+for (const token of ['navigationSurface', 'navigationEdge']) {
+  assert.match(
+    colors[token] ?? '',
+    /^rgba\(255, 255, 255, 0\.\d+\)$/,
+    `${token} must be an alpha-only white surface role`,
+  );
+}
 const config = JSON.parse(
   readFileSync(new URL('../app.json', import.meta.url)),
 ).expo;
@@ -89,6 +96,29 @@ for (const [fg, bg, minimum] of [
     contrast(colors[fg], colors[bg]) >= minimum,
     `${fg}/${bg} must meet ${minimum}:1`,
   );
+// Composite the translucent navigation surface over arbitrary light/dark extremes.
+const alpha = Number(colors.navigationSurface.match(/, ([0-9.]+)\)$/)[1]);
+for (const backdrop of ['#000000', '#FFFFFF', colors.background]) {
+  const composite =
+    '#' +
+    backdrop
+      .slice(1)
+      .match(/../g)
+      .map((channel) =>
+        Math.round(255 * alpha + parseInt(channel, 16) * (1 - alpha))
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('');
+  assert(
+    contrast(colors.muted, composite) >= 4.5,
+    'Translucency preserves label contrast',
+  );
+  assert(
+    contrast(colors.brand, composite) >= 3,
+    'Translucency preserves icon contrast',
+  );
+}
 const emblem = readFileSync(
   new URL('../assets/images/brand/emblem.svg', import.meta.url),
   'utf8',

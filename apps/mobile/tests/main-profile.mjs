@@ -58,7 +58,7 @@ try {
   await page
     .getByRole('button', { name: '나중에 등록하기', exact: true })
     .click();
-  await heading('무엇이 궁금하세요?').waitFor();
+  await heading('하루 대화').waitFor();
   assert.equal(await page.getByRole('tablist').count(), 1);
   console.log(
     'PASS child months, profile/settings entry, focus refresh and missing/error separation',

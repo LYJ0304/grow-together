@@ -16,7 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { AppHeader } from '../../src/components/app-header';
+import { HomeDayHeader } from '../../src/components/home-day-header';
+import { HomeMoments } from '../../src/components/home-moments';
+import { createDiaryApi } from '../../src/lib/features/diary/diaryApi';
+import { ApiError } from '../../src/lib/api/errors';
 import { ActionButton } from '../../src/components/action-button';
 import { typography } from '../../src/components/typography';
 import { useAuth } from '../../src/components/auth-provider';
@@ -36,9 +39,24 @@ export default function MainScreen() {
   const profile = useChildProfile();
   const queryClient = useQueryClient();
   const [today, setToday] = useState(() => localDateKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const date = selectedDate ?? today;
+  const diary = useQuery({
+    queryKey: ['diaryByDate', epoch, date],
+    enabled: status === 'authenticated',
+    retry: false,
+    queryFn: async () => {
+      try {
+        return await createDiaryApi(client).getByDate(date);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+  });
   const todos = useQuery({
-    queryKey: ['todos', today],
-    queryFn: () => createTodoApi(client).getTodos(today),
+    queryKey: ['todos', date],
+    queryFn: () => createTodoApi(client).getTodos(date),
     enabled: status === 'authenticated',
     retry: false,
   });
@@ -51,7 +69,13 @@ export default function MainScreen() {
         const date = localDateKey(now);
         setToday(date);
         if (status === 'authenticated')
-          void queryClient.invalidateQueries({ queryKey: ['todos', date] });
+          void queryClient.invalidateQueries({
+            queryKey: ['todos', selectedDate ?? date],
+          });
+        if (status === 'authenticated')
+          void queryClient.invalidateQueries({
+            queryKey: ['diaryByDate', epoch, selectedDate ?? date],
+          });
         clearTimeout(timer);
         const midnight = new Date(
           now.getFullYear(),
@@ -70,7 +94,7 @@ export default function MainScreen() {
         subscription.remove();
         if (Platform.OS === 'web') window.removeEventListener('focus', refresh);
       };
-    }, [queryClient, status]),
+    }, [queryClient, status, epoch, selectedDate]),
   );
 
   const schedules = [...(todos.data ?? [])].sort(
@@ -131,28 +155,45 @@ export default function MainScreen() {
     }
   };
   const viewAll = () =>
-    router.navigate({ pathname: '/todo', params: { date: today } });
+    router.navigate({ pathname: '/todo', params: { date } });
+  const hasDiary = diary.data?.id != null;
+  const diaryLabel =
+    status === 'preview'
+      ? '일기 미리보기'
+      : diary.isError
+        ? '일기 다시 확인'
+        : diary.isPending
+          ? '일기 확인 중'
+          : `일기 ${hasDiary ? 1 : 0}개`;
+  const openDiary = () =>
+    router.navigate({
+      pathname: '/diary',
+      params: {
+        date,
+        ...(hasDiary ? { id: String(diary.data!.id), mode: 'view' } : {}),
+      },
+    });
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <AppHeader
-        polished
-        title="안녕하세요"
-        subtitle={new Date(`${today}T12:00:00`).toLocaleDateString('ko-KR', {
-          month: 'long',
-          day: 'numeric',
-          weekday: 'long',
-        })}
-      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginBottom: 80 }}
       >
         <ScrollView
           ref={scroll}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
+          <HomeDayHeader
+            date={date}
+            today={today}
+            blocked={pendingId !== null}
+            onChangeDate={(next) => {
+              setSelectedDate(next === today ? null : next);
+              setCompletionError('');
+            }}
+          />
           <View>
             {profile.isPending ? (
               <Text style={styles.meta}>아이 정보를 불러오고 있어요.</Text>
@@ -171,7 +212,7 @@ export default function MainScreen() {
             ) : profile.data ? (
               <Text accessibilityRole="header" style={styles.meta}>
                 {profile.data.name}의 하루 ·{' '}
-                {ageMonths(profile.data.birthday, today)}개월
+                {ageMonths(profile.data.birthday, date)}개월
               </Text>
             ) : (
               <View style={styles.registration}>
@@ -190,11 +231,68 @@ export default function MainScreen() {
               </View>
             )}
           </View>
-          <HomeQuestionEntry />
+          <View style={styles.summaryRow}>
+            <MotionPressable
+              accessibilityRole="button"
+              accessibilityLabel={diaryLabel}
+              onPress={() =>
+                diary.isError ? void diary.refetch() : openDiary()
+              }
+              style={styles.summaryButton}
+            >
+              <Text style={styles.summaryText}>{diaryLabel}</Text>
+              <Text accessible={false} style={styles.summaryMark}>
+                {hasDiary ? '›' : '+'}
+              </Text>
+            </MotionPressable>
+            <MotionPressable
+              accessibilityRole="button"
+              onPress={viewAll}
+              style={styles.summaryButton}
+            >
+              <Text style={styles.summaryText}>
+                {status === 'preview'
+                  ? '일정 미리보기'
+                  : todos.isError
+                    ? '일정 확인하기'
+                    : todos.isPending
+                      ? '일정 확인 중'
+                      : `일정 ${schedules.length}개`}
+              </Text>
+              <Text accessible={false} style={styles.summaryMark}>
+                ›
+              </Text>
+            </MotionPressable>
+          </View>
+          <HomeQuestionEntry currentDay={date === today} />
+          <HomeMoments
+            diaryText={
+              status === 'preview'
+                ? '기록에서 확인'
+                : diary.isError
+                  ? '불러오기 실패'
+                  : diary.isPending
+                    ? '확인 중'
+                    : `일기 ${hasDiary ? 1 : 0}개 · 사진 ${diary.data?.diaryFiles?.length ?? 0}장`
+            }
+            activitiesText={
+              status === 'preview'
+                ? '일정에서 확인'
+                : todos.isError
+                  ? '불러오기 실패'
+                  : todos.isPending
+                    ? '확인 중'
+                    : `${completed}개`
+            }
+            onDiaryPress={() =>
+              diary.isError ? void diary.refetch() : openDiary()
+            }
+            onActivitiesPress={viewAll}
+          />
           <View style={styles.schedule}>
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.title}>
-                오늘의 일정
+                {date === today ? '오늘의 일정' : '이날의 일정'}
               </Text>
               <MotionPressable
                 accessibilityRole="button"
@@ -228,7 +326,14 @@ export default function MainScreen() {
                 <Text style={styles.meta}>
                   완료 {completed}개 / 전체 {schedules.length}개
                 </Text>
-                <ScheduleProgress progress={progress} />
+                <ScheduleProgress
+                  progress={progress}
+                  accessibilityLabel={
+                    date === today
+                      ? '오늘 일정 완료율'
+                      : '선택한 날 일정 완료율'
+                  }
+                />
                 {schedules.length === 0 ? (
                   <View style={styles.empty}>
                     <Text style={styles.body}>등록된 일정이 없어요.</Text>
@@ -238,7 +343,7 @@ export default function MainScreen() {
                       onPress={() =>
                         router.navigate({
                           pathname: '/todo',
-                          params: { date: today, add: 'true' },
+                          params: { date, add: 'true' },
                         })
                       }
                     />
@@ -247,7 +352,9 @@ export default function MainScreen() {
                   <>
                     {completed === schedules.length ? (
                       <Text style={styles.meta}>
-                        오늘 일정을 모두 마쳤어요.
+                        {date === today
+                          ? '오늘 일정을 모두 마쳤어요.'
+                          : '이날 일정을 모두 마쳤어요.'}
                       </Text>
                     ) : null}
                     {schedules.slice(0, 3).map((todo, index) => (
@@ -256,7 +363,7 @@ export default function MainScreen() {
                         todo={todo}
                         index={index}
                         entrance={!hasShownSchedules}
-                        now={now}
+                        now={date < today ? '23:59:59' : now}
                         pendingId={pendingId}
                         onToggle={() => void toggle(todo)}
                       />
@@ -283,6 +390,22 @@ export default function MainScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <View pointerEvents="box-none" style={styles.fabDock}>
+        <View pointerEvents="box-none" style={styles.fabWidth}>
+          <MotionPressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              hasDiary ? '선택한 날 일기 열기' : '선택한 날 일기 작성하기'
+            }
+            onPress={openDiary}
+            style={styles.fab}
+          >
+            <Text accessible={false} style={styles.fabText}>
+              +
+            </Text>
+          </MotionPressable>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -303,12 +426,54 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 8,
-    gap: 26,
+    paddingBottom: 24,
+    gap: 20,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
   },
-  title: { ...typography.section, color: colors.text, flexShrink: 1 },
+  summaryRow: { flexDirection: 'row', gap: 10 },
+  summaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    gap: 4,
+  },
+  summaryText: { ...typography.label, color: colors.text, flexShrink: 1 },
+  summaryMark: { fontSize: 22, color: colors.onTint },
+  fabDock: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  fabWidth: {
+    width: '100%',
+    maxWidth: 600,
+    paddingHorizontal: 20,
+    alignItems: 'flex-end',
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.tint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: colors.heading,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  fabText: { fontSize: 32, color: colors.onTint },
+  title: { ...typography.section, color: colors.heading, flexShrink: 1 },
   body: { ...typography.body, color: colors.text, flexShrink: 1 },
   meta: { ...typography.caption, color: colors.muted, flexShrink: 1 },
   registration: {

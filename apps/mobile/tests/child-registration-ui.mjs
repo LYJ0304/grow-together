@@ -120,9 +120,7 @@ try {
     .getByRole('heading', { name: '아이를 소개해 주세요', exact: true })
     .waitFor();
   await click('메인으로 돌아가기');
-  await page
-    .getByRole('heading', { name: '무엇이 궁금하세요?', exact: true })
-    .waitFor();
+  await page.getByRole('heading', { name: '하루 대화', exact: true }).waitFor();
   assert.equal(
     await modal().count(),
     0,

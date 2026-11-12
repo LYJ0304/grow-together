@@ -96,8 +96,8 @@ export default function TabLayout() {
             options={{
               title: tab.title,
               tabBarAccessibilityLabel: tab.title,
-              tabBarIcon: ({ color }) => (
-                <TabIcon source={tab.icon} color={color} />
+              tabBarIcon: ({ focused }) => (
+                <TabIcon source={tab.icon} focused={focused} />
               ),
             }}
           />

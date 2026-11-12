@@ -325,14 +325,14 @@ try {
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
         .every(node => node.complete && node.naturalWidth > 0)
     `);
-    // Measure the pill touch surface; its frame also reserves the protrusion and safe area.
+    // Measure the glass capsule; its frame also reserves the safe bottom gap.
     const main = await evaluate(`(() => {
       const character = document.querySelector('[data-testid="routine-character"]');
       const bounds = character?.getBoundingClientRect();
       const home = document.querySelector('[aria-label="오늘"]');
       return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
-    assert(main.text.includes('무엇이 궁금하세요?'));
+    assert(main.text.includes('하루 대화'));
     assert(!main.text.includes('+378일'), 'Preview must not invent child data');
     assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
     assert(main.text.includes('오늘의 일정'));
@@ -348,8 +348,8 @@ try {
     assert.equal(main.homeSelected, 'true');
     assert.equal(
       main.navHeight,
-      56,
-      'Pill retains its full accessible touch height',
+      70,
+      'Glass capsule retains its full accessible touch height',
     );
     assert(
       main.homeBottom <= main.height,
