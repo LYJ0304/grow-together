@@ -142,6 +142,19 @@ try {
     await page.getByRole('tab', { name: '질문', exact: true }).isDisabled(),
     'Navigation is disabled while saving',
   );
+  const blockedTab = page.getByRole('tab', { name: '질문', exact: true });
+  assert.equal(
+    await blockedTab.getAttribute('href'),
+    null,
+    'Saving removes web navigation targets',
+  );
+  const savingUrl = page.url();
+  await blockedTab.evaluate((node) => node.click());
+  assert.equal(
+    page.url(),
+    savingUrl,
+    'Disabled tab clicks cannot leave an ongoing save',
+  );
   held = undefined;
   release();
   await page.getByRole('alert').waitFor();

@@ -325,12 +325,12 @@ try {
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
         .every(node => node.complete && node.naturalWidth > 0)
     `);
-    // Measure the full bar including its border, as in icon-only-tabs.mjs.
+    // Measure the pill touch surface; its frame also reserves the protrusion and safe area.
     const main = await evaluate(`(() => {
       const character = document.querySelector('[data-testid="routine-character"]');
       const bounds = character?.getBoundingClientRect();
       const home = document.querySelector('[aria-label="오늘"]');
-      return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').parentElement.getBoundingClientRect().height, height: innerHeight };
+      return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
     assert(main.text.includes('무엇이 궁금하세요?'));
     assert(!main.text.includes('+378일'), 'Preview must not invent child data');
@@ -346,9 +346,10 @@ try {
       'Unauthenticated preview must not display authenticated routine data',
     );
     assert.equal(main.homeSelected, 'true');
-    assert(
-      main.navHeight >= 56 && main.navHeight <= 100,
-      'Navigation must retain accessible touch height',
+    assert.equal(
+      main.navHeight,
+      56,
+      'Pill retains its full accessible touch height',
     );
     assert(
       main.homeBottom <= main.height,
@@ -374,7 +375,7 @@ try {
       const todayLabel = dateButtons.find(node => node.getAttribute('aria-label')?.split(',')[0] === todayPrefix)?.getAttribute('aria-label');
       const monthPrefix = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ';
       const anotherDate = dateButtons.find(node => node.getAttribute('aria-label') !== todayLabel && node.getAttribute('aria-label')?.startsWith(monthPrefix));
-      return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').parentElement.getBoundingClientRect().height, height: innerHeight, text: document.body.innerText };
+      return { count: dateButtons.length, selected: selected?.getAttribute('aria-label'), todayLabel, anotherDate: anotherDate?.getAttribute('aria-label'), tabSelected: tab.getAttribute('aria-selected'), tabBottom: tab.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight, text: document.body.innerText };
     })()`);
     assert(
       [28, 35, 42].includes(calendar.count),
