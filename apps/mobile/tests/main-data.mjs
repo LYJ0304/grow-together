@@ -110,7 +110,7 @@ try {
   );
   await page.clock.fastForward(601000);
   await midnightRead;
-  await text('11월 1일 일요일').waitFor();
+  await text('2026년 11월 1일 일요일').waitFor();
   assert.equal(reads.at(-1), '2026-11-01');
   const foregroundRead = page.waitForResponse(
     (response) =>
@@ -118,7 +118,7 @@ try {
   );
   await page.clock.setSystemTime(new Date('2026-11-02T12:00:00+09:00'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await text('11월 2일 월요일').waitFor();
+  await text('2026년 11월 2일 월요일').waitFor();
   await foregroundRead;
   assert.equal(reads.at(-1), '2026-11-02');
   console.log(

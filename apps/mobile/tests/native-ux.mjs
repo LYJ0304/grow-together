@@ -64,15 +64,12 @@ try {
     await page.screenshot({ path: '/tmp/growtogether-158/before.png' });
   if (phase === 'home') {
     await page
-      .getByRole('heading', { name: '무엇이 궁금하세요?', exact: true })
+      .getByRole('heading', { name: '하루 대화', exact: true })
       .waitFor();
-    await input('홈 질문 입력').fill('지금 작성하는 질문');
-    await button('놀이 추천').click();
-    assert.equal(
-      await input('홈 질문 입력').inputValue(),
-      '지금 작성하는 질문',
-    );
-    await button('질문 이어서 보내기').click();
+    await tab('질문').click();
+    await input('상담 질문 입력').fill('지금 작성하는 질문');
+    await tab('오늘').click();
+    await button('오늘 이야기 나누기').click();
     await page.waitForURL('**/chat**');
     assert.equal(
       await input('상담 질문 입력').inputValue(),
@@ -172,7 +169,7 @@ try {
     await tab('오늘').click();
     await page.setViewportSize({ width: 320, height: 420 });
     const scrollOffset = async (move = false) =>
-      input('홈 질문 입력').evaluate((node, move) => {
+      page.getByTestId('home-day-heading').evaluate((node, move) => {
         let parent = node.parentElement;
         while (
           parent &&

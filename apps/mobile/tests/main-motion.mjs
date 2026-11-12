@@ -16,8 +16,7 @@ await page.addInitScript(() => {
   window.homeMotionFrames = [];
   const sample = () => {
     const row = document.querySelector('[data-testid="home-schedule-row"]');
-    const greeting = document.querySelector('[data-testid="app-header"]')
-      ?.children[1];
+    const greeting = document.querySelector('[data-testid="home-day-heading"]');
     const check = document.querySelector('[role="checkbox"] > div');
     window.homeMotionFrames.push({
       rowY: row ? new DOMMatrix(getComputedStyle(row).transform).m42 : null,
@@ -72,15 +71,11 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 try {
   await page.goto(`${base}/main`, { timeout: 120000 });
-  const input = page.getByRole('textbox', {
-    name: '홈 질문 입력',
-    exact: true,
-  });
   const send = page.getByRole('button', {
-    name: '질문 이어서 보내기',
+    name: '오늘 이야기 나누기',
     exact: true,
   });
-  await input.waitFor();
+  await send.waitFor();
   await page.getByTestId('home-schedule-row').waitFor();
   await page.waitForTimeout(450);
   const entranceFrames = await page.evaluate(() => window.homeMotionFrames);
@@ -92,17 +87,8 @@ try {
     entranceFrames.some((f) => f.greetingY > 0 && f.greetingY < 8),
     'Greeting must enter once',
   );
-  assert.equal(await send.isDisabled(), true);
-  const surface = input.locator('..');
-  const initial = await surface.boundingBox();
-  await input.fill('그림책을 같이 읽고 싶어요');
-  await page.waitForTimeout(350);
   assert.equal(await send.isDisabled(), false);
-  const focused = await surface.boundingBox();
-  assert(
-    Math.abs(initial.height - focused.height) < 1,
-    'Focus must not resize the input surface',
-  );
+  await send.scrollIntoViewIfNeeded();
   const box = await send.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -119,10 +105,6 @@ try {
     'Release/cancel must settle',
   );
   assert.equal(new URL(page.url()).pathname, '/main');
-  assert.equal(await input.inputValue(), '그림책을 같이 읽고 싶어요');
-  await page.getByRole('button', { name: '놀이 추천', exact: true }).click();
-  await page.getByRole('alert').filter({ hasText: '작성 중인 질문' }).waitFor();
-  assert.equal(await input.inputValue(), '그림책을 같이 읽고 싶어요');
   const check = page.getByRole('checkbox', {
     name: '그림책 읽기 완료',
     exact: true,
@@ -219,8 +201,7 @@ try {
     'Failed storage must preserve completed state',
   );
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await input.fill('');
-  await input.fill('새 질문');
+  await send.scrollIntoViewIfNeeded();
   await page.waitForTimeout(100);
   const reducedBox = await send.boundingBox();
   await page.mouse.move(
@@ -238,7 +219,7 @@ try {
   await page.mouse.up();
   assert.deepEqual(errors, []);
   console.log(
-    'PASS initial-only entrance, press/cancel, stable focus, draft protection, confirmed completion pulse, pending/failure, progress bounds, refetch/tab return and live reduced motion',
+    'PASS initial-only day/row entrance, CTA press/cancel, confirmed completion pulse, pending/failure, progress bounds, refetch/tab return and live reduced motion',
   );
 } catch (error) {
   console.error(await page.locator('body').innerText());

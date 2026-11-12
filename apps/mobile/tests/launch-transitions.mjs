@@ -332,7 +332,7 @@ try {
       const home = document.querySelector('[aria-label="오늘"]');
       return { text: document.body.innerText, character: bounds ? {width: bounds.width, height: bounds.height} : null, homeSelected: home.getAttribute('aria-selected'), homeBottom: home.getBoundingClientRect().bottom, navHeight: document.querySelector('[role="tablist"]').getBoundingClientRect().height, height: innerHeight };
     })()`);
-    assert(main.text.includes('무엇이 궁금하세요?'));
+    assert(main.text.includes('하루 대화'));
     assert(!main.text.includes('+378일'), 'Preview must not invent child data');
     assert(main.text.includes('미리보기에서는 서버 일정을 이용할 수 없어요.'));
     assert(main.text.includes('오늘의 일정'));
