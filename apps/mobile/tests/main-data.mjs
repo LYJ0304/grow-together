@@ -103,12 +103,23 @@ try {
   await page
     .getByRole('button', { name: '일정 만들기', exact: true })
     .waitFor();
+  // The date heading can render before the query's request effect runs.
+  const midnightRead = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).searchParams.get('date') === '2026-11-01',
+  );
   await page.clock.fastForward(601000);
+  await midnightRead;
   await text('11월 1일 일요일').waitFor();
   assert.equal(reads.at(-1), '2026-11-01');
+  const foregroundRead = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).searchParams.get('date') === '2026-11-02',
+  );
   await page.clock.setSystemTime(new Date('2026-11-02T12:00:00+09:00'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await text('11월 2일 월요일').waitFor();
+  await foregroundRead;
   assert.equal(reads.at(-1), '2026-11-02');
   console.log(
     'PASS home loading, integrated schedule/progress, removed duplicate cards, error/empty distinction and midnight/foreground refresh',

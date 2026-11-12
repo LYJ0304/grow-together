@@ -4,14 +4,20 @@ Read this reference before changing mobile colors or adding a screen. The approv
 visual baseline is `mobile/v0.1.0` (`4013293`), not later neutral-palette changes.
 That release used inline colors; `apps/mobile/src/theme/colors.ts` is now the
 runtime source of truth. Import its semantic roles instead of copying hex values.
+The current button default follows the user-approved activity recommendation
+button on main: peach `tint` + `onTint`, superseding the earlier coral CTA default.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| brand | `#D26A5C` | Default filled CTA, active icons/checks, logo and large brand titles |
-| onBrand | `#241C1A` | Normal text on coral filled CTAs; not a replacement for body text |
+| brand | `#D26A5C` | Active icons/checks, logo, large titles and explicit legacy coral actions; not the button default |
+| onBrand | `#241C1A` | Text on explicit coral actions; not default button or body text |
 | primary | `#B25447` | Small emphasis text, focus and contrast-sensitive narrow indicators |
-| onTint | `#914C41` | Small text on tint, from the reference diary emphasis color |
-| tint | `#FDEDE6` | Secondary action and selected backgrounds |
+| onTint | `#914C41` | Default/pink button text and small text on tint |
+| tint | `#FDEDE6` | Default button fill (activity recommendation baseline), selected backgrounds |
+| buttonRose | `#F8E1EA` | Paired alternate action fill |
+| buttonBlush | `#FBE9EF` | Third action, e.g. photo attachment/regeneration/skip |
+| buttonPetal | `#F5D6E0` | Additional action, e.g. photo removal/result inspection |
+| buttonMist | `#FFF3F7` | Return/back action alongside several filled buttons |
 | background | `#FAF9F9` | Screen, loading, web document and native launch background |
 | surface / field | `#FFFFFF` | Cards, inputs, text on dark primary; semantic icons on brand |
 | text | `#4F4F4F` | Body text |
@@ -35,8 +41,22 @@ primary assignment later made the app feel red and heavy despite unchanged hex
 values. The intended balance is warm, airy coral/peach with dark accents used
 selectively, rather than a claim that every reference control was bright coral.
 
-- Filled actions (welcome/auth, shared buttons, child/spouse forms, schedule and
-  diary actions) use `brand` + `onBrand`; secondary actions use `tint` + `onTint`.
+- Default buttons use `tint` + `onTint` (about 5.56:1). `ActionButton` defaults
+  to `tone="default"`; custom welcome/auth/calendar buttons share the same tokens
+  in `apps/mobile/src/theme/buttons.ts`. Do not use the old `secondary` flag to
+  mean the peach default, or independently copy a fill/label pair.
+- Distinct enabled actions shown together use fixed named pink tones: `rose`,
+  `blush`, `petal`, `mist`. These four extra fills are scoped to buttons, not a new
+  brand palette. All use `onTint` and meet 4.5:1. Use only the tones a view needs;
+  never alternate by list index or randomly recolor repeated identical actions.
+- Welcome login/signup and auth login/preview use default/rose. Unavailable report
+  schedule/records use default/rose. Onboarding next/previous/skip use
+  default/rose/blush. Diary materials can show five actions: generate/default,
+  direct/rose, photo/blush, remove photo/petal, return/mist. Preserve conditional
+  states rather than assigning separate colors to mutually exclusive actions.
+- Review caller groups whenever changing a shared button. Existing custom coral
+  actions outside this task (child/spouse edit and add-plan submit) are explicit
+  legacy exceptions using `brand` + `onBrand`, not a rule for future buttons.
 - Active tab/header icons, send icons and completed checks use `brand`. White
   semantic glyphs on coral meet 3:1; this does not permit ordinary white text.
 - Keep `primary` for small links, focus, selected calendar/date cells with small
@@ -45,17 +65,19 @@ selectively, rather than a claim that every reference control was bright coral.
   can use coral. Do not replace every occurrence of primary mechanically.
 - Preserve bright screen backgrounds and peach emphasis. Do not compensate with
   a new palette, changed logo geometry, layout, typography or animation timing.
-- Press feedback on coral text buttons changes the surface color rather than
-  fading the whole control and its label. Preserve existing handlers, disabled
+- Press feedback on pastel/default buttons uses the shared tone presets rather than
+  fading the whole control and its label. Scale-only motion buttons keep their
+  existing transform feedback. Preserve existing handlers, disabled
   semantics and transform motion.
 
 ## Contrast and asset boundaries
 
 Normal text needs 4.5:1, large text 3:1, and meaningful control/state indicators 3:1.
 Coral on white is about 3.53:1; white on primary is about 4.94:1.
-`onBrand` on coral is about 4.74:1; on peach it is above 4.5:1. Existing heading
+`onBrand` on coral is about 4.74:1 for explicit coral exceptions. Existing heading
 text on coral is only about 4.13:1, so use the explicit `onBrand` role for normal
-CTA text. Never darken all coral surfaces just to retain white labels. Primary on
+coral text. Default/pink button text uses `onTint`; white text is not suitable on
+these light fills. Never darken all coral surfaces just to retain white labels. Primary on
 tint is below 4.5:1, so use `onTint` for small secondary-button/chip text. Decorative borders
 may be subtle; use `controlBorder` where an edge identifies an interactive field.
 Keep errors readable and separate from primary actions. Disabled controls retain

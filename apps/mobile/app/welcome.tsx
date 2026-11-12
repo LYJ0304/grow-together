@@ -1,3 +1,4 @@
+import { buttonForeground, buttonTones } from '../src/theme/buttons';
 import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -54,7 +55,7 @@ export default function WelcomeScreen() {
               style={({ pressed }) => [
                 styles.button,
                 styles.primaryButton,
-                pressed && styles.pressed,
+                pressed && styles.primaryPressed,
               ]}
             >
               <Text style={[styles.buttonLabel, styles.primaryLabel]}>
@@ -69,7 +70,7 @@ export default function WelcomeScreen() {
               style={({ pressed }) => [
                 styles.button,
                 styles.secondaryButton,
-                pressed && styles.pressed,
+                pressed && styles.secondaryPressed,
               ]}
             >
               <Text style={[styles.buttonLabel, styles.secondaryLabel]}>
@@ -112,17 +113,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: colors.brand,
+    backgroundColor: buttonTones.default.background,
     boxShadow: colors.welcomeShadow,
   },
-  secondaryButton: { backgroundColor: colors.tint },
-  pressed: { backgroundColor: colors.tint },
+  secondaryButton: { backgroundColor: buttonTones.rose.background },
+  primaryPressed: { backgroundColor: buttonTones.default.pressed },
+  secondaryPressed: { backgroundColor: buttonTones.rose.pressed },
   buttonLabel: {
     fontFamily: 'Jua',
     fontSize: 20,
     lineHeight: 32,
     textAlign: 'center',
   },
-  primaryLabel: { color: colors.onBrand },
+  primaryLabel: { color: buttonForeground },
   secondaryLabel: { color: colors.onTint },
 });

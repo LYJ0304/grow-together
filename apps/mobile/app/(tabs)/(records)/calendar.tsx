@@ -1,3 +1,4 @@
+import { buttonForeground, buttonTones } from '../../../src/theme/buttons';
 import { colors } from '../../../src/theme/colors';
 import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
 import { useAuth } from '../../../src/components/auth-provider';
@@ -544,18 +545,18 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: colors.brand,
+    backgroundColor: buttonTones.default.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  generatePressed: { backgroundColor: colors.tint },
+  generatePressed: { backgroundColor: buttonTones.default.pressed },
   generateLabel: {
     ...typography.button,
     fontSize: 16,
     lineHeight: 22,
-    color: colors.onBrand,
+    color: buttonForeground,
     textAlign: 'center',
   },
   notice: {

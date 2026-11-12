@@ -78,7 +78,7 @@ export function ChildRegistrationModal({
             />
             <ActionButton
               label={error ? '닫기' : '나중에 등록하기'}
-              secondary
+              tone="rose"
               onPress={onClose}
             />
           </ScrollView>

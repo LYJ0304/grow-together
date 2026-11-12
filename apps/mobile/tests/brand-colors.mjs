@@ -8,10 +8,30 @@ const source = readFileSync(
 const colors = vm.runInNewContext(
   source.replace('export const colors =', 'const colors =') + '\ncolors',
 );
+assert.equal(
+  colors.tint,
+  '#FDEDE6',
+  'Approved activity-recommendation default fill',
+);
+assert.equal(colors.onTint, '#914C41', 'Approved default button foreground');
 assert.match(
   colors.onBrand ?? '',
   /^#[0-9a-f]{6}$/i,
-  'Bright brand CTA needs an accessible text role',
+  'Explicit coral actions need an accessible text role',
+);
+for (const token of ['buttonRose', 'buttonBlush', 'buttonPetal', 'buttonMist'])
+  assert.match(
+    colors[token] ?? '',
+    /^#[0-9a-f]{6}$/i,
+    `${token} needs a centralized fill`,
+  );
+assert.equal(
+  new Set(
+    ['tint', 'buttonRose', 'buttonBlush', 'buttonPetal', 'buttonMist'].map(
+      (token) => colors[token],
+    ),
+  ).size,
+  5,
 );
 const config = JSON.parse(
   readFileSync(new URL('../app.json', import.meta.url)),
@@ -56,6 +76,10 @@ for (const [fg, bg, minimum] of [
   ['muted', 'surface', 4.5],
   ['primary', 'background', 4.5],
   ['onTint', 'tint', 4.5],
+  ['onTint', 'buttonRose', 4.5],
+  ['onTint', 'buttonBlush', 4.5],
+  ['onTint', 'buttonPetal', 4.5],
+  ['onTint', 'buttonMist', 4.5],
   ['danger', 'surface', 4.5],
   ['controlBorder', 'surface', 3],
   ['controlBorder', 'background', 3],

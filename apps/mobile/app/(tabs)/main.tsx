@@ -164,7 +164,7 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="아이 정보 다시 시도"
-                  secondary
+                  tone="rose"
                   onPress={() => void profile.refetch()}
                 />
               </View>
@@ -220,7 +220,6 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="일정 다시 불러오기"
-                  secondary
                   onPress={() => void todos.refetch()}
                 />
               </View>
@@ -236,7 +235,6 @@ export default function MainScreen() {
                     <ActionButton
                       motionEnabled
                       label="일정 만들기"
-                      secondary
                       onPress={() =>
                         router.navigate({
                           pathname: '/todo',
@@ -275,7 +273,6 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="일정 다시 불러오기"
-                  secondary
                   onPress={() => {
                     setCompletionError('');
                     void todos.refetch();
