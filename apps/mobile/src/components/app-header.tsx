@@ -32,7 +32,7 @@ export function AppHeader({
         <Image
           source={require('../../assets/images/main/user.svg')}
           style={styles.icon}
-          tintColor={colors.primary}
+          tintColor={colors.brand}
           accessible={false}
         />
         {!title ? <Text style={styles.label}>아이 프로필</Text> : null}
@@ -53,7 +53,7 @@ export function AppHeader({
         <Image
           source={require('../../assets/images/chat/settings.svg')}
           style={styles.icon}
-          tintColor={colors.primary}
+          tintColor={colors.brand}
           accessible={false}
         />
         {!title ? <Text style={styles.label}>설정</Text> : null}
@@ -104,7 +104,10 @@ function HeaderButton({
   ) : (
     <Pressable
       {...props}
-      style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [
+        style,
+        pressed && { backgroundColor: colors.background },
+      ]}
     >
       {children}
     </Pressable>

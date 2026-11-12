@@ -1,6 +1,7 @@
 // See .harness/references/brand-colors.md for roles and contrast requirements.
 export const colors = {
   brand: '#D26A5C',
+  onBrand: '#241C1A',
   primary: '#B25447',
   onTint: '#914C41',
   background: '#FAF9F9',

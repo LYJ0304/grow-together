@@ -58,7 +58,7 @@ export default function TabLayout() {
           tabBarButton: (props) => (
             <TabButton {...props} blocked={interaction.blocked} />
           ),
-          tabBarActiveTintColor: colors.primary,
+          tabBarActiveTintColor: colors.brand,
           tabBarInactiveTintColor: colors.muted,
           tabBarHideOnKeyboard: true,
           tabBarVisibilityAnimationConfig: {

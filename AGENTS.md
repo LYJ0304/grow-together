@@ -20,7 +20,10 @@
 
 Before changing mobile colors or adding screens, read the
 [brand color reference](.harness/references/brand-colors.md). Use semantic tokens
-from `apps/mobile/src/theme/colors.ts`; preserve the `mobile/v0.1.0` palette.
+from `apps/mobile/src/theme/colors.ts`; preserve the `mobile/v0.1.0` palette and
+its bright coral/peach visual balance. Use `brand` + `onBrand` for filled CTAs;
+reserve dark `primary` for contrast-sensitive text, focus and narrow indicators.
+Do not make all accents dark to solve a text contrast problem.
 
 ## Harness workflow
 

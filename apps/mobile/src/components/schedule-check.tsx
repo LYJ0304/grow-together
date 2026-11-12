@@ -38,7 +38,7 @@ export function ScheduleCheck({ completed }: { completed: boolean }) {
     backgroundColor: interpolateColor(
       value.value,
       [0, 1],
-      [colors.background, colors.primary],
+      [colors.background, colors.brand],
     ),
     transform: [{ scale: scale.value }],
   }));
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
