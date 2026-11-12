@@ -58,7 +58,7 @@ try {
         { waitUntil: 'commit', timeout: 120000 },
       );
       await page.getByRole('tablist').waitFor();
-      assert.equal(await page.getByRole('tablist').getByRole('tab').count(), 4);
+      assert.equal(await page.getByRole('tablist').getByRole('tab').count(), 5);
       const expected = {
         main: '오늘',
         todo: '일정',

@@ -26,6 +26,11 @@ const tabs = [
     icon: require('../../assets/images/main/calendar.svg'),
   },
   {
+    name: 'report',
+    title: '리포트',
+    icon: require('../../assets/images/main/report.svg'),
+  },
+  {
     name: 'chat',
     title: '질문',
     icon: require('../../assets/images/main/chat.svg'),

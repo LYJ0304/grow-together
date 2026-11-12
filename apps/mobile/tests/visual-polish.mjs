@@ -110,7 +110,7 @@ try {
         );
         if (!['main', 'todo', 'calendar', 'chat'].includes(route)) continue;
         const tabs = page.getByRole('tablist').getByRole('tab');
-        assert.equal(await tabs.count(), 4);
+        assert.equal(await tabs.count(), 5);
         for (const tab of await tabs.all()) {
           const box = await tab.boundingBox();
           assert(box.height >= 48 && box.width >= 44, 'tab touch target');

@@ -35,7 +35,7 @@ async function checkChat() {
   await input.waitFor();
   assert.equal(new URL(page.url()).pathname, '/chat');
   assert.equal(await questionTab.getAttribute('aria-selected'), 'true');
-  assert.equal(await tabs.getByRole('tab').count(), 4);
+  assert.equal(await tabs.getByRole('tab').count(), 5);
   assert.equal(
     await page
       .getByRole('heading', { name: '누구랑 같이 키워볼까요?' })

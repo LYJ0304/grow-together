@@ -98,7 +98,7 @@ try {
   assert.equal(await input.inputValue(), '홈에서 이어 쓸 질문 초안');
   assert.equal(
     await page.getByRole('tablist').getByRole('tab').count(),
-    4,
+    5,
     'Question tab remains during the home-entry trial',
   );
   console.log(
