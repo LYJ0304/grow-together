@@ -11,6 +11,9 @@ from app.features.chat.service import ChatService
 from app.features.diary.generator import DiaryGenerator
 from app.features.diary.service import DiaryService
 from app.features.diary.validator import DiaryValidator
+from app.features.report.generator import ReportGenerator
+from app.features.report.service import ReportService
+from app.features.report.validator import ReportValidator
 from app.features.schedule.planner import SchedulePlanner
 from app.features.schedule.scheduler import ScheduleScheduler
 from app.features.schedule.service import ScheduleService
@@ -98,3 +101,17 @@ def get_chat_service(
     llm_client: Annotated[OpenRouterClient, Depends(get_chat_llm_client)],
 ) -> ChatService:
     return ChatService(generator=ChatGenerator(llm_client))
+
+
+@lru_cache
+def get_report_llm_client() -> OpenRouterClient:
+    return OpenRouterClient(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.llm_report_model or settings.llm_diary_model,
+    )
+
+
+def get_report_service(
+    llm_client: Annotated[OpenRouterClient, Depends(get_report_llm_client)],
+) -> ReportService:
+    return ReportService(ReportGenerator(llm_client), ReportValidator())
