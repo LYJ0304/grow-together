@@ -63,6 +63,19 @@ try {
   );
   await page.getByRole('button', { name: '이전 날', exact: true }).click();
   await page.getByRole('button', { name: '일기 1개', exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole('button', { name: '이날 이야기 나누기', exact: true })
+      .count(),
+    1,
+    'Past dates must not be described as today',
+  );
+  assert.equal(
+    await page
+      .getByRole('progressbar', { name: '선택한 날 일정 완료율', exact: true })
+      .count(),
+    1,
+  );
   await page
     .getByRole('button', {
       name: '일기와 사진, 일기 1개 · 사진 1장',

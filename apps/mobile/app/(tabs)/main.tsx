@@ -264,7 +264,7 @@ export default function MainScreen() {
               </Text>
             </MotionPressable>
           </View>
-          <HomeQuestionEntry />
+          <HomeQuestionEntry currentDay={date === today} />
           <HomeMoments
             diaryText={
               status === 'preview'
@@ -326,7 +326,14 @@ export default function MainScreen() {
                 <Text style={styles.meta}>
                   완료 {completed}개 / 전체 {schedules.length}개
                 </Text>
-                <ScheduleProgress progress={progress} />
+                <ScheduleProgress
+                  progress={progress}
+                  accessibilityLabel={
+                    date === today
+                      ? '오늘 일정 완료율'
+                      : '선택한 날 일정 완료율'
+                  }
+                />
                 {schedules.length === 0 ? (
                   <View style={styles.empty}>
                     <Text style={styles.body}>등록된 일정이 없어요.</Text>
@@ -345,7 +352,9 @@ export default function MainScreen() {
                   <>
                     {completed === schedules.length ? (
                       <Text style={styles.meta}>
-                        오늘 일정을 모두 마쳤어요.
+                        {date === today
+                          ? '오늘 일정을 모두 마쳤어요.'
+                          : '이날 일정을 모두 마쳤어요.'}
                       </Text>
                     ) : null}
                     {schedules.slice(0, 3).map((todo, index) => (

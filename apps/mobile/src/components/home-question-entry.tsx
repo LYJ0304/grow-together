@@ -6,7 +6,11 @@ import { typography } from '../theme/typography';
 import { colors } from '../theme/colors';
 
 // Opening the composer never replaces an existing question with a generated prompt.
-export function HomeQuestionEntry() {
+export function HomeQuestionEntry({
+  currentDay = true,
+}: {
+  currentDay?: boolean;
+}) {
   const { draft } = useChatDraft();
   return (
     <View style={styles.section}>
@@ -20,7 +24,7 @@ export function HomeQuestionEntry() {
       </Text>
       <ActionButton
         motionEnabled
-        label="오늘 이야기 나누기"
+        label={currentDay ? '오늘 이야기 나누기' : '이날 이야기 나누기'}
         onPress={() =>
           router.navigate({ pathname: '/chat', params: { compose: 'true' } })
         }
