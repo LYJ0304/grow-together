@@ -29,7 +29,7 @@ export function ActionButton({
         style={[
           typography.button,
           {
-            color: secondary ? colors.onTint : colors.surface,
+            color: secondary ? colors.onTint : colors.onBrand,
             textAlign: 'center',
           },
         ]}
@@ -72,7 +72,10 @@ function ButtonShell({
       {...props}
       style={({ pressed }) => [
         style,
-        pressed && !disabled && { opacity: 0.72 },
+        pressed &&
+          !disabled && {
+            backgroundColor: secondary ? colors.surface : colors.tint,
+          },
       ]}
     >
       {children}
@@ -85,7 +88,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
   },
   secondary: {
     backgroundColor: colors.tint,

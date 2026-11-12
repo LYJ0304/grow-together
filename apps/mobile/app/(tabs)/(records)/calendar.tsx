@@ -377,7 +377,7 @@ export default function CalendarScreen() {
             style={({ pressed }) => [
               styles.generateButton,
               (loadingDiaries || !!diaryNotice) && styles.pressed,
-              pressed && styles.pressed,
+              pressed && styles.generatePressed,
             ]}
           >
             <Text style={styles.generateLabel}>
@@ -544,17 +544,18 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  generatePressed: { backgroundColor: colors.tint },
   generateLabel: {
     ...typography.button,
     fontSize: 16,
     lineHeight: 22,
-    color: colors.surface,
+    color: colors.onBrand,
     textAlign: 'center',
   },
   notice: {

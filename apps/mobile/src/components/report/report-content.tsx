@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   eyebrow: { ...typography.caption, color: colors.onTint },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   metric: { flexGrow: 1, minWidth: 74, gap: 4 },
-  value: { ...typography.title, color: colors.primary },
+  value: { ...typography.title, color: colors.brand },
   chart: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   day: { alignItems: 'center', flex: 1, gap: 4 },
   barTrack: { height: 48, justifyContent: 'flex-end', width: 14 },
-  bar: { backgroundColor: colors.primary, borderRadius: 7, width: 14 },
+  bar: { backgroundColor: colors.brand, borderRadius: 7, width: 14 },
   activity: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   flex: { flex: 1, minWidth: 0 },
   link: { minHeight: 44, justifyContent: 'center' },

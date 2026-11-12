@@ -528,8 +528,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
   },
-  buttonLabel: { ...typography.button, fontSize: 16, color: colors.surface },
-  pressed: { opacity: 0.75 },
+  buttonLabel: { ...typography.button, fontSize: 16, color: colors.onBrand },
+  pressed: { backgroundColor: colors.background },
 });

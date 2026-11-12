@@ -50,7 +50,7 @@ export function HomeQuestionEntry() {
     backgroundColor: interpolateColor(
       active.value,
       [0, 1],
-      [colors.disabled, colors.primary],
+      [colors.disabled, colors.brand],
     ),
   }));
   const openChat = () =>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     minWidth: 44,
     minHeight: 44,
     borderRadius: radius.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
   },

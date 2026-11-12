@@ -384,10 +384,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancel: { backgroundColor: colors.tint },
-  submit: { backgroundColor: colors.primary },
+  submit: { backgroundColor: colors.brand },
   cancelText: { ...typography.button, color: colors.muted },
-  submitText: { ...typography.button, color: colors.surface },
-  pressed: { opacity: 0.75 },
+  submitText: { ...typography.button, color: colors.onBrand },
+  pressed: { backgroundColor: colors.background },
   confirm: {
     gap: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,

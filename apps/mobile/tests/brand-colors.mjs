@@ -8,6 +8,11 @@ const source = readFileSync(
 const colors = vm.runInNewContext(
   source.replace('export const colors =', 'const colors =') + '\ncolors',
 );
+assert.match(
+  colors.onBrand ?? '',
+  /^#[0-9a-f]{6}$/i,
+  'Bright brand CTA needs an accessible text role',
+);
 const config = JSON.parse(
   readFileSync(new URL('../app.json', import.meta.url)),
 ).expo;
@@ -40,6 +45,12 @@ const contrast = (a, b) =>
   (Math.min(luminance(a), luminance(b)) + 0.05);
 for (const [fg, bg, minimum] of [
   ['surface', 'primary', 4.5],
+  ['onBrand', 'brand', 4.5],
+  ['onBrand', 'tint', 4.5],
+  ['onBrand', 'background', 4.5],
+  ['surface', 'brand', 3],
+  ['brand', 'surface', 3],
+  ['brand', 'tint', 3],
   ['text', 'background', 4.5],
   ['muted', 'background', 4.5],
   ['muted', 'surface', 4.5],

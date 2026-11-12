@@ -356,11 +356,11 @@ const styles = StyleSheet.create({
     minHeight: 58,
     marginTop: 12,
     borderRadius: 15,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryLabel: { ...typography.section, fontSize: 19, color: colors.surface },
+  primaryLabel: { ...typography.section, fontSize: 19, color: colors.onBrand },
   previewButton: {
     minHeight: 54,
     marginTop: 9,
@@ -389,5 +389,5 @@ const styles = StyleSheet.create({
   },
   switchText: { ...typography.caption, fontSize: 13, color: colors.muted },
   switchLink: { ...typography.caption, fontSize: 13, color: colors.primary },
-  pressed: { opacity: 0.78 },
+  pressed: { backgroundColor: colors.tint },
 });

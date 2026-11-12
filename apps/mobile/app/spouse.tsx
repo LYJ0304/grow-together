@@ -230,9 +230,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
   },
-  searchLabel: { ...typography.button, fontSize: 16, color: colors.surface },
+  searchLabel: { ...typography.button, fontSize: 16, color: colors.onBrand },
   resetButton: {
     alignSelf: 'flex-end',
     minHeight: 44,
@@ -284,5 +284,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   emptyTitle: { ...typography.section, fontSize: 18, color: colors.text },
-  pressed: { opacity: 0.8 },
+  pressed: { backgroundColor: colors.tint },
 });

@@ -7,6 +7,10 @@ for the current request. Requirements in the user's request take precedence.
 
 Read the [brand color reference](references/brand-colors.md) for mobile UI work.
 Use the shared runtime tokens and validate contrast and static launch assets.
+Preserve bright coral/peach usage as well as hex values: filled CTAs use
+`brand` + `onBrand`, while dark `primary` is reserved for contrast-sensitive
+text/focus/narrow indicators. Do not globally darken accents for accessibility;
+choose a readable foreground/background pair and check pressed states too.
 
 ## Stage handoffs
 

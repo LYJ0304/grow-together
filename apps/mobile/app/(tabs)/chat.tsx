@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: 2,
     borderRadius: 22,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendIcon: { width: 22, height: 22 },
   disabled: { opacity: 0.35 },
-  pressed: { opacity: 0.75 },
+  pressed: { backgroundColor: colors.primary },
 });

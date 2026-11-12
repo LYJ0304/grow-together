@@ -112,17 +112,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.brand,
     boxShadow: colors.welcomeShadow,
   },
   secondaryButton: { backgroundColor: colors.tint },
-  pressed: { opacity: 0.8 },
+  pressed: { backgroundColor: colors.tint },
   buttonLabel: {
     fontFamily: 'Jua',
     fontSize: 20,
     lineHeight: 32,
     textAlign: 'center',
   },
-  primaryLabel: { color: colors.surface },
+  primaryLabel: { color: colors.onBrand },
   secondaryLabel: { color: colors.onTint },
 });
