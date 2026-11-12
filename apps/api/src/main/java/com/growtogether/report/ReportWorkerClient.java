@@ -1,5 +1,8 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportWorkerRequest;
+import com.growtogether.report.dto.ReportWorkerResponse;
+
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
@@ -13,7 +16,6 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
-import static com.growtogether.report.ReportDtos.*;
 
 @Component
 public class ReportWorkerClient {
@@ -39,7 +41,7 @@ public class ReportWorkerClient {
         this.client = client; this.key = key; this.mapper = mapper;
         this.readTimeoutNanos = readTimeout.toNanos();
     }
-    public WorkerResponse generate(WorkerRequest input) {
+    public ReportWorkerResponse generate(ReportWorkerRequest input) {
         if (key.isBlank()) throw new ReportGenerationException("WORKER_UNAVAILABLE");
         long started = System.nanoTime();
         try {
@@ -53,7 +55,7 @@ public class ReportWorkerClient {
                             throw new ReportGenerationException("INVALID_RESULT");
                         var bytes = response.getBody().readNBytes(32 * 1024 + 1);
                         if (bytes.length > 32 * 1024) throw new ReportGenerationException("INVALID_RESULT");
-                        return mapper.readerFor(WorkerResponse.class)
+                        return mapper.readerFor(ReportWorkerResponse.class)
                                 .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                                 .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
                                 .readValue(bytes);

@@ -1,5 +1,8 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportActivity;
+import com.growtogether.report.dto.ReportLinkedTodo;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import com.growtogether.auth.AuthRepository;
@@ -55,8 +58,8 @@ class WeeklyReportReaderTest {
         ReflectionTestUtils.setField(foreign,"id",3L);
         var d=diary(9,monday,"실제 일기");d.replaceTodos(List.of(a,foreign));
         sources(List.of(a,b),List.of(d));var r=reader.read(1L,monday).report();
-        assertThat(r.majorActivities()).extracting(ReportDtos.Activity::title).containsExactly("A","B");
-        assertThat(r.memories().getFirst().activities()).extracting(ReportDtos.LinkedTodo::id).containsExactly(1L);
+        assertThat(r.majorActivities()).extracting(ReportActivity::title).containsExactly("A","B");
+        assertThat(r.memories().getFirst().activities()).extracting(ReportLinkedTodo::id).containsExactly(1L);
         assertThat(r.memories().getFirst().excerpt()).isEqualTo("실제 일기");
     }
     @Test void fullSourceHashChangesBeyondSamplesAndForProfileAndTimeEligibility() {

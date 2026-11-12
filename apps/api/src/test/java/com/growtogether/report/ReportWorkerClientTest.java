@@ -1,7 +1,8 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportWorkerRequest;
+
 import static org.assertj.core.api.Assertions.*;
-import static com.growtogether.report.ReportDtos.*;
 import static com.growtogether.report.ReportTestData.*;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -14,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 class ReportWorkerClientTest {
     final JsonMapper mapper=JsonMapper.builder().build();
-    final WorkerRequest input=snapshot("a".repeat(64)).input();
+    final ReportWorkerRequest input=snapshot("a".repeat(64)).input();
     HttpServer server;
     final AtomicReference<String> body=new AtomicReference<>();
     final AtomicReference<String> received=new AtomicReference<>();

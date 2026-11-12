@@ -1,11 +1,16 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportEvidence;
+import com.growtogether.report.dto.ReportEvidenceType;
+import com.growtogether.report.dto.ReportWorkerRequest;
+import com.growtogether.report.dto.ReportWorkerResponse;
+import static com.growtogether.report.dto.ReportWorkerRequest.PROMPT_VERSION;
+
 import jakarta.validation.Validator;
 import java.util.*;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
-import static com.growtogether.report.ReportDtos.*;
 
 @Component
 @RequiredArgsConstructor
@@ -18,12 +23,12 @@ class ReportResultValidator {
             + "diagnos|therap|developmental|normal development|autis|adhd|intelligen|personality|happier|anxious|healthy child",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
-    boolean valid(WorkerRequest input, WorkerResponse output) {
+    boolean valid(ReportWorkerRequest input, ReportWorkerResponse output) {
         if (output == null || !validator.validate(output).isEmpty()
                 || !input.sourceHash().equals(output.sourceHash()) || !PROMPT_VERSION.equals(output.promptVersion())) return false;
-        Map<Evidence,String> sources = new HashMap<>();
-        input.sources().todos().forEach(t -> sources.put(new Evidence(EvidenceType.TODO,t.id()),t.title()));
-        input.sources().diaries().forEach(d -> sources.put(new Evidence(EvidenceType.DIARY,d.id()),d.excerpt()));
+        Map<ReportEvidence,String> sources = new HashMap<>();
+        input.sources().todos().forEach(t -> sources.put(new ReportEvidence(ReportEvidenceType.TODO,t.id()),t.title()));
+        input.sources().diaries().forEach(d -> sources.put(new ReportEvidence(ReportEvidenceType.DIARY,d.id()),d.excerpt()));
         var result=output.result();
         if (unsafe(result.summary())) return false;
         for (var observation: result.observations()) {
@@ -34,7 +39,7 @@ class ReportResultValidator {
                 && !unsafe(step.reason()) && evidenceValid(step.evidence(),sources));
     }
     private boolean unsafe(String text) { return UNSAFE.matcher(text).find(); }
-    private boolean evidenceValid(List<Evidence> evidence, Map<Evidence,String> sources) {
+    private boolean evidenceValid(List<ReportEvidence> evidence, Map<ReportEvidence,String> sources) {
         return evidence.stream().distinct().count()==evidence.size() && sources.keySet().containsAll(evidence);
     }
 }

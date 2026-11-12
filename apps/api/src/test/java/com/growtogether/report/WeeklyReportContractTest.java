@@ -1,7 +1,10 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportInsight;
+import com.growtogether.report.dto.ReportInsightState;
+import com.growtogether.report.dto.ReportWorkerResponse;
+
 import static org.assertj.core.api.Assertions.*;
-import static com.growtogether.report.ReportDtos.*;
 import static com.growtogether.report.ReportTestData.*;
 import java.nio.file.*;
 import org.junit.jupiter.api.Test;
@@ -16,8 +19,8 @@ class WeeklyReportContractTest {
         assertThat(wire(source.input())).isEqualTo(mapper.readTree(Files.readString(fixtures.resolve("worker-request.json"))));
         var generated=result(source.input());
         assertThat(wire(generated)).isEqualTo(mapper.readTree(Files.readString(fixtures.resolve("worker-response.json"))));
-        assertThat(wire(source.with(new Insight(State.AVAILABLE,null,generated.result().external()))))
+        assertThat(wire(source.with(new ReportInsight(ReportInsightState.AVAILABLE,null,generated.result().external()))))
                 .isEqualTo(mapper.readTree(Files.readString(fixtures.resolve("weekly-available.json"))));
-        assertThat(mapper.readValue(Files.readString(fixtures.resolve("worker-response.json")),WorkerResponse.class)).isEqualTo(generated);
+        assertThat(mapper.readValue(Files.readString(fixtures.resolve("worker-response.json")),ReportWorkerResponse.class)).isEqualTo(generated);
     }
 }

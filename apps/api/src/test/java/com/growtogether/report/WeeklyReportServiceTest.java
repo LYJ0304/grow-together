@@ -1,8 +1,9 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportInsightState;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static com.growtogether.report.ReportDtos.*;
 import static com.growtogether.report.ReportTestData.*;
 import jakarta.validation.Validation;
 import java.time.*;
@@ -23,32 +24,32 @@ class WeeklyReportServiceTest {
         when(worker.generate(any())).thenAnswer(i->result(i.getArgument(0)));
     }
     @Test void getNeverGeneratesAndPostReusesOnlyFreshSuccessfulResult() {
-        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(State.NOT_GENERATED);
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
         verifyNoInteractions(worker);
-        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(State.AVAILABLE);
-        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(State.AVAILABLE);
+        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
+        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
         verify(worker,times(1)).generate(any());
         when(clock.instant()).thenReturn(NOW.plusSeconds(901));
-        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(State.NOT_GENERATED);
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
         service.generate(1L,WEEK); verify(worker,times(2)).generate(any());
     }
     @Test void failuresRemainSeparateFromAggregatesAndExplicitRetryWorks() {
         doThrow(new ReportGenerationException("TIMEOUT")).doAnswer(i->result(i.getArgument(0))).when(worker).generate(any());
         var failed=service.generate(1L,WEEK);
-        assertThat(failed.insight().state()).isEqualTo(State.UNAVAILABLE);
+        assertThat(failed.insight().state()).isEqualTo(ReportInsightState.UNAVAILABLE);
         assertThat(failed.insight().reason()).isEqualTo("TIMEOUT");
         assertThat(failed.metrics().completed()).isEqualTo(1);
-        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(State.UNAVAILABLE);
-        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(State.AVAILABLE);
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.UNAVAILABLE);
+        assertThat(service.generate(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
     }
     @Test void sourceChangedDuringGenerationIsNeverPublished() {
         var current=new AtomicReference<>(source);
         when(reader.read(anyLong(),any())).thenAnswer(i->current.get());
         doAnswer(i->{current.set(snapshot("b".repeat(64)));return result(i.getArgument(0));}).when(worker).generate(any());
         var stale=service.generate(1L,WEEK);
-        assertThat(stale.insight().state()).isEqualTo(State.STALE); assertThat(stale.insight().result()).isNull();
+        assertThat(stale.insight().state()).isEqualTo(ReportInsightState.STALE); assertThat(stale.insight().result()).isNull();
         assertThat(stale.sourceHash()).isEqualTo("b".repeat(64));
-        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(State.NOT_GENERATED);
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
     }
     @Test void concurrentSameKeySharesOneCall() throws Exception {
         var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
@@ -59,16 +60,16 @@ class WeeklyReportServiceTest {
             var second=pool.submit(()->service.generate(1L,WEEK));
             verify(reader,timeout(3000).atLeast(2)).read(1L,WEEK);
             release.countDown();
-            assertThat(first.get(5,TimeUnit.SECONDS).insight().state()).isEqualTo(State.AVAILABLE);
-            assertThat(second.get(5,TimeUnit.SECONDS).insight().state()).isEqualTo(State.AVAILABLE);
+            assertThat(first.get(5,TimeUnit.SECONDS).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
+            assertThat(second.get(5,TimeUnit.SECONDS).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
             verify(worker,times(1)).generate(any());
         } finally { release.countDown(); }
     }
     @Test void cacheEvictsOldEntriesAndNeverCrossesOwnerKeys() {
         for(long owner=1;owner<=129;owner++)service.generate(owner,WEEK);
-        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(State.NOT_GENERATED);
-        assertThat(service.get(129L,WEEK).insight().state()).isEqualTo(State.AVAILABLE);
-        assertThat(service.get(130L,WEEK).insight().state()).isEqualTo(State.NOT_GENERATED);
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
+        assertThat(service.get(129L,WEEK).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
+        assertThat(service.get(130L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
     }
     @Test void inFlightKeysAreBounded() throws Exception {
         var entered=new CountDownLatch(16);var release=new CountDownLatch(1);

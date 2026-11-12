@@ -1,5 +1,23 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportActivity;
+import com.growtogether.report.dto.ReportChildContext;
+import com.growtogether.report.dto.ReportDaily;
+import com.growtogether.report.dto.ReportInsight;
+import com.growtogether.report.dto.ReportInsightState;
+import com.growtogether.report.dto.ReportLinkedTodo;
+import com.growtogether.report.dto.ReportMemory;
+import com.growtogether.report.dto.ReportMetrics;
+import com.growtogether.report.dto.ReportPeriod;
+import com.growtogether.report.dto.ReportWorkerDiary;
+import com.growtogether.report.dto.ReportWorkerMetrics;
+import com.growtogether.report.dto.ReportWorkerPeriod;
+import com.growtogether.report.dto.ReportWorkerRequest;
+import com.growtogether.report.dto.ReportWorkerSources;
+import com.growtogether.report.dto.ReportWorkerTodo;
+import com.growtogether.report.dto.WeeklyReportResponse;
+import static com.growtogether.report.dto.ReportWorkerRequest.PROMPT_VERSION;
+
 import com.growtogether.auth.AuthRepository;
 import com.growtogether.child.ChildProfile;
 import com.growtogether.child.ChildProfileRepository;
@@ -19,7 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import static com.growtogether.report.ReportDtos.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,9 +49,9 @@ public class WeeklyReportReader {
     private final Clock clock;
     private final ObjectMapper mapper;
 
-    public record Snapshot(WeeklyReport report, WorkerRequest input, String restriction) {
-        WeeklyReport with(Insight insight) {
-            return new WeeklyReport(report.period(), report.metrics(), report.majorActivities(),
+    public record Snapshot(WeeklyReportResponse report, ReportWorkerRequest input, String restriction) {
+        WeeklyReportResponse with(ReportInsight insight) {
+            return new WeeklyReportResponse(report.period(), report.metrics(), report.majorActivities(),
                     report.activitiesTruncated(), report.memories(), report.sourceHash(), PROMPT_VERSION, insight);
         }
     }
@@ -58,7 +75,7 @@ public class WeeklyReportReader {
         var end = start.plusWeeks(1);
         boolean current = start.equals(thisMonday);
         var reference = current ? today : end.minusDays(1);
-        var period = new ReportDtos.Period(start, end.minusDays(1), end, now, current);
+        var period = new ReportPeriod(start, end.minusDays(1), end, now, current);
         var all = todos.findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(owner, start, end);
         var eligible = all.stream().filter(t -> !current || !t.getScheduledDate().atTime(t.getScheduledTime())
                 .isAfter(now.toLocalDateTime())).toList();
@@ -72,16 +89,16 @@ public class WeeklyReportReader {
                         .filter(t -> owner.equals(t.getUserId()) && visible.containsKey(t.getId()))
                         .sorted(Comparator.comparing(Todo::getScheduledDate).thenComparing(Todo::getScheduledTime)
                                 .thenComparing(Todo::getId)).map(Todo::getId).toList())).toList();
-        var daily = start.datesUntil(end).map(day -> new Daily(day,
+        var daily = start.datesUntil(end).map(day -> new ReportDaily(day,
                 completed.stream().filter(t -> t.getScheduledDate().equals(day)).count())).toList();
-        var metrics = new Metrics(all.size(), eligible.size(), completed.size(),
+        var metrics = new ReportMetrics(all.size(), eligible.size(), completed.size(),
                 diarySources.stream().map(DiarySource::date).distinct().count(),
                 eligible.isEmpty() ? null : (double) completed.size() / eligible.size(), daily);
         var ranked = completed.stream().collect(Collectors.groupingBy(t -> t.getPlanName().trim(), Collectors.counting()))
                 .entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed()
-                        .thenComparing(Map.Entry.comparingByKey())).map(e -> new Activity(e.getKey(), e.getValue())).toList();
-        var memories = diarySources.stream().limit(7).map(d -> new Memory(d.id(), d.date(), excerpt(d.content()),
-                d.links().stream().limit(20).map(id -> new LinkedTodo(id, visible.get(id).getPlanName())).toList(),
+                        .thenComparing(Map.Entry.comparingByKey())).map(e -> new ReportActivity(e.getKey(), e.getValue())).toList();
+        var memories = diarySources.stream().limit(7).map(d -> new ReportMemory(d.id(), d.date(), excerpt(d.content()),
+                d.links().stream().limit(20).map(id -> new ReportLinkedTodo(id, visible.get(id).getPlanName())).toList(),
                 d.links().size() > 20)).toList();
         ChildProfile profile = children.findById(owner).orElse(null);
         var profileSource = profile == null ? null : new ProfileSource(profile.getName(), profile.getBirthday(),
@@ -89,22 +106,22 @@ public class WeeklyReportReader {
                 profile.getConcerns().stream().sorted().toList(), profile.getAvailableActivityTime());
         long months = profile == null ? -1 : ChronoUnit.MONTHS.between(profile.getBirthday(), reference);
         boolean validProfile = profile != null && !profile.getBirthday().isAfter(reference) && months >= 0 && months <= 72;
-        var child = validProfile ? new Child((int) months, reference, profileSource.concerns(), profileSource.availableTime()) : null;
+        var child = validProfile ? new ReportChildContext((int) months, reference, profileSource.concerns(), profileSource.availableTime()) : null;
         var hash = hash(new HashSource(owner, start, current, reference,
                 all.stream().map(t -> new TodoSource(t.getId(), t.getPlanName(), t.getContent(),
                         t.getScheduledDate(), t.getScheduledTime(), t.isCompleted())).toList(), eligible.stream().map(Todo::getId).toList(), diarySources, profileSource));
-        var sources = new Sources(completed.stream().limit(50).map(t -> new WorkerTodo(t.getId(),
+        var sources = new ReportWorkerSources(completed.stream().limit(50).map(t -> new ReportWorkerTodo(t.getId(),
                         t.getPlanName(), t.getScheduledDate(), t.getScheduledTime())).toList(),
                 diarySources.stream().filter(d -> d.content() != null && !d.content().isBlank()).limit(7)
-                        .map(d -> new WorkerDiary(d.id(), d.date(), excerpt(d.content()))).toList(), completed.size() > 50);
+                        .map(d -> new ReportWorkerDiary(d.id(), d.date(), excerpt(d.content()))).toList(), completed.size() > 50);
         String restriction = !validProfile ? "PROFILE_UNAVAILABLE"
                 : sources.todos().isEmpty() && sources.diaries().isEmpty() ? "NO_EVIDENCE" : null;
-        var report = new WeeklyReport(period, metrics, ranked.stream().limit(5).toList(), ranked.size() > 5,
-                memories, hash, PROMPT_VERSION, Insight.of(restriction == null ? State.NOT_GENERATED
-                        : State.INSUFFICIENT_EVIDENCE, restriction));
-        return new Snapshot(report, new WorkerRequest(hash, PROMPT_VERSION,
-                new WorkerPeriod(start, end.minusDays(1), end, now, current),
-                new WorkerMetrics(metrics.planned(), metrics.eligible(), metrics.completed(), metrics.diaryDays(),
+        var report = new WeeklyReportResponse(period, metrics, ranked.stream().limit(5).toList(), ranked.size() > 5,
+                memories, hash, PROMPT_VERSION, ReportInsight.of(restriction == null ? ReportInsightState.NOT_GENERATED
+                        : ReportInsightState.INSUFFICIENT_EVIDENCE, restriction));
+        return new Snapshot(report, new ReportWorkerRequest(hash, PROMPT_VERSION,
+                new ReportWorkerPeriod(start, end.minusDays(1), end, now, current),
+                new ReportWorkerMetrics(metrics.planned(), metrics.eligible(), metrics.completed(), metrics.diaryDays(),
                         metrics.completionRate(), metrics.daily()), child, sources), restriction);
     }
     static String excerpt(String content) {

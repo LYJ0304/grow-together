@@ -1,7 +1,15 @@
 package com.growtogether.report;
 
+import com.growtogether.report.dto.ReportEvidence;
+import com.growtogether.report.dto.ReportEvidenceType;
+import com.growtogether.report.dto.ReportNextStep;
+import com.growtogether.report.dto.ReportObservation;
+import com.growtogether.report.dto.ReportWorkerRequest;
+import com.growtogether.report.dto.ReportWorkerResponse;
+import com.growtogether.report.dto.ReportWorkerResult;
+import static com.growtogether.report.dto.ReportWorkerRequest.PROMPT_VERSION;
+
 import static org.mockito.Mockito.*;
-import static com.growtogether.report.ReportDtos.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import com.growtogether.child.ChildProfile;
 import com.growtogether.child.ChildProfileRepository;
@@ -68,11 +76,11 @@ class WeeklyReportIntegrationTest {
         var todo=new Todo(owner.getId(),"그림책 읽기",null,date,LocalTime.NOON);todo.setCompleted(true);
         todos.saveAndFlush(todo);
         when(worker.generate(any())).thenAnswer(invocation -> {
-            WorkerRequest input=invocation.getArgument(0);
-            var evidence=List.of(new Evidence(EvidenceType.TODO,todo.getId()));
-            return new WorkerResponse(input.sourceHash(),PROMPT_VERSION,new WorkerResult("함께한 활동을 기록했어요.",
-                    List.of(new Observation("그림책 읽기",evidence)),
-                    List.of(new NextStep("그림책 함께 보기","부담 없이 책을 펼쳐보세요.","기록한 활동을 이어가는 제안이에요.",evidence))));
+            ReportWorkerRequest input=invocation.getArgument(0);
+            var evidence=List.of(new ReportEvidence(ReportEvidenceType.TODO,todo.getId()));
+            return new ReportWorkerResponse(input.sourceHash(),PROMPT_VERSION,new ReportWorkerResult("함께한 활동을 기록했어요.",
+                    List.of(new ReportObservation("그림책 읽기",evidence)),
+                    List.of(new ReportNextStep("그림책 함께 보기","부담 없이 책을 펼쳐보세요.","기록한 활동을 이어가는 제안이에요.",evidence))));
         });
         for(int i=0;i<2;i++) mvc.perform(post("/api/v1/reports/weekly/insights")
                 .param("weekStart",date.toString()).with(jwt().jwt(j->j.subject(owner.getId().toString()))))
@@ -93,12 +101,12 @@ class WeeklyReportIntegrationTest {
         var date=ReportTestData.WEEK;
         var todo=new Todo(owner.getId(),"그림책 읽기",null,date,LocalTime.NOON);todo.setCompleted(true);todos.saveAndFlush(todo);
         when(worker.generate(any())).thenAnswer(invocation -> {
-            WorkerRequest input=invocation.getArgument(0);
+            ReportWorkerRequest input=invocation.getArgument(0);
             todo.update("수정한 활동",null,date,LocalTime.NOON);todos.saveAndFlush(todo);
-            var evidence=List.of(new Evidence(EvidenceType.TODO,todo.getId()));
-            return new WorkerResponse(input.sourceHash(),PROMPT_VERSION,new WorkerResult("함께한 활동을 기록했어요.",
-                    List.of(new Observation("그림책 읽기",evidence)),
-                    List.of(new NextStep("다시 함께하기","부담 없이 이어가세요.","기록에 바탕을 둔 제안이에요.",evidence))));
+            var evidence=List.of(new ReportEvidence(ReportEvidenceType.TODO,todo.getId()));
+            return new ReportWorkerResponse(input.sourceHash(),PROMPT_VERSION,new ReportWorkerResult("함께한 활동을 기록했어요.",
+                    List.of(new ReportObservation("그림책 읽기",evidence)),
+                    List.of(new ReportNextStep("다시 함께하기","부담 없이 이어가세요.","기록에 바탕을 둔 제안이에요.",evidence))));
         });
         mvc.perform(post("/api/v1/reports/weekly/insights").param("weekStart",date.toString())
                 .with(jwt().jwt(j->j.subject(owner.getId().toString()))))
@@ -135,11 +143,11 @@ class WeeklyReportIntegrationTest {
         var profile=children.saveAndFlush(new ChildProfile(owner.getId(),"아이",LocalDate.of(2025,1,1)));
         var diary=diaries.saveAndFlush(new Diary(owner.getId(),ReportTestData.WEEK,"기억".repeat(200)));
         when(worker.generate(any())).thenAnswer(invocation -> {
-            WorkerRequest input=invocation.getArgument(0);
-            var evidence=List.of(new Evidence(EvidenceType.DIARY,diary.getId()));
-            return new WorkerResponse(input.sourceHash(),PROMPT_VERSION,new WorkerResult("남겨둔 기록을 돌아봐요.",
-                    List.of(new Observation(input.sources().diaries().getFirst().excerpt(),evidence)),
-                    List.of(new NextStep("함께 기록하기","오늘의 장면을 남겨보세요.","남겨둔 기록에서 이어지는 제안이에요.",evidence))));
+            ReportWorkerRequest input=invocation.getArgument(0);
+            var evidence=List.of(new ReportEvidence(ReportEvidenceType.DIARY,diary.getId()));
+            return new ReportWorkerResponse(input.sourceHash(),PROMPT_VERSION,new ReportWorkerResult("남겨둔 기록을 돌아봐요.",
+                    List.of(new ReportObservation(input.sources().diaries().getFirst().excerpt(),evidence)),
+                    List.of(new ReportNextStep("함께 기록하기","오늘의 장면을 남겨보세요.","남겨둔 기록에서 이어지는 제안이에요.",evidence))));
         });
         mvc.perform(post("/api/v1/reports/weekly/insights").param("weekStart",ReportTestData.WEEK.toString())
                 .with(jwt().jwt(j->j.subject(owner.getId().toString()))))
