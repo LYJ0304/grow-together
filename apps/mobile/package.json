@@ -51,7 +51,9 @@
     "test:schedule:ui": "node tests/schedule-ui.mjs",
     "test:colors": "node tests/brand-colors.mjs",
     "test:main:motion": "node tests/main-motion.mjs",
-    "test:children:registration:ui": "node tests/child-registration-ui.mjs && node tests/child-registration-errors-ui.mjs"
+    "test:children:registration:ui": "node tests/child-registration-ui.mjs && node tests/child-registration-errors-ui.mjs",
+    "test:report": "node tests/report-week.mjs && node tests/report-content.mjs",
+    "test:report:ui": "node tests/report-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

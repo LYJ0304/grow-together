@@ -12,7 +12,9 @@ const page = await browser.newPage({
   timezoneId: 'Asia/Seoul',
 });
 await page.addInitScript(authenticatedSessionFixture);
-await page.route('**/api/v1/children**', (r) => r.fulfill({ json: null }));
+await page.route('**/api/v1/children**', (r) =>
+  r.fulfill({ json: { name: '하늘', birthday: '2025-01-01' } }),
+);
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 try {
   await page.goto(
@@ -24,6 +26,7 @@ try {
     '오늘',
     '일정',
     '기록',
+    '리포트',
     '질문',
   ]);
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
@@ -58,7 +61,7 @@ try {
   await page
     .getByRole('heading', { name: '육아 도우미', exact: true })
     .waitFor();
-  console.log('PASS four tabs, profile, selected date and question draft');
+  console.log('PASS five tabs, profile, selected date and question draft');
 } finally {
   await browser.close();
 }
