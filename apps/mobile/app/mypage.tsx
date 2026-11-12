@@ -43,7 +43,6 @@ export default function MyPageScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <PageIntro
-          eyebrow="GROW TOGETHER / 내 공간"
           title="아이와 나의 공간"
           description="아이 정보와 계정의 기록을 관리해요."
         />

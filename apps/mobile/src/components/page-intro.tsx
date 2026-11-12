@@ -6,13 +6,13 @@ export function PageIntro({
   title,
   description,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description?: string;
 }) {
   return (
     <View testID="editorial-intro" style={editorial.intro}>
-      <Text style={editorial.eyebrow}>{eyebrow}</Text>
+      {eyebrow ? <Text style={editorial.eyebrow}>{eyebrow}</Text> : null}
       <Text accessibilityRole="header" style={editorial.title}>
         {title}
       </Text>

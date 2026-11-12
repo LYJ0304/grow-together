@@ -14,52 +14,45 @@ export function AppHeader({
   polished = false,
   title,
   subtitle,
-  section,
 }: {
   disabled?: boolean;
   polished?: boolean;
   title?: string;
   subtitle?: string;
-  section?: string;
 }) {
   return (
     <View testID="app-header" style={styles.header}>
-      <View style={styles.brandRow}>
-        <Text style={styles.wordmark}>
-          grow together{section ? ` / ${section}` : ''}
-        </Text>
-        <View style={styles.tools}>
-          <HeaderButton
-            polished={polished}
-            accessibilityRole="button"
-            accessibilityLabel="아이 프로필 열기"
-            disabled={disabled}
-            accessibilityState={{ disabled }}
-            onPress={() => router.push('/children')}
-          >
-            <Image
-              source={require('../../assets/images/main/user.svg')}
-              style={styles.icon}
-              tintColor={colors.brand}
-              accessible={false}
-            />
-          </HeaderButton>
-          <HeaderButton
-            polished={polished}
-            accessibilityRole="button"
-            accessibilityLabel="앱 설정"
-            disabled={disabled}
-            accessibilityState={{ disabled }}
-            onPress={() => router.push('/mypage')}
-          >
-            <Image
-              source={require('../../assets/images/chat/settings.svg')}
-              style={styles.icon}
-              tintColor={colors.brand}
-              accessible={false}
-            />
-          </HeaderButton>
-        </View>
+      <View style={styles.tools}>
+        <HeaderButton
+          polished={polished}
+          accessibilityRole="button"
+          accessibilityLabel="아이 프로필 열기"
+          disabled={disabled}
+          accessibilityState={{ disabled }}
+          onPress={() => router.push('/children')}
+        >
+          <Image
+            source={require('../../assets/images/main/user.svg')}
+            style={styles.icon}
+            tintColor={colors.brand}
+            accessible={false}
+          />
+        </HeaderButton>
+        <HeaderButton
+          polished={polished}
+          accessibilityRole="button"
+          accessibilityLabel="앱 설정"
+          disabled={disabled}
+          accessibilityState={{ disabled }}
+          onPress={() => router.push('/mypage')}
+        >
+          <Image
+            source={require('../../assets/images/chat/settings.svg')}
+            style={styles.icon}
+            tintColor={colors.brand}
+            accessible={false}
+          />
+        </HeaderButton>
       </View>
       {title ? (
         <Greeting title={title} subtitle={subtitle} polished={polished} />
@@ -131,19 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flexShrink: 0,
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  wordmark: {
-    ...editorial.eyebrow,
-    letterSpacing: 0,
-    fontSize: 12,
-    flexShrink: 1,
-  },
-  tools: { flexDirection: 'row', gap: 8 },
+  tools: { flexDirection: 'row', gap: 8, alignSelf: 'flex-end' },
   button: {
     minWidth: 44,
     minHeight: 44,

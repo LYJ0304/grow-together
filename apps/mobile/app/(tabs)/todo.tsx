@@ -214,7 +214,7 @@ export default function TodoScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
-      <AppHeader section="일정" />
+      <AppHeader />
       <View style={styles.scheduleContent}>
         <ScrollView
           ref={scroll}

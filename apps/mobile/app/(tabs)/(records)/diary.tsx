@@ -443,7 +443,7 @@ function DiaryEditor() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <AppHeader section="일기" disabled={busy || generating || preparing} />
+        <AppHeader disabled={busy || generating || preparing} />
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
