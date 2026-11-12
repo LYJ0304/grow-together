@@ -48,7 +48,7 @@ export default function ReportScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <AppHeader section="리포트" />
+      <AppHeader />
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
         <PageIntro
           eyebrow="OUR WEEKLY STORY"

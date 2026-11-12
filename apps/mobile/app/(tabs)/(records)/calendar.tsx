@@ -171,7 +171,7 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
-      <AppHeader section="기록" />
+      <AppHeader />
       <ScrollView
         ref={scroll}
         style={styles.scroll}

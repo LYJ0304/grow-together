@@ -105,7 +105,7 @@ export default function CounselorChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
-        <AppHeader section="질문" />
+        <AppHeader />
 
         <ScrollView
           ref={scroll}

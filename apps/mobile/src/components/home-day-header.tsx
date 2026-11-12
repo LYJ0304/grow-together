@@ -6,7 +6,6 @@ import { colors } from '../theme/colors';
 import { useEntranceOnce } from '../theme/motion';
 import { typography } from '../theme/typography';
 import { MotionPressable } from './motion-pressable';
-import { editorial } from '../theme/editorial';
 import { diaryDateKey } from '../lib/diary-storage';
 
 export function HomeDayHeader({
@@ -31,7 +30,6 @@ export function HomeDayHeader({
   return (
     <View testID="app-header" style={styles.header}>
       <View style={styles.tools}>
-        <Text style={editorial.eyebrow}>grow together / 오늘</Text>
         <View style={styles.toolGroup}>
           <MotionPressable
             accessibilityRole="button"
@@ -117,7 +115,7 @@ const styles = StyleSheet.create({
   header: { gap: 14 },
   tools: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 8,
   },
