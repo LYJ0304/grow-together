@@ -22,13 +22,14 @@ try {
     { timeout: 120000, waitUntil: 'commit' },
   );
   await page.getByRole('tablist').waitFor({ timeout: 120000 });
-  assert.deepEqual(await page.getByRole('tab').allTextContents(), [
-    '오늘',
-    '일정',
-    '기록',
-    '리포트',
-    '질문',
-  ]);
+  assert.deepEqual(
+    await page
+      .getByRole('tab')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('aria-label')),
+      ),
+    ['오늘', '일정', '기록', '리포트', '질문'],
+  );
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page
