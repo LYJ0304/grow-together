@@ -44,7 +44,7 @@ class SwaggerUiIntegrationTest {
     void servesTheCanonicalContractWithoutGeneratingAnotherDefinition() throws Exception {
         String contract = Files.readString(Path.of("../../contracts/openapi.yaml"), StandardCharsets.UTF_8);
         mvc.perform(get("/openapi.yaml")).andExpect(status().isOk())
-                .andExpect(content().string(contract));
+                .andExpect(content().bytes(contract.getBytes(StandardCharsets.UTF_8)));
         mvc.perform(get("/v3/api-docs")).andExpect(status().isUnauthorized());
     }
 
