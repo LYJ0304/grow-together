@@ -20,6 +20,8 @@ button on main: peach `tint` + `onTint`, superseding the earlier coral CTA defau
 | buttonMist | `#FFF3F7` | Return/back action alongside several filled buttons |
 | background | `#FAF9F9` | Screen, loading, web document and native launch background |
 | surface / field | `#FFFFFF` | Cards, inputs, text on dark primary; semantic icons on brand |
+| navigationSurface | `rgba(255, 255, 255, 0.94)` | Shared translucent tab capsule; alpha variant of surface, not a new brand hue |
+| navigationEdge | `rgba(255, 255, 255, 0.8)` | Decorative thin rim of the shared tab capsule |
 | text | `#4F4F4F` | Body text |
 | heading | `#292929` | Existing strong heading/value emphasis |
 | muted | `#706C69` | Secondary text and placeholders |
@@ -69,6 +71,23 @@ selectively, rather than a claim that every reference control was bright coral.
   fading the whole control and its label. Scale-only motion buttons keep their
   existing transform feedback. Preserve existing handlers, disabled
   semantics and transform motion.
+
+## Shared soft-glass navigation
+
+The floating tab bar uses the same React Native layout, SVG icons and tint selection
+on iOS, Android and Web. Use `navigationSurface`/`navigationEdge` for the translucent
+surface and decorative rim, `tint` for the contained selection, `brand` for active
+icons, `onTint` for active labels and `muted` for other items. The alpha-only surface
+roles do not replace existing cards, inputs or buttons. Do not apply opacity to the
+whole bar: labels/icons must stay opaque and readable.
+
+This stage uses a common translucent fill and soft shadow, not native Liquid Glass,
+backdrop blur, refraction or a green palette. No platform-only glass fallback is
+needed. The bar keeps reserved bottom space rather than covering content; adding a
+real backdrop/blur later needs a separate content-overlap and platform support review.
+At 94% white opacity, inactive text remains at least 4.5:1 and active icons at least
+3:1 even over a black backdrop; tests composite the surface over light/dark extremes.
+The thin white rim is decorative and is not the sole selected-state indicator.
 
 ## Contrast and asset boundaries
 

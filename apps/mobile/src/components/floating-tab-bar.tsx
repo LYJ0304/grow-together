@@ -14,11 +14,11 @@ import Animated, {
 import { colors } from '../theme/colors';
 import { motion } from '../theme/motion';
 import { typography } from '../theme/typography';
+import { selectionFeedback } from '../lib/haptics';
 import { TabButton } from './tab-button';
 
-// Reserve the protrusion and bottom gap in normal layout so no screen is covered.
+// Reserve the capsule and safe bottom gap so no screen needs arbitrary overlay padding.
 export const FLOATING_TAB_BAR_SPACE = 80;
-const HIGHLIGHT_WIDTH = 50;
 
 export function FloatingTabBar({
   state,
@@ -53,12 +53,8 @@ export function FloatingTabBar({
   const slotWidth = width / state.routes.length;
   const highlightStyle = useAnimatedStyle(() => ({
     opacity: width > 0 ? 1 : 0,
-    transform: [
-      {
-        translateX:
-          selected.value * slotWidth + (slotWidth - HIGHLIGHT_WIDTH) / 2,
-      },
-    ],
+    width: Math.max(0, slotWidth),
+    transform: [{ translateX: selected.value * slotWidth }],
   }));
 
   if (hidden) return null;
@@ -70,88 +66,91 @@ export function FloatingTabBar({
         styles.frame,
         {
           height,
-          paddingBottom: insets.bottom + 17,
-          paddingLeft: insets.left + 18,
-          paddingRight: insets.right + 18,
+          paddingBottom: insets.bottom + 10,
+          paddingLeft: insets.left + 20,
+          paddingRight: insets.right + 20,
         },
       ]}
     >
-      <View
-        role="tablist"
-        style={styles.pill}
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      >
-        <Animated.View
-          testID="floating-tab-highlight"
-          pointerEvents="none"
-          accessible={false}
-          style={[styles.highlight, highlightStyle]}
-        />
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const { options } = descriptors[route.key];
-          const label = options.title ?? route.name;
-          return (
-            <TabButton
-              key={route.key}
-              blocked={blocked}
-              href={buildHref(route.name, route.params)}
-              role={Platform.OS === 'ios' ? 'button' : 'tab'}
-              aria-selected={focused}
-              accessibilityLargeContentTitle={label}
-              accessibilityShowsLargeContentViewer
-              accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-              accessibilityState={{ selected: focused }}
-              testID={options.tabBarButtonTestID}
-              style={styles.tab}
-              onPress={() => {
-                if (blocked) return;
-                // Keep the navigator's repeated-press policy, including scroll/pop-to-top.
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                  data: {
-                    behavior: {
-                      scrollToTop:
-                        focused &&
-                        options.tabBarRepeatedPressBehavior?.scrollToTop !==
-                          false,
-                      popToTop:
-                        focused &&
-                        options.tabBarRepeatedPressBehavior?.popToTop !== false,
+      <View role="tablist" style={styles.pill}>
+        <View
+          style={styles.row}
+          onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        >
+          <Animated.View
+            testID="floating-tab-highlight"
+            pointerEvents="none"
+            accessible={false}
+            style={[styles.highlight, highlightStyle]}
+          />
+          {state.routes.map((route, index) => {
+            const focused = state.index === index;
+            const { options } = descriptors[route.key];
+            const label = options.title ?? route.name;
+            return (
+              <TabButton
+                key={route.key}
+                blocked={blocked}
+                href={buildHref(route.name, route.params)}
+                role={Platform.OS === 'ios' ? 'button' : 'tab'}
+                aria-selected={focused}
+                accessibilityLargeContentTitle={label}
+                accessibilityShowsLargeContentViewer
+                accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+                accessibilityState={{ selected: focused }}
+                testID={options.tabBarButtonTestID}
+                style={styles.tab}
+                onPress={() => {
+                  if (blocked) return;
+                  // Keep the navigator's repeated-press policy, including scroll/pop-to-top.
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                    data: {
+                      behavior: {
+                        scrollToTop:
+                          focused &&
+                          options.tabBarRepeatedPressBehavior?.scrollToTop !==
+                            false,
+                        popToTop:
+                          focused &&
+                          options.tabBarRepeatedPressBehavior?.popToTop !==
+                            false,
+                      },
                     },
-                  },
-                });
-                if (!focused && !event.defaultPrevented) {
-                  navigation.dispatch({
-                    ...CommonActions.navigate(route.name, route.params),
-                    target: state.key,
                   });
-                }
-              }}
-              onLongPress={() => {
-                navigation.emit({ type: 'tabLongPress', target: route.key });
-              }}
-            >
-              {options.tabBarIcon?.({
-                focused,
-                color: focused ? colors.brand : colors.muted,
-                size: 22,
-              })}
-              <Text
-                maxFontSizeMultiplier={1.4}
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  { color: focused ? colors.onTint : colors.muted },
-                ]}
+                  if (!focused && !event.defaultPrevented) {
+                    navigation.dispatch({
+                      ...CommonActions.navigate(route.name, route.params),
+                      target: state.key,
+                    });
+                    selectionFeedback();
+                  }
+                }}
+                onLongPress={() => {
+                  navigation.emit({ type: 'tabLongPress', target: route.key });
+                }}
               >
-                {label}
-              </Text>
-            </TabButton>
-          );
-        })}
+                {options.tabBarIcon?.({
+                  focused,
+                  color: focused ? colors.brand : colors.muted,
+                  size: 22,
+                })}
+                <Text
+                  maxFontSizeMultiplier={1.4}
+                  numberOfLines={1}
+                  style={[
+                    styles.label,
+                    { color: focused ? colors.onTint : colors.muted },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TabButton>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -159,30 +158,32 @@ export function FloatingTabBar({
 
 const styles = StyleSheet.create({
   frame: {
-    paddingTop: 7,
+    paddingTop: 0,
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   pill: {
     flexDirection: 'row',
     width: '100%',
     maxWidth: 520,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.surface,
+    height: 70,
+    padding: 6,
+    borderRadius: 35,
+    borderWidth: 1,
+    borderColor: colors.navigationEdge,
+    backgroundColor: colors.navigationSurface,
     shadowColor: colors.heading,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 3,
   },
+  row: { flex: 1, flexDirection: 'row' },
   highlight: {
     position: 'absolute',
-    top: -7,
+    top: 0,
     left: 0,
-    width: HIGHLIGHT_WIDTH,
-    height: 70,
-    borderRadius: 25,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.tint,
   },
   tab: {

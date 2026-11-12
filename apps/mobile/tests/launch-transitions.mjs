@@ -325,7 +325,7 @@ try {
       [...document.querySelectorAll('img')].filter(node => node.getBoundingClientRect().width > 0)
         .every(node => node.complete && node.naturalWidth > 0)
     `);
-    // Measure the pill touch surface; its frame also reserves the protrusion and safe area.
+    // Measure the glass capsule; its frame also reserves the safe bottom gap.
     const main = await evaluate(`(() => {
       const character = document.querySelector('[data-testid="routine-character"]');
       const bounds = character?.getBoundingClientRect();
@@ -348,8 +348,8 @@ try {
     assert.equal(main.homeSelected, 'true');
     assert.equal(
       main.navHeight,
-      56,
-      'Pill retains its full accessible touch height',
+      70,
+      'Glass capsule retains its full accessible touch height',
     );
     assert(
       main.homeBottom <= main.height,

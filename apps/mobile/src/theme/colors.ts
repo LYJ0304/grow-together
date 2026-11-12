@@ -6,6 +6,8 @@ export const colors = {
   onTint: '#914C41',
   background: '#FAF9F9',
   surface: '#FFFFFF',
+  navigationSurface: 'rgba(255, 255, 255, 0.94)',
+  navigationEdge: 'rgba(255, 255, 255, 0.8)',
   field: '#FFFFFF',
   text: '#4F4F4F',
   heading: '#292929',
