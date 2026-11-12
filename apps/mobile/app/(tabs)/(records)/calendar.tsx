@@ -8,6 +8,8 @@ import {
 } from '../../../src/lib/session-state';
 import { typography } from '../../../src/components/typography';
 import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
+import { PageIntro } from '../../../src/components/page-intro';
+import { editorial } from '../../../src/theme/editorial';
 import { AppHeader } from '../../../src/components/app-header';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
@@ -60,6 +62,10 @@ export default function CalendarScreen() {
   );
   const [selected, setSelected] = useSessionValue('calendarDate', initialDate);
   const [notice, setNotice] = useState('');
+  const [recordView, setRecordView] = useSessionValue<'calendar' | 'list'>(
+    'recordsView',
+    'calendar',
+  );
   const monthKey = diaryDateKey(month).slice(0, 7);
   const {
     data: dates,
@@ -165,12 +171,51 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
-      <AppHeader />
+      <AppHeader section="기록" />
       <ScrollView
         ref={scroll}
         style={styles.scroll}
         contentContainerStyle={styles.content}
       >
+        <View style={styles.intro}>
+          <PageIntro
+            eyebrow="THE DAYS WE SHARE"
+            title="우리의 기록"
+            description="함께한 날들이 하나씩 쌓여가는 공간이에요."
+          />
+          <View style={editorial.segment}>
+            {(
+              [
+                { key: 'calendar', label: '캘린더' },
+                { key: 'list', label: '모아보기' },
+              ] as const
+            ).map((item) => (
+              <Pressable
+                key={item.key}
+                accessibilityRole="button"
+                aria-pressed={recordView === item.key}
+                accessibilityState={{ selected: recordView === item.key }}
+                onPress={() => setRecordView(item.key)}
+                style={[
+                  editorial.segmentButton,
+                  recordView === item.key && editorial.segmentActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.label,
+                    {
+                      color:
+                        recordView === item.key ? colors.primary : colors.muted,
+                    },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
         <View style={styles.monthHeader}>
           <Pressable
             accessibilityRole="button"
@@ -236,7 +281,12 @@ export default function CalendarScreen() {
             <Text style={styles.todayLabel}>오늘</Text>
           </Pressable>
         </View>
-        <View style={styles.calendar}>
+        <View
+          style={[
+            styles.calendar,
+            recordView !== 'calendar' && { display: 'none' },
+          ]}
+        >
           <View style={styles.weekdays}>
             {['일', '월', '화', '수', '목', '금', '토'].map((label, index) => (
               <Text
@@ -307,12 +357,79 @@ export default function CalendarScreen() {
             ))}
           </View>
         </View>
-        {savedDates.size > 0 ? (
+        {recordView === 'list' ? (
+          <View style={styles.recordList}>
+            {diaryError ? (
+              <>
+                <Text accessibilityRole="alert" style={styles.notice}>
+                  일기 목록을 불러오지 못했어요.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void refetch()}
+                  style={styles.retryButton}
+                >
+                  <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
+                </Pressable>
+              </>
+            ) : loadingDiaries ? (
+              <Text style={styles.selectionHint}>
+                일기 목록을 불러오고 있어요.
+              </Text>
+            ) : (dates ?? []).filter((key) => key.startsWith(monthKey))
+                .length === 0 ? (
+              <Text style={styles.selectionHint}>
+                이번 달에 저장된 일기가 없어요.
+              </Text>
+            ) : (
+              (dates ?? [])
+                .filter((key) => key.startsWith(monthKey))
+                .sort((a, b) => b.localeCompare(a))
+                .map((key) => {
+                  const entryDate = parseDiaryDate(key);
+                  if (!entryDate) return null;
+                  const label = `${entryDate.getFullYear()}년 ${entryDate.getMonth() + 1}월 ${entryDate.getDate()}일`;
+                  return (
+                    <Pressable
+                      key={key}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${label} 일기 보기`}
+                      onPress={() => {
+                        setSelected(entryDate);
+                        router.push({
+                          pathname: '/diary',
+                          params: { date: key, mode: 'view' },
+                        });
+                      }}
+                      style={styles.recordItem}
+                    >
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <Text style={styles.recordTitle}>{label}</Text>
+                        <Text style={styles.selectionHint}>
+                          저장한 일기 열기
+                        </Text>
+                      </View>
+                      <Text accessible={false} style={styles.recordChevron}>
+                        ›
+                      </Text>
+                    </Pressable>
+                  );
+                })
+            )}
+          </View>
+        ) : null}
+        {recordView === 'calendar' && savedDates.size > 0 ? (
           <Text style={styles.diaryLegend}>
             <Text style={styles.legendDot}>●</Text> 일기가 저장된 날
           </Text>
         ) : null}
-        <View testID="calendar-selection" style={styles.actions}>
+        <View
+          testID="calendar-selection"
+          style={[
+            styles.actions,
+            recordView !== 'calendar' && { display: 'none' },
+          ]}
+        >
           <Text style={styles.selectionEyebrow}>선택한 날의 기록</Text>
           <Text style={styles.selectionDate}>{selectedDateLabel}</Text>
           <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
@@ -403,10 +520,33 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 12,
     // Seven 44px touch targets still fit a 320px viewport.
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingBottom: 24,
     alignItems: 'center',
   },
+  intro: {
+    width: '100%',
+    maxWidth: 600,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  recordList: {
+    ...editorial.card,
+    width: '100%',
+    maxWidth: 600,
+    marginTop: 12,
+  },
+  recordItem: {
+    minHeight: 70,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  recordTitle: { ...typography.button, color: colors.heading },
+  recordChevron: { fontSize: 24, color: colors.muted },
   monthHeader: {
     flexDirection: 'row',
     width: '100%',
@@ -454,7 +594,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: 16,
   },
   weekdays: { flexDirection: 'row', marginTop: 2, marginBottom: 4 },

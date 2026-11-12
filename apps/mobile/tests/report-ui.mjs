@@ -35,7 +35,9 @@ try {
     ['오늘', '일정', '기록', '리포트', '질문'],
   );
   await page.getByRole('tab', { name: '리포트', exact: true }).click();
-  await page.getByRole('heading', { name: '리포트', exact: true }).waitFor();
+  await page
+    .getByRole('heading', { name: '한 주의 이야기', exact: true })
+    .waitFor();
   await page.getByText('11월 16일 – 11월 22일', { exact: true }).waitFor();
   assert.equal(
     await page

@@ -56,7 +56,8 @@ async function checkLayout(height) {
   const composer = await input.boundingBox();
   const nav = await tabs.boundingBox();
   assert.ok(button.width >= 44 && button.height >= 44);
-  assert.ok(title.x + title.width <= button.x);
+  assert.ok(title.x >= 0 && title.x + title.width <= page.viewportSize().width);
+  assert.ok(button.y + button.height <= title.y);
   assert.ok(title.y >= 0 && title.y + title.height <= composer.y);
   assert.ok(composer.y + composer.height <= nav.y);
   assert.ok(nav.y + nav.height <= height);

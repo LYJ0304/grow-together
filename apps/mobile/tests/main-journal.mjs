@@ -85,6 +85,9 @@ try {
   await page
     .getByRole('button', { name: '선택한 날 일기 열기', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: '하루의 순간 기록하기', exact: true })
+    .click();
   await page.waitForURL('**/diary?**');
   assert.equal(new URL(page.url()).searchParams.get('id'), '8');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
@@ -134,6 +137,9 @@ try {
   assert.equal(await draft.inputValue(), '기존 질문을 유지해요');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   await page.getByRole('button', { name: '선택한 날 일기 작성하기' }).click();
+  await page
+    .getByRole('button', { name: '하루의 순간 기록하기', exact: true })
+    .click();
   await page.waitForURL('**/diary?**');
   assert(new URL(page.url()).searchParams.get('date') === '2026-11-12');
   assert.equal(

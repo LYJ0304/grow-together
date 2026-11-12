@@ -1,3 +1,5 @@
+import { PageIntro } from '../src/components/page-intro';
+import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -40,6 +42,11 @@ export default function MyPageScreen() {
         </Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <PageIntro
+          eyebrow="GROW TOGETHER / 내 공간"
+          title="아이와 나의 공간"
+          description="아이 정보와 계정의 기록을 관리해요."
+        />
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.section}>
             계정
@@ -75,6 +82,22 @@ export default function MyPageScreen() {
         </View>
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.section}>
+            기록과 개인정보
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.navigate('/calendar')}
+            style={styles.button}
+          >
+            <Text style={styles.link}>기록 관리 ›</Text>
+          </Pressable>
+          <Text style={styles.caption}>
+            AI가 정리한 초안은 직접 확인하고 저장해요. 리포트와 질문의 연결
+            상태는 각 화면에서 확인할 수 있어요.
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.section}>
             앱 정보
           </Text>
           <Text style={styles.body}>
@@ -104,12 +127,7 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 18,
   },
-  card: {
-    padding: 20,
-    gap: 12,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-  },
+  card: { ...editorial.card, gap: 12 },
   title: { ...typography.title, color: colors.text },
   section: { ...typography.section, color: colors.text },
   body: { ...typography.body, color: colors.text },

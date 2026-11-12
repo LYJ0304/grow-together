@@ -1,3 +1,4 @@
+import { editorial } from '../../theme/editorial';
 import { colors } from '../../theme/colors';
 import { Image } from 'expo-image';
 import { typography } from '../typography';
@@ -287,11 +288,7 @@ function Action({
 
 const styles = StyleSheet.create({
   paper: {
-    padding: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
+    ...editorial.card,
     gap: 18,
   },
   headingRow: {

@@ -31,6 +31,7 @@ const imports = {
   'react/jsx-runtime': await import('react/jsx-runtime'),
   'react-native': Native,
   '../../theme/colors': { colors: {} },
+  '../../theme/editorial': { editorial: {} },
   '../typography': { typography: {} },
   '../action-button': { ActionButton: button },
   '../motion-pressable': { MotionPressable: button },

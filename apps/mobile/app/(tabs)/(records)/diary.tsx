@@ -1,3 +1,5 @@
+import { PageIntro } from '../../../src/components/page-intro';
+import { editorial } from '../../../src/theme/editorial';
 import { colors } from '../../../src/theme/colors';
 import { useChatKeyboard } from '../../../src/lib/use-chat-keyboard';
 import { useTabInteraction } from '../../../src/components/tab-interaction';
@@ -441,7 +443,7 @@ function DiaryEditor() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <AppHeader disabled={busy || generating || preparing} />
+        <AppHeader section="일기" disabled={busy || generating || preparing} />
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -451,6 +453,11 @@ function DiaryEditor() {
             tone="mist"
             disabled={busy || generating || preparing}
             onPress={back}
+          />
+          <PageIntro
+            eyebrow="OUR DAILY JOURNAL"
+            title={viewing ? '소중한 하루의 기록' : '오늘의 이야기를 남겨요'}
+            description="함께한 활동, 메모와 사진을 모아 나만의 기록으로 남겨요."
           />
           <Text style={styles.meta}>
             {viewing && !params.date ? '날짜 정보 미지원' : dateKey} ·{' '}
@@ -832,9 +839,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 18,
+    ...editorial.card,
     gap: 14,
   },
   title: { ...typography.title, color: colors.text },

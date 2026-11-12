@@ -1,6 +1,8 @@
 import { HomeScheduleRow } from '../../src/components/home-schedule-row';
 import { MotionPressable } from '../../src/components/motion-pressable';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
+import { HomeQuickAdd } from '../../src/components/home-quick-add';
+import { editorial } from '../../src/theme/editorial';
 import { HomeQuestionEntry } from '../../src/components/home-question-entry';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -34,6 +36,8 @@ import { ScheduleProgress } from '../../src/components/schedule-progress';
 const localDateKey = diaryDateKey;
 export default function MainScreen() {
   const scroll = useRef<ScrollView>(null);
+  const quickButton = useRef<View>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
   useTabScrollToTop(scroll);
   const { client, status, epoch } = useAuth();
   const profile = useChildProfile();
@@ -232,39 +236,77 @@ export default function MainScreen() {
             )}
           </View>
           <View style={styles.summaryRow}>
+            {[
+              {
+                label: '계획한 활동',
+                value:
+                  status === 'preview'
+                    ? '—'
+                    : todos.isError || todos.isPending
+                      ? '—'
+                      : String(schedules.length),
+                onPress: viewAll,
+                name:
+                  status === 'preview'
+                    ? '일정 미리보기'
+                    : todos.isError
+                      ? '일정 확인하기'
+                      : todos.isPending
+                        ? '일정 확인 중'
+                        : `일정 ${schedules.length}개`,
+              },
+              {
+                label: '완료한 활동',
+                value:
+                  status === 'preview' || todos.isError || todos.isPending
+                    ? '—'
+                    : String(completed),
+                onPress: viewAll,
+                name: '완료한 활동 보기',
+              },
+              {
+                label: '남긴 일기',
+                value:
+                  status === 'preview' || diary.isPending || diary.isError
+                    ? '—'
+                    : hasDiary
+                      ? '1'
+                      : '0',
+                onPress: () =>
+                  diary.isError ? void diary.refetch() : openDiary(),
+                name: diaryLabel,
+              },
+            ].map((metric) => (
+              <MotionPressable
+                key={metric.label}
+                accessibilityRole="button"
+                accessibilityLabel={metric.name}
+                onPress={metric.onPress}
+                style={styles.metric}
+              >
+                <Text style={styles.metricValue}>{metric.value}</Text>
+                <Text style={styles.metricLabel}>{metric.label}</Text>
+              </MotionPressable>
+            ))}
+          </View>
+          <View style={editorial.hero}>
+            <Text style={editorial.eyebrow}>OUR DAILY MOMENT</Text>
+            <Text accessibilityRole="header" style={styles.heroTitle}>
+              하루의 작은 순간을{'\n'}함께 기록해요.
+            </Text>
+            <Text style={editorial.description}>
+              함께한 활동과 기억하고 싶은 마음을 남겨주세요.
+            </Text>
             <MotionPressable
               accessibilityRole="button"
-              accessibilityLabel={diaryLabel}
-              onPress={() =>
-                diary.isError ? void diary.refetch() : openDiary()
-              }
-              style={styles.summaryButton}
+              onPress={openDiary}
+              style={styles.journalLink}
             >
-              <Text style={styles.summaryText}>{diaryLabel}</Text>
-              <Text accessible={false} style={styles.summaryMark}>
-                {hasDiary ? '›' : '+'}
-              </Text>
-            </MotionPressable>
-            <MotionPressable
-              accessibilityRole="button"
-              onPress={viewAll}
-              style={styles.summaryButton}
-            >
-              <Text style={styles.summaryText}>
-                {status === 'preview'
-                  ? '일정 미리보기'
-                  : todos.isError
-                    ? '일정 확인하기'
-                    : todos.isPending
-                      ? '일정 확인 중'
-                      : `일정 ${schedules.length}개`}
-              </Text>
-              <Text accessible={false} style={styles.summaryMark}>
-                ›
+              <Text style={styles.journalLinkText}>
+                {hasDiary ? '선택한 날 일기 보기' : '선택한 날 일기 남기기'} ›
               </Text>
             </MotionPressable>
           </View>
-          <HomeQuestionEntry currentDay={date === today} />
           <HomeMoments
             diaryText={
               status === 'preview'
@@ -388,6 +430,7 @@ export default function MainScreen() {
               </View>
             ) : null}
           </View>
+          <HomeQuestionEntry currentDay={date === today} />
         </ScrollView>
       </KeyboardAvoidingView>
       <View pointerEvents="box-none" style={styles.fabDock}>
@@ -397,7 +440,8 @@ export default function MainScreen() {
             accessibilityLabel={
               hasDiary ? '선택한 날 일기 열기' : '선택한 날 일기 작성하기'
             }
-            onPress={openDiary}
+            ref={quickButton}
+            onPress={() => setQuickOpen(true)}
             style={styles.fab}
           >
             <Text accessible={false} style={styles.fabText}>
@@ -406,6 +450,33 @@ export default function MainScreen() {
           </MotionPressable>
         </View>
       </View>
+      {quickOpen ? (
+        <HomeQuickAdd
+          authenticated={status === 'authenticated'}
+          onClose={() => {
+            setQuickOpen(false);
+            requestAnimationFrame(() => quickButton.current?.focus());
+          }}
+          onDiary={() => {
+            setQuickOpen(false);
+            openDiary();
+          }}
+          onSchedule={() => {
+            setQuickOpen(false);
+            router.navigate({
+              pathname: '/todo',
+              params: { date, add: 'true' },
+            });
+          }}
+          onRecommend={() => {
+            setQuickOpen(false);
+            router.navigate({
+              pathname: '/todo',
+              params: { date, recommend: 'true' },
+            });
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -432,20 +503,30 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: 'center',
   },
-  summaryRow: { flexDirection: 'row', gap: 10 },
-  summaryButton: {
+  metric: {
+    ...editorial.card,
     flex: 1,
-    minHeight: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
+    paddingHorizontal: 6,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
     gap: 4,
+    minHeight: 80,
   },
-  summaryText: { ...typography.label, color: colors.text, flexShrink: 1 },
-  summaryMark: { fontSize: 22, color: colors.onTint },
+  metricValue: { ...editorial.title, fontSize: 24, lineHeight: 30 },
+  metricLabel: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  heroTitle: { ...editorial.section, fontSize: 23, lineHeight: 34 },
+  journalLink: { minHeight: 44, justifyContent: 'center' },
+  journalLinkText: {
+    ...typography.label,
+    color: colors.onTint,
+    fontWeight: '700',
+  },
+  summaryRow: { flexDirection: 'row', gap: 10 },
   fabDock: {
     position: 'absolute',
     bottom: 16,
