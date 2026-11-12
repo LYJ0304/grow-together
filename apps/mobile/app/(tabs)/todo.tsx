@@ -309,7 +309,6 @@ export default function TodoScreen() {
           <View style={{ margin: 18 }}>
             <ActionButton
               label="활동 추천받기"
-              secondary
               onPress={() =>
                 void requestChild(() =>
                   setRecommendations(localDateKey(selectedDate)),
@@ -456,7 +455,7 @@ export default function TodoScreen() {
               </Text>
               <ActionButton
                 label="일정 메모에 한 줄 남기기"
-                secondary
+                tone="rose"
                 onPress={() => {
                   setForm({
                     date: new Date(`${reactionTodo.scheduledDate}T00:00:00`),

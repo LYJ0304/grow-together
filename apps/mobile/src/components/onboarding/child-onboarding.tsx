@@ -365,7 +365,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
               />
               <ActionButton
                 label="임시 입력 버리고 새로 시작"
-                secondary
+                tone="rose"
                 onPress={() => {
                   void onboardingDrafts
                     .clear(accountKey!)
@@ -440,7 +440,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
                 {step > 0 ? (
                   <ActionButton
                     label="이전"
-                    secondary
+                    tone="rose"
                     disabled={busy}
                     onPress={() => {
                       setStep(step - 1);
@@ -466,7 +466,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
                 {step > 0 && step < 4 ? (
                   <ActionButton
                     label="건너뛰기"
-                    secondary
+                    tone="blush"
                     disabled={busy}
                     onPress={() => {
                       if (step === 1) choices({ concerns: [] });
@@ -490,6 +490,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
           {blocked ? (
             <ActionButton
               label="기존 등록 정보 확인"
+              tone="petal"
               disabled={busy}
               onPress={() => void inspect()}
             />
@@ -500,13 +501,14 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
               <Text style={styles.body}>{existing.birthday}</Text>
               <ActionButton
                 label="입력 대신 등록된 정보로 계속"
+                tone="mist"
                 disabled={busy}
                 onPress={() => void finish(existing)}
               />
               {editing ? (
                 <ActionButton
                   label="입력 유지하고 다시 시도"
-                  secondary
+                  tone="blush"
                   onPress={() => {
                     setExisting(null);
                     setBlocked(false);
@@ -518,6 +520,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
           {partial ? (
             <ActionButton
               label="선택 정보는 저장하지 않고 시작"
+              tone="petal"
               onPress={() => void finish(partial)}
             />
           ) : null}

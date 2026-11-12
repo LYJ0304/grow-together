@@ -1,3 +1,4 @@
+import { buttonForeground, buttonTones } from '../theme/buttons';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
 import { env } from '../config/env';
@@ -208,7 +209,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             onPress={() => void submit()}
             style={({ pressed }) => [
               styles.primaryButton,
-              pressed && styles.pressed,
+              pressed && styles.primaryPressed,
             ]}
           >
             <Text style={styles.primaryLabel}>
@@ -356,18 +357,22 @@ const styles = StyleSheet.create({
     minHeight: 58,
     marginTop: 12,
     borderRadius: 15,
-    backgroundColor: colors.brand,
+    backgroundColor: buttonTones.default.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryLabel: { ...typography.section, fontSize: 19, color: colors.onBrand },
+  primaryLabel: {
+    ...typography.section,
+    fontSize: 19,
+    color: buttonForeground,
+  },
   previewButton: {
     minHeight: 54,
     marginTop: 9,
     borderWidth: 1,
     borderColor: colors.primary,
     borderRadius: 15,
-    backgroundColor: colors.tint,
+    backgroundColor: buttonTones.rose.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -389,5 +394,6 @@ const styles = StyleSheet.create({
   },
   switchText: { ...typography.caption, fontSize: 13, color: colors.muted },
   switchLink: { ...typography.caption, fontSize: 13, color: colors.primary },
-  pressed: { backgroundColor: colors.tint },
+  primaryPressed: { backgroundColor: buttonTones.default.pressed },
+  pressed: { backgroundColor: buttonTones.rose.pressed },
 });

@@ -1,20 +1,24 @@
 import { MotionPressable } from './motion-pressable';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { typography } from './typography';
-import { colors } from '../theme/colors';
+import {
+  buttonForeground,
+  buttonTones,
+  type ButtonTone,
+} from '../theme/buttons';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
 
 export function ActionButton({
   label,
   onPress,
-  secondary = false,
+  tone = 'default',
   disabled = false,
   motionEnabled = false,
 }: {
   label: string;
   onPress: () => void;
-  secondary?: boolean;
+  tone?: ButtonTone;
   disabled?: boolean;
   motionEnabled?: boolean;
 }) {
@@ -23,13 +27,13 @@ export function ActionButton({
       motionEnabled={motionEnabled}
       disabled={disabled}
       onPress={onPress}
-      secondary={secondary}
+      tone={tone}
     >
       <Text
         style={[
           typography.button,
           {
-            color: secondary ? colors.onTint : colors.onBrand,
+            color: buttonForeground,
             textAlign: 'center',
           },
         ]}
@@ -42,19 +46,19 @@ export function ActionButton({
 function ButtonShell({
   motionEnabled,
   disabled,
-  secondary,
+  tone,
   onPress,
   children,
 }: {
   motionEnabled: boolean;
   disabled: boolean;
-  secondary: boolean;
+  tone: ButtonTone;
   onPress: () => void;
   children: React.ReactNode;
 }) {
   const style = [
     styles.button,
-    secondary && styles.secondary,
+    { backgroundColor: buttonTones[tone].background },
     disabled && { opacity: 0.55 },
   ];
   const props = {
@@ -74,7 +78,7 @@ function ButtonShell({
         style,
         pressed &&
           !disabled && {
-            backgroundColor: secondary ? colors.surface : colors.tint,
+            backgroundColor: buttonTones[tone].pressed,
           },
       ]}
     >
@@ -88,9 +92,5 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     justifyContent: 'center',
-    backgroundColor: colors.brand,
-  },
-  secondary: {
-    backgroundColor: colors.tint,
   },
 });

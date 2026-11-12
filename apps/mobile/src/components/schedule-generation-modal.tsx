@@ -344,6 +344,7 @@ export function ScheduleGenerationModal({
                       label={
                         busy === 'save' ? '저장 중…' : '선택한 일정 확정 저장'
                       }
+                      tone="petal"
                       onPress={() => void save()}
                       disabled={!!busy || uncertain || !selected.length}
                     />
@@ -360,6 +361,7 @@ export function ScheduleGenerationModal({
                 {uncertain ? (
                   <ActionButton
                     label="저장 결과 목록 확인"
+                    tone="blush"
                     onPress={() => void inspect()}
                     disabled={!!busy}
                   />
@@ -393,7 +395,7 @@ export function ScheduleGenerationModal({
             )}
             <ActionButton
               label={busy === 'generate' ? '생성 취소하고 닫기' : '닫기'}
-              secondary
+              tone="rose"
               disabled={busy === 'save'}
               onPress={() => {
                 if (uncertain) onSaved();

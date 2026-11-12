@@ -448,7 +448,7 @@ function DiaryEditor() {
         >
           <ActionButton
             label="기록으로 돌아가기"
-            secondary
+            tone="mist"
             disabled={busy || generating || preparing}
             onPress={back}
           />
@@ -538,7 +538,7 @@ function DiaryEditor() {
                     </Text>
                     <ActionButton
                       label="활동 다시 불러오기"
-                      secondary
+                      tone="petal"
                       onPress={() => void todos.refetch()}
                     />
                   </>
@@ -610,7 +610,7 @@ function DiaryEditor() {
                             ? '첨부 사진 변경'
                             : '사진 첨부'
                       }
-                      secondary
+                      tone="blush"
                       disabled={preparing}
                       onPress={() => void pickPhotos()}
                     />
@@ -621,7 +621,7 @@ function DiaryEditor() {
                         </Text>
                         <ActionButton
                           label="첨부 사진 삭제"
-                          secondary
+                          tone="petal"
                           onPress={() => setPhotos([])}
                         />
                       </>
@@ -644,7 +644,7 @@ function DiaryEditor() {
               />
               <ActionButton
                 label="직접 작성하기"
-                secondary
+                tone="rose"
                 disabled={preparing}
                 onPress={() => void prepare(true)}
               />
@@ -689,13 +689,13 @@ function DiaryEditor() {
                     ) : null}
                     <ActionButton
                       label="재료 다시 확인"
-                      secondary
+                      tone="rose"
                       disabled={busy}
                       onPress={() => setStep('materials')}
                     />
                     <ActionButton
                       label="초안 다시 정리"
-                      secondary
+                      tone="blush"
                       disabled={busy}
                       onPress={() => void prepare()}
                     />
@@ -704,7 +704,7 @@ function DiaryEditor() {
                   <>
                     <ActionButton
                       label="일기 삭제"
-                      secondary
+                      tone="rose"
                       disabled={busy}
                       onPress={() => setConfirm('delete')}
                     />
@@ -747,7 +747,6 @@ function DiaryEditor() {
           {uncertain ? (
             <ActionButton
               label="중복 가능성을 확인하고 다시 저장"
-              secondary
               onPress={() => {
                 setUncertain(false);
                 setNotice(
@@ -795,7 +794,7 @@ function DiaryEditor() {
               ) : null}
               <ActionButton
                 label="취소"
-                secondary
+                tone="rose"
                 disabled={busy}
                 onPress={() => setConfirm(null)}
               />

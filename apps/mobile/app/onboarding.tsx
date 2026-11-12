@@ -32,7 +32,7 @@ export default function OnboardingScreen() {
             />
             <ActionButton
               label="로그아웃"
-              secondary
+              tone="rose"
               onPress={() => void client.logout()}
             />
           </>

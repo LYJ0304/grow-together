@@ -41,7 +41,7 @@ export function RecommendationOptions({ onDirect }: { onDirect: () => void }) {
           ? `${choice} 선택은 아직 추천 요청으로 전송되지 않아요.`
           : '지금은 직접 일정을 추가할 수 있어요.'}
       </Text>
-      <ActionButton label="직접 정할게요" onPress={onDirect} secondary />
+      <ActionButton label="직접 정할게요" onPress={onDirect} />
     </View>
   );
 }
