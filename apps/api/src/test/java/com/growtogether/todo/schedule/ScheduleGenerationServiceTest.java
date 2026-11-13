@@ -13,7 +13,7 @@ class ScheduleGenerationServiceTest {
     void rejectsInvalidUpstreamResults(String kind) {
         var date=LocalDate.of(2026,11,10);
         var reader=mock(ScheduleContextReader.class);var worker=mock(ScheduleWorkerClient.class);
-        when(reader.read(1L,date)).thenReturn(new Context(List.of(),null,5));
+        when(reader.read(1L,date)).thenReturn(new Context(List.of(),null,5,List.of(),false));
         var candidate=new WorkerCandidate("read",null,kind.equals("candidateDate")?date.plusDays(1):date,
                 LocalTime.parse(kind.equals("outside")?"10:00":"09:00"),kind.equals("budget")?6:kind.equals("invalid")?0:3);
         WorkerResponse response=kind.equals("null")?null:new WorkerResponse(kind.equals("date")?date.plusDays(1):date,

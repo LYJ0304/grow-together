@@ -20,6 +20,16 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
     List<Todo> findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(
             Long userId, LocalDate start, LocalDate end);
 
+    @Query("""
+            select t from Todo t where t.userId = :userId and t.completed = true
+            and t.childReaction is not null and t.scheduledDate >= :start
+            and t.scheduledDate < :end
+            and (t.scheduledDate < :today or (t.scheduledDate = :today and t.scheduledTime <= :now))
+            order by t.scheduledDate desc, t.scheduledTime desc, t.id desc
+            """)
+    List<Todo> findActivityFeedback(Long userId, LocalDate start, LocalDate end,
+            LocalDate today, java.time.LocalTime now, org.springframework.data.domain.Pageable limit);
+
     Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

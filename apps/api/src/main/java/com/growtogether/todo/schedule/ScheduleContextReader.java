@@ -2,8 +2,13 @@ package com.growtogether.todo.schedule;
 
 import com.growtogether.child.ChildProfileRepository;
 import com.growtogether.todo.TodoRepository;
+import com.growtogether.todo.Todo;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.Clock;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import org.springframework.data.domain.PageRequest;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,6 +22,7 @@ import static com.growtogether.todo.schedule.ScheduleDtos.*;
 public class ScheduleContextReader {
     private final TodoRepository todos;
     private final ChildProfileRepository children;
+    private final Clock clock;
 
     @Transactional(readOnly=true)
     public Context read(Long userId, LocalDate date) {
@@ -37,6 +43,14 @@ public class ScheduleContextReader {
         Integer budget = time == null ? null : switch (time) {
             case "5min" -> 5; case "10min" -> 10; case "15to20min" -> 20; default -> null;
         };
-        return new Context(existing, child, budget);
+        var now = ZonedDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Seoul"));
+        var end = date.isAfter(now.toLocalDate()) ? now.toLocalDate().plusDays(1) : date;
+        var start = date.minusDays(30);
+        // Limit in SQL, including one extra row to determine truncation, before projection.
+        var history = start.isBefore(end) ? todos.findActivityFeedback(userId, start, end,
+                now.toLocalDate(), now.toLocalTime(), PageRequest.of(0, 51)) : List.<Todo>of();
+        var feedback = history.stream().limit(50).map(t -> new Feedback(t.getId(), t.getPlanName(),
+                t.getScheduledDate(), t.getChildReaction())).toList();
+        return new Context(existing, child, budget, feedback, history.size() > 50);
     }
 }

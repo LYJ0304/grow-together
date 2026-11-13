@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Weekly report Worker contract weekly-v1",
+  "title": "Weekly report Worker contract weekly-v1/v2",
   "$defs": {
     "ReportEvidence": {
       "type": "object",
@@ -298,6 +298,19 @@
         "time": {
           "type": "string",
           "pattern": "^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$"
+        },
+        "child_reaction": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "ENJOYED",
+            "NEUTRAL",
+            "DIFFICULT",
+            null
+          ],
+          "default": null
         }
       }
     },
@@ -404,7 +417,10 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "prompt_version": {
-          "const": "weekly-v1"
+          "enum": [
+            "weekly-v1",
+            "weekly-v2"
+          ]
         },
         "period": {
           "$ref": "#/$defs/Period"
@@ -418,7 +434,35 @@
         "sources": {
           "$ref": "#/$defs/Sources"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "prompt_version": {
+                "const": "weekly-v1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sources": {
+                "properties": {
+                  "todos": {
+                    "items": {
+                      "properties": {
+                        "child_reaction": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "Response": {
       "type": "object",
@@ -434,7 +478,10 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "prompt_version": {
-          "const": "weekly-v1"
+          "enum": [
+            "weekly-v1",
+            "weekly-v2"
+          ]
         },
         "result": {
           "$ref": "#/$defs/WorkerResult"

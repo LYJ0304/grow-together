@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-13",
+  "instructions": "play",
+  "available_windows": [
+    {
+      "start": "09:00:00",
+      "end": "10:00:00"
+    }
+  ],
+  "existing_schedules": [],
+  "max_candidates": 5,
+  "child_context": null,
+  "activity_feedback": [
+    {
+      "todo_id": 7,
+      "plan_name": "그림책 읽기",
+      "date": "2026-11-12",
+      "child_reaction": "ENJOYED"
+    }
+  ],
+  "activity_feedback_truncated": false
+}

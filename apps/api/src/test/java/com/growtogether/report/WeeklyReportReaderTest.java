@@ -115,4 +115,29 @@ class WeeklyReportReaderTest {
         assertThat(snapshot.report().metrics().completed()).isEqualTo(1);
     }
 
+    @Test void reactionChangesInvalidateHashEvenOutsideWorkerSample() {
+        var list = new ArrayList<Todo>();
+        for (long id=1; id<=51; id++) list.add(todo(id,"활동",monday,LocalTime.NOON,true));
+        sources(list,List.of());
+        String first=reader.read(1L,monday).report().sourceHash();
+        list.getLast().setChildReaction(ChildReaction.ENJOYED);
+        String selected=reader.read(1L,monday).report().sourceHash();
+        assertThat(selected).isNotEqualTo(first);
+        list.getLast().setChildReaction(ChildReaction.DIFFICULT);
+        assertThat(reader.read(1L,monday).report().sourceHash()).isNotEqualTo(selected);
+        list.getLast().setChildReaction(null);
+        assertThat(reader.read(1L,monday).report().sourceHash()).isEqualTo(first);
+    }
+
+    @Test void projectsRecordedAndUnrecordedReactionsWithoutChangingMetrics() {
+        var first=todo(1,"활동",monday,LocalTime.NOON,true);
+        first.setChildReaction(ChildReaction.ENJOYED);
+        sources(List.of(first,todo(2,"미기록",monday,LocalTime.NOON,true)),List.of());
+        var snapshot=reader.read(1L,monday);
+        assertThat(snapshot.input().sources().todos().getFirst().childReaction()).isEqualTo(ChildReaction.ENJOYED);
+        assertThat(snapshot.input().sources().todos().getLast().childReaction()).isNull();
+        assertThat(snapshot.report().metrics().completed()).isEqualTo(2);
+        assertThat(snapshot.report().promptVersion()).isEqualTo("weekly-v2");
+    }
+
 }

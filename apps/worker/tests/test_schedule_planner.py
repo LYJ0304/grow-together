@@ -20,7 +20,11 @@ def test_planner_parses_proposals_and_passes_request(schedule_request):
     client.complete.assert_awaited_once()
     assert client.complete.call_args.kwargs["system_prompt"] == SYSTEM_PROMPT
     assert json.loads(client.complete.call_args.kwargs["user_prompt"]) == (
-        schedule_request.model_dump(mode="json", exclude_none=True)
+        schedule_request.model_dump(
+            mode="json",
+            exclude_none=True,
+            exclude={"activity_feedback", "activity_feedback_truncated"},
+        )
     )
 
 

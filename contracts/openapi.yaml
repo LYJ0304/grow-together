@@ -1278,7 +1278,7 @@ components:
           pattern: ^[a-f0-9]{64}$
         promptVersion:
           type: string
-          const: weekly-v1
+          const: weekly-v2
         insight:
           $ref: '#/components/schemas/ReportInsight'
       example:
@@ -1315,7 +1315,7 @@ components:
         activitiesTruncated: false
         memories: []
         sourceHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        promptVersion: weekly-v1
+        promptVersion: weekly-v2
         insight:
           state: AVAILABLE
           reason: null

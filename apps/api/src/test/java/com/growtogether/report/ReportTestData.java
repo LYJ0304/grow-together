@@ -35,7 +35,7 @@ final class ReportTestData {
                 List.of(new ReportActivity("그림책 읽기",1)),false,List.of(),hash,PROMPT_VERSION,ReportInsight.of(ReportInsightState.NOT_GENERATED,null));
         var input=new ReportWorkerRequest(hash,PROMPT_VERSION,new ReportWorkerPeriod(WEEK,WEEK.plusDays(6),WEEK.plusDays(7),at,true),
                 new ReportWorkerMetrics(1,1,1,0,1.0,daily),new ReportChildContext(22,WEEK.plusDays(2),List.of("communication"),null),
-                new ReportWorkerSources(List.of(new ReportWorkerTodo(10L,"그림책 읽기",WEEK,LocalTime.NOON)),List.of(),false));
+                new ReportWorkerSources(List.of(new ReportWorkerTodo(10L,"그림책 읽기",WEEK,LocalTime.NOON,null)),List.of(),false));
         return new WeeklyReportReader.Snapshot(report,input,null);
     }
     static ReportWorkerResponse result(ReportWorkerRequest input) {

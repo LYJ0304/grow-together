@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import com.growtogether.todo.ChildReaction;
 
 public final class ScheduleDtos {
     private ScheduleDtos() {}
@@ -36,11 +37,16 @@ public final class ScheduleDtos {
     public record Existing(@JsonProperty("todo_id") Long todoId,
             @JsonProperty("plan_name") String planName, LocalTime start,
             @JsonProperty("duration_minutes") int durationMinutes) {}
+    public record Feedback(@JsonProperty("todo_id") Long todoId,
+            @JsonProperty("plan_name") String planName, LocalDate date,
+            @JsonProperty("child_reaction") ChildReaction childReaction) {}
     public record WorkerRequest(LocalDate date, String instructions,
             @JsonProperty("available_windows") List<Window> availableWindows,
             @JsonProperty("existing_schedules") List<Existing> existingSchedules,
             @JsonProperty("max_candidates") int maxCandidates,
-            @JsonProperty("child_context") Child childContext) {}
+            @JsonProperty("child_context") Child childContext,
+            @JsonProperty("activity_feedback") List<Feedback> activityFeedback,
+            @JsonProperty("activity_feedback_truncated") boolean activityFeedbackTruncated) {}
     public record WorkerCandidate(@NotBlank @Size(max=80) @JsonProperty("plan_name") String planName,
             @Size(max=255) String content, @NotNull @JsonProperty("scheduled_date") LocalDate scheduledDate,
             @NotNull @JsonProperty("scheduled_time") LocalTime scheduledTime,
@@ -51,5 +57,6 @@ public final class ScheduleDtos {
     public record WorkerResponse(@NotNull LocalDate date,
             @NotNull @Size(max=10) List<@NotNull @Valid WorkerCandidate> candidates,
             @NotNull @Size(max=10) List<@NotNull @Valid WorkerProposal> unscheduled) {}
-    public record Context(List<Existing> existing, Child child, Integer budget) {}
+    public record Context(List<Existing> existing, Child child, Integer budget,
+            List<Feedback> activityFeedback, boolean activityFeedbackTruncated) {}
 }

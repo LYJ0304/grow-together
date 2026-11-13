@@ -55,7 +55,7 @@ public class WeeklyReportReader {
                     report.activitiesTruncated(), report.memories(), report.sourceHash(), PROMPT_VERSION, insight);
         }
     }
-    private record TodoSource(Long id, String title, String content, LocalDate date, LocalTime time, boolean completed) {}
+    private record TodoSource(Long id, String title, String content, LocalDate date, LocalTime time, boolean completed, com.growtogether.todo.ChildReaction childReaction) {}
     private record DiarySource(Long id, LocalDate date, String content, List<Long> links) {}
     private record ProfileSource(String name, LocalDate birthday, String prematurity, LocalDate dueDate,
                                  List<String> concerns, String availableTime) {}
@@ -134,9 +134,9 @@ public class WeeklyReportReader {
         var child = validProfile ? new ReportChildContext((int) months, reference, profileSource.concerns(), profileSource.availableTime()) : null;
         var hash = hash(new HashSource(owner, start, current, reference,
                 all.stream().map(t -> new TodoSource(t.getId(), t.getPlanName(), t.getContent(),
-                        t.getScheduledDate(), t.getScheduledTime(), t.isCompleted())).toList(), eligible.stream().map(Todo::getId).toList(), diarySources, profileSource));
+                        t.getScheduledDate(), t.getScheduledTime(), t.isCompleted(), t.getChildReaction())).toList(), eligible.stream().map(Todo::getId).toList(), diarySources, profileSource));
         var sources = new ReportWorkerSources(completed.stream().limit(50).map(t -> new ReportWorkerTodo(t.getId(),
-                        t.getPlanName(), t.getScheduledDate(), t.getScheduledTime())).toList(),
+                        t.getPlanName(), t.getScheduledDate(), t.getScheduledTime(), t.getChildReaction())).toList(),
                 diarySources.stream().filter(d -> d.content() != null && !d.content().isBlank()).limit(7)
                         .map(d -> new ReportWorkerDiary(d.id(), d.date(), excerpt(d.content()))).toList(), completed.size() > 50);
         String restriction = !validProfile ? "PROFILE_UNAVAILABLE"
