@@ -1,3 +1,4 @@
+import { TodoReactionModal } from '../../src/components/todo-reaction-modal';
 import { HomeScheduleRow } from '../../src/components/home-schedule-row';
 import { MotionPressable } from '../../src/components/motion-pressable';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
@@ -132,6 +133,10 @@ export default function MainScreen() {
       return () => clearInterval(timer);
     }, []),
   );
+  const [reactionTodo, setReactionTodo] = useState<TodoResponse | null>(null);
+  useEffect(() => {
+    setReactionTodo(null);
+  }, [epoch]);
   const [completionError, setCompletionError] = useState('');
   const [pendingId, setPendingId] = useState<number | null>(null);
   const pending = useRef(false);
@@ -155,7 +160,11 @@ export default function MainScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['todos', todo.scheduledDate],
       });
-      if (updated.completed) successFeedback();
+      if (client.getSnapshot().epoch !== epoch) return;
+      if (updated.completed) {
+        successFeedback();
+        setReactionTodo(updated);
+      }
     } catch {
       if (client.getSnapshot().epoch === epoch)
         setCompletionError(
@@ -188,6 +197,13 @@ export default function MainScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
+      {reactionTodo ? (
+        <TodoReactionModal
+          key={reactionTodo.id}
+          todo={reactionTodo}
+          onClose={() => setReactionTodo(null)}
+        />
+      ) : null}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -418,6 +434,7 @@ export default function MainScreen() {
                         now={date < today ? '23:59:59' : now}
                         pendingId={pendingId}
                         onToggle={() => void toggle(todo)}
+                        onReaction={() => setReactionTodo(todo)}
                       />
                     ))}
                   </>

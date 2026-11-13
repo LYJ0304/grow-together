@@ -430,7 +430,7 @@ paths:
     put:
       operationId: setTodoCompletion
       summary: Set completion of a todo owned by the authenticated user
-      description: Idempotently sets the explicit completion state. New and existing migrated todos default to false.
+      description: Idempotently sets the explicit completion state. Setting false also clears childReaction atomically. New and existing migrated todos default to false.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -446,6 +446,41 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TodoNotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/todos/{id}/reaction:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    put:
+      operationId: setTodoReaction
+      summary: Set or clear the child reaction of a completed todo
+      description: >-
+        Only the authenticated owner's completed todo can be changed. Null clears
+        the reaction. Missing childReaction or unknown/non-string values are invalid.
+        Completion undo clears the reaction. Ordinary todo updates preserve it.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [childReaction]
+              properties:
+                childReaction: { $ref: '#/components/schemas/ChildReaction' }
+      responses:
+        '200': { $ref: '#/components/responses/Todo' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TodoNotFound' }
+        '409':
+          description: Todo is not completed; no reaction is changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/diary:
@@ -878,10 +913,15 @@ components:
         content: { type: [string, 'null'], maxLength: 255 }
         scheduledDate: { type: string, format: date }
         scheduledTime: { type: string, example: '09:00:00', description: Local time without a time zone }
+    ChildReaction:
+      type: [string, 'null']
+      enum: [ENJOYED, NEUTRAL, DIFFICULT, null]
+      description: Optional child response to this activity; null means not recorded, distinct from NEUTRAL. Available only for completed todos.
     TodoResponse:
       type: object
       required: [id, planName, scheduledDate, scheduledTime, completed]
       properties:
+        childReaction: { $ref: '#/components/schemas/ChildReaction' }
         durationMinutes: { type: [integer, 'null'], minimum: 1, maximum: 1440, description: Optional for legacy compatibility. Must end within the same day. Omission/null on PUT preserves the stored value. Unknown durations must be supplied before AI generation for that date. }
         completed: { type: boolean }
         id: { type: integer, format: int64 }

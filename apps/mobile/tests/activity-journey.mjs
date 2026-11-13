@@ -56,9 +56,7 @@ try {
     .getByRole('heading', { name: '아이의 반응은 어땠나요?', exact: true })
     .waitFor();
   assert(complete);
-  await page
-    .getByRole('button', { name: '반응 안내 닫기', exact: true })
-    .click();
+  await page.getByRole('button', { name: '나중에', exact: true }).click();
   await page.getByText('완료', { exact: true }).waitFor();
   await page
     .getByRole('checkbox', { name: '책 읽기 완료 취소', exact: true })

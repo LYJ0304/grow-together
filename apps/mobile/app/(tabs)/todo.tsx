@@ -1,3 +1,7 @@
+import {
+  TodoReactionModal,
+  childReactionLabels,
+} from '../../src/components/todo-reaction-modal';
 import { useChildRegistration } from '../../src/components/child-registration';
 import { ScheduleCheck } from '../../src/components/schedule-check';
 import { colors } from '../../src/theme/colors';
@@ -56,7 +60,7 @@ function getWeek(date: Date) {
 export default function TodoScreen() {
   const requestChild = useChildRegistration();
   const insets = useSafeAreaInsets();
-  const { client, status } = useAuth();
+  const { client, status, epoch } = useAuth();
   const scroll = useRef<ScrollView>(null);
   useTabScrollToTop(scroll);
   const [selectedDate, setSelectedDate] = useSessionValue('todoDate', () => {
@@ -69,6 +73,9 @@ export default function TodoScreen() {
     recommend?: string;
   }>();
   const [reactionTodo, setReactionTodo] = useState<TodoResponse | null>(null);
+  useEffect(() => {
+    setReactionTodo(null);
+  }, [epoch]);
   const [recommendations, setRecommendations] = useState<string | null>(null);
   useEffect(() => {
     const fromRoute = parseDiaryDate(params.date);
@@ -154,6 +161,7 @@ export default function TodoScreen() {
     setCompletionError('');
     try {
       const updated = await completion.mutateAsync(todo);
+      if (client.getSnapshot().epoch !== epoch) return;
       if (updated.completed) {
         successFeedback();
         setReactionTodo(updated);
@@ -387,33 +395,51 @@ export default function TodoScreen() {
                 ) : (
                   <View style={styles.timeSpacer} />
                 )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${task.title} 메뉴`}
-                  onPress={() => setManagedTodo(task.todo)}
-                  style={({ pressed }) => [
-                    styles.taskCard,
-                    styles.future,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.taskCopy}>
-                    <Text style={styles.taskTitle}>{task.title}</Text>
-                    {task.description ? (
-                      <Text style={styles.taskDescription}>
-                        {task.description}
+                <View style={[styles.taskCard, styles.future]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${task.title} 메뉴`}
+                    onPress={() => setManagedTodo(task.todo)}
+                    style={({ pressed }) => [pressed && styles.pressed]}
+                  >
+                    <View style={styles.taskCopy}>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      {task.description ? (
+                        <Text style={styles.taskDescription}>
+                          {task.description}
+                        </Text>
+                      ) : null}
+                      <Text
+                        style={[typography.caption, { color: colors.muted }]}
+                      >
+                        {task.todo.completed ? '완료' : '예정'}
                       </Text>
-                    ) : null}
-                    <Text style={[typography.caption, { color: colors.muted }]}>
-                      {task.todo.completed ? '완료' : '예정'}
-                    </Text>
-                    <Text
-                      style={[typography.caption, { color: colors.primary }]}
+                      <Text
+                        style={[typography.caption, { color: colors.primary }]}
+                      >
+                        수정 · 삭제
+                      </Text>
+                    </View>
+                  </Pressable>
+                  {task.todo.completed ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${task.title} 반응 ${task.todo.childReaction ? '수정' : '기록'}`}
+                      disabled={completion.isPending}
+                      accessibilityState={{ disabled: completion.isPending }}
+                      onPress={() => setReactionTodo(task.todo)}
+                      style={{ minHeight: 44, justifyContent: 'center' }}
                     >
-                      수정 · 삭제
-                    </Text>
-                  </View>
-                </Pressable>
+                      <Text
+                        style={[typography.caption, { color: colors.onTint }]}
+                      >
+                        {task.todo.childReaction
+                          ? `${childReactionLabels[task.todo.childReaction]} · 수정`
+                          : '반응 남기기'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
                 <Pressable
                   accessibilityRole="checkbox"
                   aria-checked={task.todo.completed}
@@ -446,57 +472,18 @@ export default function TodoScreen() {
       </View>
 
       {reactionTodo ? (
-        <Modal
-          transparent
-          animationType="slide"
-          onRequestClose={() => setReactionTodo(null)}
-        >
-          <SafeAreaView
-            style={[styles.menuOverlay, { justifyContent: 'flex-end' }]}
-          >
-            <ScrollView
-              style={{
-                maxHeight: '90%',
-                width: '100%',
-                maxWidth: 440,
-                alignSelf: 'center',
-              }}
-              contentContainerStyle={[styles.menuSheet, { gap: 14 }]}
-              accessibilityViewIsModal
-            >
-              <Text accessibilityRole="header" style={styles.menuTitle}>
-                아이의 반응은 어땠나요?
-              </Text>
-              <Text style={typography.body}>
-                완료는 저장됐어요. 반응 선택과 사진 저장은 아직 연결 준비
-                중이에요.
-              </Text>
-              <Text style={typography.body}>
-                좋아했어요 · 보통이에요 · 어려워했어요
-              </Text>
-              <Text style={typography.caption}>
-                지금은 기존 일정 메모에 관찰한 내용을 남길 수 있어요. 보호자의
-                감정과 아이의 반응은 구분해 적어주세요.
-              </Text>
-              <ActionButton
-                label="일정 메모에 한 줄 남기기"
-                variant="secondary"
-                onPress={() => {
-                  setForm({
-                    date: new Date(`${reactionTodo.scheduledDate}T00:00:00`),
-                    todo: reactionTodo,
-                  });
-                  setReactionTodo(null);
-                }}
-              />
-              <ActionButton
-                label="반응 안내 닫기"
-                variant="tertiary"
-                onPress={() => setReactionTodo(null)}
-              />
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
+        <TodoReactionModal
+          key={reactionTodo.id}
+          todo={reactionTodo}
+          onClose={() => setReactionTodo(null)}
+          onMemo={() => {
+            setForm({
+              date: new Date(`${reactionTodo.scheduledDate}T00:00:00`),
+              todo: reactionTodo,
+            });
+            setReactionTodo(null);
+          }}
+        />
       ) : null}
       {recommendations ? (
         <ScheduleGenerationModal
@@ -763,8 +750,8 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 12,
     borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 8,
   },
   future: { backgroundColor: colors.surface },
