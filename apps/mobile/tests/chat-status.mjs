@@ -35,23 +35,23 @@ try {
   );
   await input.fill('질문을 작성했습니다');
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
-  const notice = page.getByRole('alert');
-  assert.ok(
-    (await notice.innerText()).includes(
-      '육아 도우미 연결은 아직 준비 중이에요.',
-    ),
+  const notice = page.getByText(
+    '질문을 작성했어요. AI 답변 기능은 준비 중이에요.',
+    { exact: true },
   );
-  assert.equal(await input.inputValue(), '질문을 작성했습니다');
-  await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
-  assert.equal(await notice.count(), 0);
+  await notice.waitFor();
+  assert.equal(await input.inputValue(), '');
+  assert.equal(
+    await page.getByTestId('chat-message-user').innerText(),
+    '질문을 작성했습니다',
+  );
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   await input.press('Enter');
-  assert.ok(
-    (await notice.innerText()).includes(
-      '육아 도우미 연결은 아직 준비 중이에요.',
-    ),
+  assert.equal(
+    await page.getByTestId('chat-message-user').count(),
+    1,
+    'Empty Enter never adds a message',
   );
-  await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page.getByRole('heading', { name: '설정', exact: true }).waitFor();
@@ -60,10 +60,13 @@ try {
     .click();
   await page.waitForURL('**/chat');
   await input.focus();
-  assert.equal(await input.inputValue(), '질문을 작성했습니다');
+  assert.equal(await input.inputValue(), '');
+  assert.equal(await page.getByTestId('chat-message-user').count(), 1);
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   await page.setViewportSize({ width: 320, height: 360 });
+  await input.fill('짧은 화면에서 작성한 질문');
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
+  await notice.scrollIntoViewIfNeeded();
   assert.ok(await notice.isVisible());
   const field = await input.boundingBox();
   const tabs = await page.getByRole('tablist').boundingBox();
@@ -84,7 +87,7 @@ try {
     'No fake chat/voice API call',
   );
   console.log(
-    'PASS: honest readiness, accessible send notice/settings navigation, dismiss/focus, preserved draft, no voice button or fake chat requests.',
+    'PASS: honest readiness, local message/settings navigation, focus, preserved conversation, no voice button or fake chat requests.',
   );
 } finally {
   await browser.close();

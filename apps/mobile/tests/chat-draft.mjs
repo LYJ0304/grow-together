@@ -79,9 +79,11 @@ try {
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   assert.equal(
     await input.inputValue(),
-    '우리 아이 질문 초안',
-    'Unsent draft survives preparation notice',
+    '',
+    'Locally added question clears the composer',
   );
+  assert.equal(await page.getByTestId('chat-message-user').count(), 1);
+  await input.fill('전송 후 새 초안');
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
@@ -97,6 +99,13 @@ try {
     '',
     'Another account never receives the old draft',
   );
+  assert.equal(
+    await page.getByTestId('chat-message-user').count(),
+    0,
+    'Another account never receives prior messages',
+  );
+  await input.fill('다른 사용자의 질문');
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   await input.fill('다른 사용자의 초안');
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
@@ -109,6 +118,13 @@ try {
     '',
     'Preview never receives an account draft',
   );
+  assert.equal(
+    await page.getByTestId('chat-message-user').count(),
+    0,
+    'Preview never receives account messages',
+  );
+  await input.fill('미리보기 질문');
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   await input.fill('미리보기 초안');
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page
@@ -119,12 +135,24 @@ try {
     .click();
   await page.getByRole('tab', { name: '질문', exact: true }).click();
   assert.equal(await input.inputValue(), '', 'Ending preview clears its draft');
+  assert.equal(
+    await page.getByTestId('chat-message-user').count(),
+    0,
+    'Ending preview clears messages',
+  );
+  await input.fill('새로고침 전 질문');
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   await input.fill('새로고침 전 초안');
   await page.reload();
   assert.equal(
     await input.inputValue(),
     '',
     'Drafts are not persisted across reload',
+  );
+  assert.equal(
+    await page.getByTestId('chat-message-user').count(),
+    0,
+    'Messages are not persisted across reload',
   );
   console.log(
     'PASS: all tab round trips, unsent text, logout/login, account/preview separation, preview exit and memory-only lifetime.',

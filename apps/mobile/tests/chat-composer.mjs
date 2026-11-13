@@ -51,7 +51,11 @@ try {
   );
   assert.ok((await input.boundingBox()).height > short);
   await input.press('Enter');
-  assert.equal(await input.inputValue(), '첫 줄\n둘째 줄');
+  assert.equal(await input.inputValue(), '');
+  assert.equal(
+    await page.getByTestId('chat-message-user').innerText(),
+    '첫 줄\n둘째 줄',
+  );
   assert.ok(await input.evaluate((el) => el === document.activeElement));
   const composed = await input.evaluate((el) => {
     const event = new KeyboardEvent('keydown', {
@@ -77,6 +81,9 @@ try {
       document.querySelector('textarea').getBoundingClientRect().height <= 48,
   );
   await page.setViewportSize({ width: 320, height: 360 });
+  await page.waitForFunction(
+    () => document.documentElement.scrollWidth <= innerWidth,
+  );
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
