@@ -58,13 +58,29 @@ export function ReportContent({
                 : '저장한 일정과 일기는 기존 화면에서 확인할 수 있어요.'}
         </Text>
         {resource.state === 'loginRequired' ? (
-          <ActionButton label="로그인하러 가기" onPress={onLogin} />
+          <ActionButton
+            label="로그인하러 가기"
+            variant="primary"
+            onPress={onLogin}
+          />
         ) : resource.state === 'error' && onRetry ? (
-          <ActionButton label="리포트 다시 불러오기" onPress={onRetry} />
+          <ActionButton
+            label="리포트 다시 불러오기"
+            variant="secondary"
+            onPress={onRetry}
+          />
         ) : resource.state !== 'loading' ? (
           <>
-            <ActionButton label="일정 확인하기" onPress={onSchedule} />
-            <ActionButton label="기록 남기기" tone="rose" onPress={onRecords} />
+            <ActionButton
+              label="일정 확인하기"
+              variant="secondary"
+              onPress={onSchedule}
+            />
+            <ActionButton
+              label="기록 남기기"
+              variant="primary"
+              onPress={onRecords}
+            />
           </>
         ) : null}
       </View>
@@ -87,7 +103,11 @@ export function ReportContent({
             : `완료로 기록한 활동 ${report.completed}개와 일기를 남긴 ${report.diaryDays}일을 돌아봐요.`}
         </Text>
         {empty ? (
-          <ActionButton label="기록 남기기" tone="rose" onPress={onRecords} />
+          <ActionButton
+            label="기록 남기기"
+            variant="primary"
+            onPress={onRecords}
+          />
         ) : null}
       </View>
       <View style={styles.section}>
@@ -179,7 +199,11 @@ export function ReportContent({
               아직 이번 주의 기록이 없어요. 아이와 함께한 작은 순간부터
               남겨보세요.
             </Text>
-            <ActionButton label="기록 남기기" tone="rose" onPress={onRecords} />
+            <ActionButton
+              label="기록 남기기"
+              variant="primary"
+              onPress={onRecords}
+            />
           </View>
         )}
       </View>
@@ -208,7 +232,7 @@ export function ReportContent({
                     <Text style={styles.caption}>{suggestion.reason}</Text>
                     <ActionButton
                       label="이 활동으로 일정 준비하기"
-                      tone="petal"
+                      variant="secondary"
                       disabled={!onSuggestion}
                       onPress={() => onSuggestion?.(suggestion)}
                     />
@@ -235,6 +259,9 @@ export function ReportContent({
           report.insight.state !== 'insufficient' &&
           report.insight.state !== 'unavailable' ? (
             <ActionButton
+              variant={
+                report.insight.state === 'ready' ? 'secondary' : 'primary'
+              }
               label={
                 generating
                   ? 'AI 이야기 만드는 중…'

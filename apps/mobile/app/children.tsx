@@ -1,3 +1,4 @@
+import { buttonSurface, buttonLabel } from '../src/theme/buttons';
 import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/components/typography';
@@ -354,10 +355,15 @@ function ChildrenEditor() {
                     disabled={saving || conflict}
                     style={({ pressed }) => [
                       styles.button,
-                      pressed && styles.pressed,
+                      buttonSurface('primary', saving || conflict, pressed),
                     ]}
                   >
-                    <Text style={styles.buttonLabel}>
+                    <Text
+                      style={[
+                        styles.buttonLabel,
+                        buttonLabel('primary', saving || conflict),
+                      ]}
+                    >
                       {saving ? '저장 중...' : '저장'}
                     </Text>
                   </Pressable>
@@ -379,9 +385,17 @@ function ChildrenEditor() {
               accessibilityRole="button"
               disabled={profile.isFetching}
               onPress={() => void recheckRegistration()}
-              style={styles.button}
+              style={({ pressed }) => [
+                styles.button,
+                buttonSurface('secondary', profile.isFetching, pressed),
+              ]}
             >
-              <Text style={styles.buttonLabel}>
+              <Text
+                style={[
+                  styles.buttonLabel,
+                  buttonLabel('secondary', profile.isFetching),
+                ]}
+              >
                 {profile.isFetching ? '확인 중...' : '등록 정보 다시 확인'}
               </Text>
             </Pressable>
@@ -520,8 +534,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.brand,
+    ...buttonSurface('secondary'),
   },
-  buttonLabel: { ...typography.button, fontSize: 16, color: colors.onBrand },
-  pressed: { backgroundColor: colors.background },
+  buttonLabel: {
+    ...typography.button,
+    fontSize: 16,
+    ...buttonLabel('secondary'),
+  },
+  pressed: { ...buttonSurface('secondary', false, true) },
 });

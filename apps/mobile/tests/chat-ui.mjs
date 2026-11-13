@@ -115,6 +115,9 @@ try {
     await input.focus();
     await input.fill('육아에 대해 궁금해요');
     await page.setViewportSize({ width, height: 360 });
+    // The title is scroll content. Focus/resize may scroll it out of view;
+    // restore the inspected target before measuring the unchanged bounds.
+    await heading.scrollIntoViewIfNeeded();
     await checkLayout(360);
     assert.equal(await input.inputValue(), '육아에 대해 궁금해요');
     await page.screenshot({

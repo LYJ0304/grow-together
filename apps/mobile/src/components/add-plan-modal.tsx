@@ -1,3 +1,4 @@
+import { buttonSurface, buttonLabel } from '../theme/buttons';
 import { useRef, useState } from 'react';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
@@ -282,10 +283,17 @@ export function AddPlanModal({
                   style={({ pressed }) => [
                     styles.button,
                     styles.cancel,
-                    pressed && styles.pressed,
+                    buttonSurface('tertiary', pending, pressed),
                   ]}
                 >
-                  <Text style={styles.cancelText}>취소</Text>
+                  <Text
+                    style={[
+                      styles.cancelText,
+                      buttonLabel('tertiary', pending),
+                    ]}
+                  >
+                    취소
+                  </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -295,10 +303,12 @@ export function AddPlanModal({
                   style={({ pressed }) => [
                     styles.button,
                     styles.submit,
-                    pressed && styles.pressed,
+                    buttonSurface('primary', pending, pressed),
                   ]}
                 >
-                  <Text style={styles.submitText}>
+                  <Text
+                    style={[styles.submitText, buttonLabel('primary', pending)]}
+                  >
                     {pending
                       ? '저장 중…'
                       : initialValues
@@ -373,7 +383,7 @@ const styles = StyleSheet.create({
   },
   memo: { minHeight: 100 },
   hint: { marginTop: 8, ...typography.caption, color: colors.muted },
-  error: { marginTop: 16, ...typography.caption, color: colors.primary },
+  error: { marginTop: 16, ...typography.caption, color: colors.danger },
   footer: { paddingHorizontal: 24, paddingBottom: 20 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   button: {
@@ -383,10 +393,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancel: { backgroundColor: colors.tint },
-  submit: { backgroundColor: colors.brand },
-  cancelText: { ...typography.button, color: colors.muted },
-  submitText: { ...typography.button, color: colors.onBrand },
+  cancel: { ...buttonSurface('tertiary'), borderWidth: 1 },
+  submit: { ...buttonSurface('primary') },
+  cancelText: { ...typography.button, ...buttonLabel('tertiary') },
+  submitText: { ...typography.button, ...buttonLabel('primary') },
   pressed: { backgroundColor: colors.background },
   confirm: {
     gap: 4,

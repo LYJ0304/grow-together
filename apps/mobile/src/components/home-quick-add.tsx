@@ -78,7 +78,11 @@ export function HomeQuickAdd({
               onPress={item.action}
               style={[styles.choice, item.disabled && styles.disabled]}
             >
-              <Text style={styles.label}>{item.label}</Text>
+              <Text
+                style={[styles.label, item.disabled && { color: colors.muted }]}
+              >
+                {item.label}
+              </Text>
               <Text accessible={false} style={styles.chevron}>
                 ›
               </Text>
@@ -89,7 +93,7 @@ export function HomeQuickAdd({
               일정 추가와 AI 활동 추천은 로그인 후 이용할 수 있어요.
             </Text>
           ) : null}
-          <ActionButton label="닫기" tone="mist" onPress={onClose} />
+          <ActionButton label="닫기" variant="tertiary" onPress={onClose} />
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -130,5 +134,5 @@ const styles = StyleSheet.create({
   },
   label: { ...typography.label, color: colors.text, flex: 1 },
   chevron: { fontSize: 24, color: colors.muted },
-  disabled: { opacity: 0.5 },
+  disabled: { backgroundColor: colors.disabled, borderColor: colors.disabled },
 });

@@ -333,6 +333,7 @@ export default function TodoScreen() {
           <View style={{ margin: 18 }}>
             <ActionButton
               label="활동 추천받기"
+              variant="secondary"
               onPress={() =>
                 void requestChild(() =>
                   setRecommendations(localDateKey(selectedDate)),
@@ -479,7 +480,7 @@ export default function TodoScreen() {
               </Text>
               <ActionButton
                 label="일정 메모에 한 줄 남기기"
-                tone="rose"
+                variant="secondary"
                 onPress={() => {
                   setForm({
                     date: new Date(`${reactionTodo.scheduledDate}T00:00:00`),
@@ -490,6 +491,7 @@ export default function TodoScreen() {
               />
               <ActionButton
                 label="반응 안내 닫기"
+                variant="tertiary"
                 onPress={() => setReactionTodo(null)}
               />
             </ScrollView>
@@ -776,5 +778,5 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   listAction: { minHeight: 44, justifyContent: 'center' },
-  pressed: { opacity: 0.75 },
+  pressed: { backgroundColor: colors.surface },
 });

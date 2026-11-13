@@ -28,11 +28,12 @@ export default function OnboardingScreen() {
           <>
             <ActionButton
               label="아이 정보 다시 확인"
+              variant="secondary"
               onPress={() => void profile.refetch()}
             />
             <ActionButton
               label="로그아웃"
-              tone="rose"
+              variant="tertiary"
               onPress={() => void client.logout()}
             />
           </>

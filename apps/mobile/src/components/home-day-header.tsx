@@ -153,5 +153,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   arrowText: { fontSize: 28, lineHeight: 32, color: colors.text },
-  disabled: { opacity: 0.4 },
+  disabled: { backgroundColor: colors.disabled },
 });

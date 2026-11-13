@@ -132,6 +132,6 @@ const styles = StyleSheet.create({
   body: { ...typography.body, color: colors.text },
   caption: { ...typography.caption, color: colors.muted },
   link: { ...typography.button, color: colors.primary },
-  logout: { ...typography.button, color: colors.danger },
+  logout: { ...typography.button, color: colors.heading },
   button: { minHeight: 48, paddingVertical: 10, gap: 4 },
 });

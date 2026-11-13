@@ -1,4 +1,4 @@
-import { buttonForeground, buttonTones } from '../../../src/theme/buttons';
+import { buttonSurface, buttonLabel } from '../../../src/theme/buttons';
 import { colors } from '../../../src/theme/colors';
 import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
 import { useAuth } from '../../../src/components/auth-provider';
@@ -494,11 +494,19 @@ export default function CalendarScreen() {
             }
             style={({ pressed }) => [
               styles.generateButton,
-              (loadingDiaries || !!diaryNotice) && styles.pressed,
-              pressed && styles.generatePressed,
+              buttonSurface(
+                'primary',
+                loadingDiaries || !!diaryNotice,
+                pressed,
+              ),
             ]}
           >
-            <Text style={styles.generateLabel}>
+            <Text
+              style={[
+                styles.generateLabel,
+                buttonLabel('primary', loadingDiaries || !!diaryNotice),
+              ]}
+            >
               {loadingDiaries
                 ? '불러오는 중...'
                 : selectedHasDiary
@@ -687,18 +695,18 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: buttonTones.default.background,
+    ...buttonSurface('primary'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  generatePressed: { backgroundColor: buttonTones.default.pressed },
+  generatePressed: { ...buttonSurface('primary', false, true) },
   generateLabel: {
     ...typography.button,
     fontSize: 16,
     lineHeight: 22,
-    color: buttonForeground,
+    ...buttonLabel('primary'),
     textAlign: 'center',
   },
   notice: {
@@ -708,5 +716,5 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
   },
-  pressed: { opacity: 0.8 },
+  pressed: { backgroundColor: colors.surface },
 });

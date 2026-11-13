@@ -244,6 +244,7 @@ export default function CounselorChatScreen() {
           >
             <Image
               source={require('../../assets/images/chat/send.svg')}
+              tintColor={draft.trim() ? colors.surface : colors.muted}
               style={styles.sendIcon}
               contentFit="contain"
               accessible={false}
@@ -345,6 +346,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendIcon: { width: 22, height: 22 },
-  disabled: { opacity: 0.35 },
+  disabled: { backgroundColor: colors.disabled },
   pressed: { backgroundColor: colors.primary },
 });

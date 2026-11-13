@@ -217,7 +217,7 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="아이 정보 다시 시도"
-                  tone="rose"
+                  variant="secondary"
                   onPress={() => void profile.refetch()}
                 />
               </View>
@@ -368,6 +368,7 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="일정 다시 불러오기"
+                  variant="secondary"
                   onPress={() => void todos.refetch()}
                 />
               </View>
@@ -390,6 +391,7 @@ export default function MainScreen() {
                     <ActionButton
                       motionEnabled
                       label="일정 만들기"
+                      variant="primary"
                       onPress={() =>
                         router.navigate({
                           pathname: '/todo',
@@ -430,6 +432,7 @@ export default function MainScreen() {
                 <ActionButton
                   motionEnabled
                   label="일정 다시 불러오기"
+                  variant="secondary"
                   onPress={() => {
                     setCompletionError('');
                     void todos.refetch();
@@ -572,5 +575,5 @@ const styles = StyleSheet.create({
   linkText: { ...typography.label, fontWeight: '600', color: colors.primary },
   empty: { paddingVertical: 12, gap: 14 },
   loading: { minHeight: 232 },
-  error: { ...typography.caption, color: colors.primary, marginBottom: 8 },
+  error: { ...typography.caption, color: colors.danger, marginBottom: 8 },
 });

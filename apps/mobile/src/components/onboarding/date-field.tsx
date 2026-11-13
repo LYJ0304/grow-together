@@ -54,6 +54,7 @@ export function DateField({
           {Platform.OS === 'ios' ? (
             <ActionButton
               label="날짜 선택 완료"
+              variant="primary"
               onPress={() => setOpen(false)}
             />
           ) : null}
