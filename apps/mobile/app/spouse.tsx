@@ -1,3 +1,4 @@
+import { buttonSurface, buttonLabel } from '../src/theme/buttons';
 import { typography } from '../src/components/typography';
 import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
@@ -87,7 +88,7 @@ export default function SpouseScreen() {
               onPress={search}
               style={({ pressed }) => [
                 styles.searchButton,
-                pressed && styles.pressed,
+                buttonSurface('primary', false, pressed),
               ]}
             >
               <Text style={styles.searchLabel}>검색</Text>
@@ -230,9 +231,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: colors.brand,
+    ...buttonSurface('primary'),
   },
-  searchLabel: { ...typography.button, fontSize: 16, color: colors.onBrand },
+  searchLabel: {
+    ...typography.button,
+    fontSize: 16,
+    ...buttonLabel('primary'),
+  },
   resetButton: {
     alignSelf: 'flex-end',
     minHeight: 44,

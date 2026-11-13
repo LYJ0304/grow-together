@@ -357,6 +357,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
               </Text>
               <ActionButton
                 label="이어서 작성하기"
+                variant="primary"
                 onPress={() => {
                   touched.current = true;
                   setValue(resume.profile);
@@ -366,7 +367,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
               />
               <ActionButton
                 label="임시 입력 버리고 새로 시작"
-                tone="rose"
+                variant="tertiary"
                 onPress={() => {
                   void onboardingDrafts
                     .clear(accountKey!)
@@ -442,7 +443,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
                 {step > 0 ? (
                   <ActionButton
                     label="이전"
-                    tone="rose"
+                    variant="tertiary"
                     disabled={busy}
                     onPress={() => {
                       setStep(step - 1);
@@ -451,9 +452,15 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
                   />
                 ) : null}
                 {step < 4 ? (
-                  <ActionButton label="다음" disabled={busy} onPress={next} />
+                  <ActionButton
+                    label="다음"
+                    variant="primary"
+                    disabled={busy}
+                    onPress={next}
+                  />
                 ) : (
                   <ActionButton
+                    variant="primary"
                     label={
                       busy
                         ? '저장 중…'
@@ -468,7 +475,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
                 {step > 0 && step < 4 ? (
                   <ActionButton
                     label="건너뛰기"
-                    tone="blush"
+                    variant="tertiary"
                     disabled={busy}
                     onPress={() => {
                       if (step === 1) choices({ concerns: [] });
@@ -492,7 +499,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
           {blocked ? (
             <ActionButton
               label="기존 등록 정보 확인"
-              tone="petal"
+              variant="secondary"
               disabled={busy}
               onPress={() => void inspect()}
             />
@@ -503,14 +510,14 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
               <Text style={styles.body}>{existing.birthday}</Text>
               <ActionButton
                 label="입력 대신 등록된 정보로 계속"
-                tone="mist"
+                variant="secondary"
                 disabled={busy}
                 onPress={() => void finish(existing)}
               />
               {editing ? (
                 <ActionButton
                   label="입력 유지하고 다시 시도"
-                  tone="blush"
+                  variant="secondary"
                   onPress={() => {
                     setExisting(null);
                     setBlocked(false);
@@ -522,13 +529,14 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
           {partial ? (
             <ActionButton
               label="선택 정보는 저장하지 않고 시작"
-              tone="petal"
+              variant="secondary"
               onPress={() => void finish(partial)}
             />
           ) : null}
           {savedResult ? (
             <ActionButton
               label="임시 입력 정리 다시 시도"
+              variant="secondary"
               onPress={() => void finish(savedResult)}
             />
           ) : null}

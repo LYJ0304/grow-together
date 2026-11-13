@@ -1,4 +1,4 @@
-import { buttonForeground, buttonTones } from '../theme/buttons';
+import { buttonSurface, buttonLabel } from '../theme/buttons';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
 import { env } from '../config/env';
@@ -92,6 +92,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
           style={({ pressed }) => [
             styles.backButton,
             pressed && styles.pressed,
+            busy && buttonSurface('tertiary', true),
           ]}
         >
           <Text style={styles.backIcon}>‹</Text>
@@ -197,9 +198,14 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               style={({ pressed }) => [
                 styles.previewButton,
                 pressed && styles.pressed,
+                busy && buttonSurface('tertiary', true),
               ]}
             >
-              <Text style={styles.previewLabel}>인증 없이 미리보기 진입</Text>
+              <Text
+                style={[styles.previewLabel, buttonLabel('tertiary', busy)]}
+              >
+                인증 없이 미리보기 진입
+              </Text>
             </Pressable>
           ) : null}
           <Pressable
@@ -210,9 +216,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.primaryPressed,
+              busy && buttonSurface('primary', true),
             ]}
           >
-            <Text style={styles.primaryLabel}>
+            <Text style={[styles.primaryLabel, buttonLabel('primary', busy)]}>
               {busy ? '처리 중…' : isSignup ? '가입하기' : '로그인'}
             </Text>
           </Pressable>
@@ -357,26 +364,29 @@ const styles = StyleSheet.create({
     minHeight: 58,
     marginTop: 12,
     borderRadius: 15,
-    backgroundColor: buttonTones.default.background,
+    ...buttonSurface('primary'),
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryLabel: {
     ...typography.section,
     fontSize: 19,
-    color: buttonForeground,
+    ...buttonLabel('primary'),
   },
   previewButton: {
     minHeight: 54,
     marginTop: 9,
     borderWidth: 1,
-    borderColor: colors.primary,
     borderRadius: 15,
-    backgroundColor: buttonTones.rose.background,
+    ...buttonSurface('tertiary'),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewLabel: { ...typography.button, fontSize: 16, color: colors.onTint },
+  previewLabel: {
+    ...typography.button,
+    fontSize: 16,
+    ...buttonLabel('tertiary'),
+  },
   notice: {
     marginTop: 1,
     marginBottom: 5,
@@ -394,6 +404,6 @@ const styles = StyleSheet.create({
   },
   switchText: { ...typography.caption, fontSize: 13, color: colors.muted },
   switchLink: { ...typography.caption, fontSize: 13, color: colors.primary },
-  primaryPressed: { backgroundColor: buttonTones.default.pressed },
-  pressed: { backgroundColor: buttonTones.rose.pressed },
+  primaryPressed: { ...buttonSurface('primary', false, true) },
+  pressed: { ...buttonSurface('tertiary', false, true) },
 });

@@ -7,11 +7,12 @@ for the current request. Requirements in the user's request take precedence.
 
 Read the [brand color reference](references/brand-colors.md) for mobile UI work.
 Use the shared runtime tokens and validate contrast and static launch assets.
-Preserve bright coral/peach usage as well as hex values: default buttons use
-`tint` + `onTint` via `src/theme/buttons.ts`. Use explicit related pink tones for
-different simultaneous actions, not index-based coloring. Brand accents remain
-coral; dark `primary` is reserved for contrast-sensitive text/focus/narrow indicators. Do not globally darken accents for accessibility;
-choose a readable foreground/background pair and check pressed states too.
+Preserve bright coral/peach usage as well as hex values. Buttons use semantic
+primary/secondary/tertiary/destructive roles via `src/theme/buttons.ts`, chosen by
+action meaning rather than color count or list index. Emphasize the main action
+selectively; keep supporting actions peach and cancel/back/close neutral. Brand
+icons/checks stay coral. Verify normal/pressed contrast and explicit disabled colors
+without changing layout, typography, handlers or motion timing.
 
 ## Stage handoffs
 

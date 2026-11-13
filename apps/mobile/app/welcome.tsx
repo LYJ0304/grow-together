@@ -1,4 +1,4 @@
-import { buttonForeground, buttonTones } from '../src/theme/buttons';
+import { buttonSurface, buttonLabel } from '../src/theme/buttons';
 import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -56,9 +56,16 @@ export default function WelcomeScreen() {
                 styles.button,
                 styles.primaryButton,
                 pressed && styles.primaryPressed,
+                motion.busy && buttonSurface('primary', true),
               ]}
             >
-              <Text style={[styles.buttonLabel, styles.primaryLabel]}>
+              <Text
+                style={[
+                  styles.buttonLabel,
+                  styles.primaryLabel,
+                  buttonLabel('primary', motion.busy),
+                ]}
+              >
                 로그인
               </Text>
             </Pressable>
@@ -71,9 +78,16 @@ export default function WelcomeScreen() {
                 styles.button,
                 styles.secondaryButton,
                 pressed && styles.secondaryPressed,
+                motion.busy && buttonSurface('secondary', true),
               ]}
             >
-              <Text style={[styles.buttonLabel, styles.secondaryLabel]}>
+              <Text
+                style={[
+                  styles.buttonLabel,
+                  styles.secondaryLabel,
+                  buttonLabel('secondary', motion.busy),
+                ]}
+              >
                 가입하기
               </Text>
             </Pressable>
@@ -113,18 +127,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButton: {
-    backgroundColor: buttonTones.default.background,
+    ...buttonSurface('primary'),
     boxShadow: colors.welcomeShadow,
   },
-  secondaryButton: { backgroundColor: buttonTones.rose.background },
-  primaryPressed: { backgroundColor: buttonTones.default.pressed },
-  secondaryPressed: { backgroundColor: buttonTones.rose.pressed },
+  secondaryButton: { ...buttonSurface('secondary') },
+  primaryPressed: { ...buttonSurface('primary', false, true) },
+  secondaryPressed: { ...buttonSurface('secondary', false, true) },
   buttonLabel: {
     fontFamily: 'Jua',
     fontSize: 20,
     lineHeight: 32,
     textAlign: 'center',
   },
-  primaryLabel: { color: buttonForeground },
+  primaryLabel: { ...buttonLabel('primary') },
   secondaryLabel: { color: colors.onTint },
 });

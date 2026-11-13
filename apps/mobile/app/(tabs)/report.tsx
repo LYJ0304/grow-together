@@ -126,5 +126,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   arrowText: { ...typography.title, fontSize: 28, color: colors.primary },
-  disabled: { opacity: 0.4 },
+  disabled: { backgroundColor: colors.disabled },
 });

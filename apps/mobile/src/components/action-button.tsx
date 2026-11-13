@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { MotionPressable } from './motion-pressable';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { typography } from './typography';
 import {
-  buttonForeground,
-  buttonTones,
-  type ButtonTone,
+  buttonSurface,
+  buttonLabel,
+  type ButtonVariant,
 } from '../theme/buttons';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -12,55 +13,28 @@ import { spacing } from '../theme/spacing';
 export function ActionButton({
   label,
   onPress,
-  tone = 'default',
+  variant = 'secondary',
   disabled = false,
   motionEnabled = false,
 }: {
   label: string;
   onPress: () => void;
-  tone?: ButtonTone;
+  variant?: ButtonVariant;
   disabled?: boolean;
   motionEnabled?: boolean;
 }) {
-  return (
-    <ButtonShell
-      motionEnabled={motionEnabled}
-      disabled={disabled}
-      onPress={onPress}
-      tone={tone}
+  const [pressed, setPressed] = useState(false);
+  const children = (
+    <Text
+      style={[
+        typography.button,
+        buttonLabel(variant, disabled),
+        { textAlign: 'center' },
+      ]}
     >
-      <Text
-        style={[
-          typography.button,
-          {
-            color: buttonForeground,
-            textAlign: 'center',
-          },
-        ]}
-      >
-        {label}
-      </Text>
-    </ButtonShell>
+      {label}
+    </Text>
   );
-}
-function ButtonShell({
-  motionEnabled,
-  disabled,
-  tone,
-  onPress,
-  children,
-}: {
-  motionEnabled: boolean;
-  disabled: boolean;
-  tone: ButtonTone;
-  onPress: () => void;
-  children: React.ReactNode;
-}) {
-  const style = [
-    styles.button,
-    { backgroundColor: buttonTones[tone].background },
-    disabled && { opacity: 0.55 },
-  ];
   const props = {
     accessibilityRole: 'button' as const,
     disabled,
@@ -68,18 +42,20 @@ function ButtonShell({
     onPress,
   };
   return motionEnabled ? (
-    <MotionPressable {...props} style={style}>
+    <MotionPressable
+      {...props}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[styles.button, buttonSurface(variant, disabled, pressed)]}
+    >
       {children}
     </MotionPressable>
   ) : (
     <Pressable
       {...props}
       style={({ pressed }) => [
-        style,
-        pressed &&
-          !disabled && {
-            backgroundColor: buttonTones[tone].pressed,
-          },
+        styles.button,
+        buttonSurface(variant, disabled, pressed),
       ]}
     >
       {children}
@@ -89,7 +65,9 @@ function ButtonShell({
 const styles = StyleSheet.create({
   button: {
     minHeight: 52,
-    padding: spacing.md,
+    // Keep the original content box and outer size when adding an outline.
+    padding: spacing.md - 1,
+    borderWidth: 1,
     borderRadius: radius.md,
     justifyContent: 'center',
   },

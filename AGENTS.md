@@ -21,11 +21,13 @@
 Before changing mobile colors or adding screens, read the
 [brand color reference](.harness/references/brand-colors.md). Use semantic tokens
 from `apps/mobile/src/theme/colors.ts`; preserve the `mobile/v0.1.0` palette and
-its bright coral/peach visual balance. Default buttons use `tint` + `onTint`
-through `src/theme/buttons.ts`. Distinct actions shown together use explicit
-related pink tones; never assign them by list index. Reserve `brand` for existing
-accents and dark `primary` for contrast-sensitive text, focus and narrow indicators.
-Do not make all accents dark to solve a text contrast problem.
+its bright coral/peach visual balance. Buttons use semantic action variants from
+`src/theme/buttons.ts`: `primary` for the main submission/next/save action,
+`secondary` for peach supporting actions, `tertiary` for neutral back/cancel/close,
+and `destructive` for real deletion (`destructive-confirm` is its solid confirmation
+treatment). Choose by action meaning, never by color count or list index. Keep one
+primary emphasis per visible action group. Preserve `brand` for icons/checks/logo
+and use dark `primary` selectively for main actions, focus and narrow indicators.
 
 ## Harness workflow
 

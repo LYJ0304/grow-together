@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
+import ts from 'typescript';
 const source = readFileSync(
   new URL('../src/theme/colors.ts', import.meta.url),
   'utf8',
@@ -11,27 +12,13 @@ const colors = vm.runInNewContext(
 assert.equal(
   colors.tint,
   '#FDEDE6',
-  'Approved activity-recommendation default fill',
+  'Approved secondary activity-recommendation fill',
 );
-assert.equal(colors.onTint, '#914C41', 'Approved default button foreground');
+assert.equal(colors.onTint, '#914C41', 'Approved secondary button foreground');
 assert.match(
   colors.onBrand ?? '',
   /^#[0-9a-f]{6}$/i,
   'Explicit coral actions need an accessible text role',
-);
-for (const token of ['buttonRose', 'buttonBlush', 'buttonPetal', 'buttonMist'])
-  assert.match(
-    colors[token] ?? '',
-    /^#[0-9a-f]{6}$/i,
-    `${token} needs a centralized fill`,
-  );
-assert.equal(
-  new Set(
-    ['tint', 'buttonRose', 'buttonBlush', 'buttonPetal', 'buttonMist'].map(
-      (token) => colors[token],
-    ),
-  ).size,
-  5,
 );
 for (const token of ['navigationSurface', 'navigationEdge']) {
   assert.match(
@@ -83,10 +70,7 @@ for (const [fg, bg, minimum] of [
   ['muted', 'surface', 4.5],
   ['primary', 'background', 4.5],
   ['onTint', 'tint', 4.5],
-  ['onTint', 'buttonRose', 4.5],
-  ['onTint', 'buttonBlush', 4.5],
-  ['onTint', 'buttonPetal', 4.5],
-  ['onTint', 'buttonMist', 4.5],
+  ['onTint', 'secondaryPressed', 4.5],
   ['danger', 'surface', 4.5],
   ['controlBorder', 'surface', 3],
   ['controlBorder', 'background', 3],
@@ -96,6 +80,45 @@ for (const [fg, bg, minimum] of [
     contrast(colors[fg], colors[bg]) >= minimum,
     `${fg}/${bg} must meet ${minimum}:1`,
   );
+// Verify every action treatment in normal and pressed states, not a count of hues.
+const buttonModule = { exports: {} };
+vm.runInNewContext(
+  ts.transpileModule(
+    readFileSync(new URL('../src/theme/buttons.ts', import.meta.url), 'utf8'),
+    {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    },
+  ).outputText,
+  { exports: buttonModule.exports, require: () => ({ colors }) },
+);
+const { buttonVariants, buttonSurface, buttonLabel } = buttonModule.exports;
+for (const [variant, palette] of Object.entries(buttonVariants)) {
+  for (const pressed of [false, true]) {
+    const surface = buttonSurface(variant, false, pressed);
+    const label = buttonLabel(variant);
+    const value = contrast(label.color, surface.backgroundColor);
+    assert(
+      value >= 4.5,
+      `${variant}/${pressed ? 'pressed' : 'normal'} text: ${value}`,
+    );
+  }
+  if (variant === 'tertiary' || variant === 'destructive')
+    assert(
+      contrast(palette.border, colors.background) >= 3,
+      `${variant} outline`,
+    );
+  assert.equal(
+    buttonSurface(variant, true, true).backgroundColor,
+    colors.disabled,
+  );
+  assert.equal(buttonLabel(variant, true).color, colors.muted);
+}
+assert.equal(buttonVariants.primary.background, colors.primary);
+assert.equal(buttonVariants.secondary.background, colors.tint);
+assert.equal(buttonVariants.destructive.foreground, colors.danger);
+console.log(
+  'PASS semantic action normal/pressed text >=4.5:1, neutral/danger outline >=3:1 and explicit disabled palette',
+);
 // Composite the translucent navigation surface over arbitrary light/dark extremes.
 const alpha = Number(colors.navigationSurface.match(/, ([0-9.]+)\)$/)[1]);
 for (const backdrop of ['#000000', '#FFFFFF', colors.background]) {

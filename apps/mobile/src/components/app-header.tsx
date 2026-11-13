@@ -34,7 +34,7 @@ export function AppHeader({
           <Image
             source={require('../../assets/images/main/user.svg')}
             style={styles.icon}
-            tintColor={colors.brand}
+            tintColor={disabled ? colors.muted : colors.brand}
             accessible={false}
           />
         </HeaderButton>
@@ -49,7 +49,7 @@ export function AppHeader({
           <Image
             source={require('../../assets/images/chat/settings.svg')}
             style={styles.icon}
-            tintColor={colors.brand}
+            tintColor={disabled ? colors.muted : colors.brand}
             accessible={false}
           />
         </HeaderButton>
@@ -95,7 +95,13 @@ function HeaderButton({
   polished: boolean;
   children: ReactNode;
 } & import('react-native').PressableProps) {
-  const style = [styles.button, props.disabled && { opacity: 0.55 }];
+  const style = [
+    styles.button,
+    props.disabled && {
+      backgroundColor: colors.disabled,
+      borderColor: colors.disabled,
+    },
+  ];
   return polished ? (
     <MotionPressable {...props} style={style}>
       {children}

@@ -51,11 +51,16 @@ function Choice({
       style={[
         styles.choice,
         selected && styles.selected,
-        disabled && { opacity: 0.5 },
+        disabled && {
+          backgroundColor: colors.disabled,
+          borderColor: colors.disabled,
+        },
       ]}
     >
       <View style={{ flex: 1, gap: 5 }}>
-        <Text style={styles.choiceTitle}>{label}</Text>
+        <Text style={[styles.choiceTitle, disabled && { color: colors.muted }]}>
+          {label}
+        </Text>
         {detail ? <Text style={styles.hint}>{detail}</Text> : null}
       </View>
       <Text

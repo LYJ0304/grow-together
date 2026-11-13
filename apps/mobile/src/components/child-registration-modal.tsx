@@ -66,6 +66,7 @@ export function ChildRegistrationModal({
                 : '아이의 성장 단계에 맞는 일정과 루틴을 추천하려면 아이의 기본 정보가 필요해요.'}
             </Text>
             <ActionButton
+              variant="primary"
               label={
                 error
                   ? checking
@@ -78,7 +79,7 @@ export function ChildRegistrationModal({
             />
             <ActionButton
               label={error ? '닫기' : '나중에 등록하기'}
-              tone="rose"
+              variant="tertiary"
               onPress={onClose}
             />
           </ScrollView>

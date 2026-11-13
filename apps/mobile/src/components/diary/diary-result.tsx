@@ -1,3 +1,8 @@
+import {
+  buttonSurface,
+  buttonLabel,
+  type ButtonVariant,
+} from '../../theme/buttons';
 import { editorial } from '../../theme/editorial';
 import { colors } from '../../theme/colors';
 import { Image } from 'expo-image';
@@ -142,6 +147,7 @@ export function DiaryResultView({
                     : '수정 완료'
                 }
                 disabled={busy || !editingText.trim()}
+                variant="primary"
                 onPress={onComplete}
               />
             </View>
@@ -266,7 +272,9 @@ function Action({
   label,
   onPress,
   disabled = false,
+  variant = 'tertiary',
 }: {
+  variant?: ButtonVariant;
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -278,10 +286,12 @@ function Action({
       onPress={onPress}
       style={({ pressed }) => [
         styles.action,
-        (pressed || disabled) && styles.pressed,
+        buttonSurface(variant, disabled, pressed),
       ]}
     >
-      <Text style={styles.actionText}>{label}</Text>
+      <Text style={[styles.actionText, buttonLabel(variant, disabled)]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -319,7 +329,8 @@ const styles = StyleSheet.create({
   action: {
     minHeight: 44,
     minWidth: 44,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -387,5 +398,5 @@ const styles = StyleSheet.create({
   },
   generating: { gap: 20 },
   skeleton: { height: 12, borderRadius: 4, backgroundColor: colors.border },
-  pressed: { opacity: 0.65 },
+  pressed: { backgroundColor: colors.border },
 });
