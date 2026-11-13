@@ -4,7 +4,14 @@ import { colors } from '../src/theme/colors';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/components/auth-provider';
 import { typography } from '../src/components/typography';
@@ -78,6 +85,41 @@ export default function MyPageScreen() {
         </View>
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.section}>
+            알림 설정
+          </Text>
+          <Text style={styles.caption}>
+            알림 기능은 준비 중이에요. 기능이 연결되면 여기에서 설정할 수
+            있어요.
+          </Text>
+          {[
+            {
+              title: '일정 알림',
+              description: '예정된 일정을 놓치지 않도록 안내해요.',
+            },
+            {
+              title: '일기 작성 알림',
+              description: '하루의 육아 기록을 남길 수 있도록 안내해요.',
+            },
+          ].map(({ title, description }) => (
+            <View key={title} style={styles.notificationRow}>
+              <View style={styles.notificationText}>
+                <Text style={styles.body}>{title}</Text>
+                <Text style={styles.caption}>{description}</Text>
+              </View>
+              <Switch
+                accessibilityLabel={title}
+                accessibilityHint="알림 기능 준비 중"
+                disabled
+                value={false}
+                trackColor={{ false: colors.disabled, true: colors.primary }}
+                thumbColor={colors.surface}
+                ios_backgroundColor={colors.disabled}
+              />
+            </View>
+          ))}
+        </View>
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.section}>
             기록과 개인정보
           </Text>
           <Pressable
@@ -128,5 +170,12 @@ const styles = StyleSheet.create({
   caption: { ...typography.caption, color: colors.muted },
   link: { ...typography.button, color: colors.primary },
   logout: { ...typography.button, color: colors.heading },
+  notificationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    minHeight: 48,
+  },
+  notificationText: { flex: 1, minWidth: 0, gap: 4 },
   button: { minHeight: 48, paddingVertical: 10, gap: 4 },
 });
