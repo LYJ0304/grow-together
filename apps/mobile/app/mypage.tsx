@@ -37,13 +37,10 @@ export default function MyPageScreen() {
         >
           <Text style={styles.link}>‹ 뒤로</Text>
         </Pressable>
-        <Text accessibilityRole="header" style={styles.title}>
-          설정
-        </Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <PageIntro
-          title="아이와 나의 공간"
+          title="설정"
           description="아이 정보와 계정의 기록을 관리해요."
         />
         <View style={styles.card}>
@@ -114,7 +111,6 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: 'center',
     padding: 16,
-    gap: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -127,7 +123,6 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   card: { ...editorial.card, gap: 12 },
-  title: { ...typography.title, color: colors.text },
   section: { ...typography.section, color: colors.text },
   body: { ...typography.body, color: colors.text },
   caption: { ...typography.caption, color: colors.muted },
