@@ -111,14 +111,18 @@ try {
   await page.setViewportSize({ width: 320, height: 400 });
   await send.click();
   await fits(400);
-  await page.getByRole('alert').waitFor();
+  await page
+    .getByText('질문을 작성했어요. AI 답변 기능은 준비 중이에요.', {
+      exact: true,
+    })
+    .waitFor();
   await page.screenshot({ path: `${artifacts}/chat-long-short.png` });
   await page.addStyleTag({
     content:
       '[dir="auto"], textarea { font-size: 24px !important; line-height: 36px !important; }',
   });
   await fits(400);
-  await page.getByRole('button', { name: '안내 닫기', exact: true }).click();
+  assert.equal(await input.inputValue(), '');
   await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page

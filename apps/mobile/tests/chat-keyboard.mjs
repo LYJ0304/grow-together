@@ -30,6 +30,9 @@ try {
     exact: true,
   });
   const tabs = page.getByRole('tablist');
+  await input.fill('키보드를 열기 전 질문');
+  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
+  await page.getByTestId('chat-message-user').waitFor();
   await input.fill('작성 중인 질문');
   assert.ok(await tabs.isVisible(), 'Focus alone does not hide tabs');
   const resize = async (changes) => {

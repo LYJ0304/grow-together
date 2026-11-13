@@ -1,3 +1,6 @@
+import { ChatMessageList } from '../../src/components/chat/chat-message-list';
+import type { ChatMessage } from '../../src/lib/features/chat/types';
+import { useSessionValue } from '../../src/lib/session-state';
 import { PageIntro } from '../../src/components/page-intro';
 import { editorial } from '../../src/theme/editorial';
 import { colors } from '../../src/theme/colors';
@@ -40,6 +43,8 @@ const suggestions = [
   },
 ];
 
+let nextMessageId = 0;
+
 export default function CounselorChatScreen() {
   const { compose } = useLocalSearchParams<{ compose?: string }>();
   const scroll = useRef<ScrollView>(null);
@@ -47,6 +52,12 @@ export default function CounselorChatScreen() {
   const input = useRef<TextInput>(null);
   const { width, height } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
+  const [messages, setMessages] = useSessionValue<ChatMessage[]>(
+    'chat.messages',
+    () => [],
+  );
+  const followLatest = useRef(true);
+  const conversation = messages.length > 0;
   const keyboard = useChatKeyboard();
   useTabInteraction(false, keyboard.visible);
   const [notice, setNotice] = useState('');
@@ -70,7 +81,8 @@ export default function CounselorChatScreen() {
   }, [draft, width, inputMaxHeight]);
 
   useEffect(() => {
-    if (notice) scroll.current?.scrollToEnd({ animated: false });
+    if (notice && followLatest.current)
+      scroll.current?.scrollToEnd({ animated: false });
   }, [notice]);
 
   useEffect(() => {
@@ -82,9 +94,19 @@ export default function CounselorChatScreen() {
 
   const send = () => {
     if (!draft.trim()) return;
-    setNotice(
-      '육아 도우미 연결은 아직 준비 중이에요. 질문 초안은 이 세션에서 유지돼요.',
-    );
+    const content = draft.trim();
+    followLatest.current = true;
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: `local-${Date.now()}-${++nextMessageId}`,
+        role: 'user',
+        content,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    setDraft('');
+    setNotice('');
     input.current?.focus();
   };
 
@@ -109,56 +131,109 @@ export default function CounselorChatScreen() {
 
         <ScrollView
           ref={scroll}
+          testID="chat-scroll"
+          onScroll={({
+            nativeEvent: { contentOffset, contentSize, layoutMeasurement },
+          }) => {
+            followLatest.current =
+              contentSize.height - layoutMeasurement.height - contentOffset.y <
+              60;
+          }}
+          scrollEventThrottle={16}
+          onContentSizeChange={() => {
+            if (conversation && followLatest.current)
+              scroll.current?.scrollToEnd({ animated: false });
+          }}
           style={{ flex: 1, minHeight: 0 }}
           contentContainerStyle={styles.messages}
           keyboardShouldPersistTaps="handled"
         >
-          <PageIntro
-            eyebrow="ASK & REFLECT"
-            title="육아 도우미"
-            description="함께 고민해요. 궁금한 점과 기억하고 싶은 순간을 질문으로 남겨보세요."
-          />
-          <View style={editorial.hero}>
-            <Text style={editorial.section}>현재 연결 준비 중</Text>
-            <Text style={editorial.description}>
-              아직 AI 답변을 연결하지 않았어요. 질문 초안은 이 세션에서
-              유지돼요.
-            </Text>
-          </View>
-          <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
-          <View style={styles.suggestions}>
-            {suggestions.map((item) => (
-              <Pressable
-                key={item.question}
-                accessibilityRole="button"
-                accessibilityLabel={`질문 입력: ${item.question}`}
-                onPress={() => {
-                  if (draft.trim()) {
-                    setNotice('작성 중인 질문을 먼저 마무리해주세요.');
-                  } else {
-                    setDraft(item.question);
+          {conversation ? (
+            <>
+              <View style={styles.conversationHeader}>
+                <Text
+                  accessibilityRole="header"
+                  style={styles.conversationTitle}
+                >
+                  육아 도우미
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="새 대화"
+                  onPress={() => {
+                    setMessages([]);
+                    setDraft('');
                     setNotice('');
-                  }
-                  input.current?.focus();
-                }}
-                style={({ pressed }) => [
-                  styles.suggestion,
-                  pressed && styles.pressed,
-                ]}
+                    followLatest.current = true;
+                    scroll.current?.scrollTo({ y: 0, animated: false });
+                    input.current?.focus();
+                  }}
+                  style={({ pressed }) => [
+                    styles.newChat,
+                    pressed && styles.newChatPressed,
+                  ]}
+                >
+                  <Text style={styles.newChatText}>새 대화</Text>
+                </Pressable>
+              </View>
+              <ChatMessageList messages={messages} />
+              <Text
+                accessibilityLiveRegion="polite"
+                style={styles.connectionNote}
               >
-                <View style={styles.suggestionCopy}>
-                  <Text style={styles.question}>“{item.question}”</Text>
-                  <Text style={styles.preview}>{item.preview}</Text>
-                </View>
-                <Image
-                  source={require('../../assets/images/chat/arrow-up-right.svg')}
-                  style={styles.suggestionArrow}
-                  contentFit="contain"
-                  accessible={false}
-                />
-              </Pressable>
-            ))}
-          </View>
+                질문을 작성했어요. AI 답변 기능은 준비 중이에요.
+              </Text>
+            </>
+          ) : (
+            <>
+              <PageIntro
+                eyebrow="ASK & REFLECT"
+                title="육아 도우미"
+                description="함께 고민해요. 궁금한 점과 기억하고 싶은 순간을 질문으로 남겨보세요."
+              />
+              <View style={editorial.hero}>
+                <Text style={editorial.section}>현재 연결 준비 중</Text>
+                <Text style={editorial.description}>
+                  아직 AI 답변을 연결하지 않았어요. 질문 초안은 이 세션에서
+                  유지돼요.
+                </Text>
+              </View>
+              <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
+              <View style={styles.suggestions}>
+                {suggestions.map((item) => (
+                  <Pressable
+                    key={item.question}
+                    accessibilityRole="button"
+                    accessibilityLabel={`질문 입력: ${item.question}`}
+                    onPress={() => {
+                      if (draft.trim()) {
+                        setNotice('작성 중인 질문을 먼저 마무리해주세요.');
+                      } else {
+                        setDraft(item.question);
+                        setNotice('');
+                      }
+                      input.current?.focus();
+                    }}
+                    style={({ pressed }) => [
+                      styles.suggestion,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.suggestionCopy}>
+                      <Text style={styles.question}>“{item.question}”</Text>
+                      <Text style={styles.preview}>{item.preview}</Text>
+                    </View>
+                    <Image
+                      source={require('../../assets/images/chat/arrow-up-right.svg')}
+                      style={styles.suggestionArrow}
+                      contentFit="contain"
+                      accessible={false}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
           {notice !== '' && (
             <View accessibilityRole="alert" style={styles.notice}>
               <Text style={styles.noticeText}>{notice}</Text>
@@ -261,10 +336,36 @@ const styles = StyleSheet.create({
   keyboard: { flex: 1, minHeight: 0 },
   messages: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 28,
     paddingBottom: 20,
   },
+  conversationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
+  conversationTitle: {
+    ...typography.section,
+    color: colors.heading,
+    flexShrink: 1,
+  },
+  newChat: {
+    minWidth: 76,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  newChatPressed: { backgroundColor: colors.tint },
+  newChatText: { ...typography.label, color: colors.onTint },
+  connectionNote: { ...typography.caption, color: colors.muted, marginTop: 20 },
   intro: {
     marginBottom: 12,
     marginTop: 24,
