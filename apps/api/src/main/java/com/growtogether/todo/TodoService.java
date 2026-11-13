@@ -47,8 +47,21 @@ public class TodoService {
 
     @Transactional
     public TodoResponse setCompletion(Long userId, Long id, boolean completed) {
+        lockOwner(userId);
         Todo todo = findTodo(userId, id);
         todo.setCompleted(completed);
+        return TodoResponse.from(todo);
+    }
+
+    @Transactional
+    public TodoResponse setReaction(Long userId, Long id, ChildReaction reaction) {
+        // Same owner lock as completion/update: serialize state checks with writes.
+        lockOwner(userId);
+        Todo todo = findTodo(userId, id);
+        if (!todo.isCompleted()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "완료된 일정에만 반응을 기록할 수 있어요.");
+        }
+        todo.setChildReaction(reaction);
         return TodoResponse.from(todo);
     }
 

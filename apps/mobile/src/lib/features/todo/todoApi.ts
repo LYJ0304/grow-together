@@ -1,6 +1,7 @@
 import { createClient } from '../../api/client';
 import type { AuthSession } from '../auth';
 import type {
+  ChildReaction,
   CreateTodoResponse,
   TodoRequest,
   TodoResponse,
@@ -47,6 +48,14 @@ export function createTodoApi(session: Pick<AuthSession, 'request'>) {
     async setCompletion(id: number, completed: boolean): Promise<TodoResponse> {
       return client.put<TodoResponse>(`/api/v1/todos/${id}/completion`, {
         completed,
+      });
+    },
+    async setReaction(
+      id: number,
+      childReaction: ChildReaction | null,
+    ): Promise<TodoResponse> {
+      return client.put<TodoResponse>(`/api/v1/todos/${id}/reaction`, {
+        childReaction,
       });
     },
     async deleteTodo(id: number): Promise<void> {

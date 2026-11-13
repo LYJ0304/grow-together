@@ -189,3 +189,13 @@ assert.equal(
   JSON.parse(generatedCalls[1].init.body).candidates[0].durationMinutes,
   5,
 );
+
+await scheduleApi.setReaction(42, 'ENJOYED');
+await scheduleApi.setReaction(42, null);
+assert.equal(generatedCalls[2].path, '/api/v1/todos/42/reaction');
+assert.equal(generatedCalls[2].init.method, 'PUT');
+assert.equal(JSON.parse(generatedCalls[2].init.body).childReaction, 'ENJOYED');
+assert.equal(JSON.parse(generatedCalls[3].init.body).childReaction, null);
+console.log(
+  'PASS explicit reaction replacement and null clearing use authenticated API',
+);

@@ -2,6 +2,8 @@ package com.growtogether.todo;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -60,6 +62,14 @@ public class Todo {
     @Column(nullable = false)
     private boolean completed;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "child_reaction", length = 16)
+    private ChildReaction childReaction;
+
+    public void setChildReaction(ChildReaction childReaction) {
+        this.childReaction = childReaction;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diary_id")
     private Diary diary;
@@ -81,6 +91,7 @@ public class Todo {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
+        if (!completed) this.childReaction = null;
     }
 
     public void setDiary(Diary diary) {

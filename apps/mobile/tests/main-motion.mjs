@@ -139,6 +139,7 @@ try {
   });
   release();
   await page.getByText('완료 1개 / 전체 1개', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '나중에', exact: true }).click();
   assert.equal(
     await page.getByRole('progressbar').getAttribute('aria-valuenow'),
     '100',

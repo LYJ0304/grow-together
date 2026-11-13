@@ -1,3 +1,4 @@
+import { childReactionLabels } from './todo-reaction-modal';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -19,6 +20,7 @@ export function HomeScheduleRow({
   now,
   pendingId,
   onToggle,
+  onReaction,
   entrance,
   index,
 }: {
@@ -26,6 +28,7 @@ export function HomeScheduleRow({
   now: string;
   pendingId: number | null;
   onToggle: () => void;
+  onReaction: () => void;
   entrance: boolean;
   index: number;
 }) {
@@ -77,6 +80,22 @@ export function HomeScheduleRow({
               ? '시간이 지난 미완료 일정'
               : '예정'}
         </Text>
+        {todo.completed ? (
+          <MotionPressable
+            accessibilityRole="button"
+            accessibilityLabel={`${todo.planName} 반응 ${todo.childReaction ? '수정' : '기록'}`}
+            disabled={pendingId !== null}
+            accessibilityState={{ disabled: pendingId !== null }}
+            onPress={onReaction}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text style={[typography.caption, { color: colors.onTint }]}>
+              {todo.childReaction
+                ? `${childReactionLabels[todo.childReaction]} · 수정`
+                : '반응 남기기'}
+            </Text>
+          </MotionPressable>
+        ) : null}
       </View>
     </Animated.View>
   );

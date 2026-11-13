@@ -1,3 +1,5 @@
+export type ChildReaction = 'ENJOYED' | 'NEUTRAL' | 'DIFFICULT';
+
 export type CreateTodoResponse = {
   message: string;
 };
@@ -13,6 +15,7 @@ export type TodoRequest = {
 export type TodoResponse = {
   id: number;
   completed: boolean;
+  childReaction?: ChildReaction | null;
   planName: string;
   content?: string | null;
   scheduledDate: string;

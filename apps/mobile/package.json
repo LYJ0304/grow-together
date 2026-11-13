@@ -59,7 +59,8 @@
     "test:editorial:ui": "node tests/editorial-journey.mjs",
     "test:editorial:captures": "node tests/editorial-captures.mjs",
     "test:main:floating-add": "node tests/main-floating-add.mjs",
-    "test:chat:messages": "node tests/chat-message-fixture.mjs && node tests/chat-messages.mjs"
+    "test:chat:messages": "node tests/chat-message-fixture.mjs && node tests/chat-messages.mjs",
+    "test:todo:reaction": "node tests/todo-reaction.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
