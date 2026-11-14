@@ -8,14 +8,14 @@ No mobile or external Spring API contract changes are required.
 
 ## Contract and generation
 
-The API-owned [weekly-v1 schema](../../../contracts/weekly-report-worker.schema.json)
+The API-owned [weekly-v1/v2 schema](../../../contracts/weekly-report-worker.schema.json)
 and [request/response fixtures](../../../contracts/fixtures/reports/) are the wire
 contract. Fixtures are consumed directly by Worker tests. Requests and responses
 use snake_case (including `next_steps`); all nested unknown fields are forbidden.
 Null fields are required where the contract declares them nullable. Names,
 birthdays, photo URLs and owner identifiers are not request fields.
 
-The request includes an opaque `source_hash`, `prompt_version: weekly-v1`, a
+The request includes an opaque `source_hash`, `prompt_version: weekly-v2`, a
 Monday–Sunday period, API metrics, minimal child context (age zero through
 seventy-two months, concerns, available time) and bounded sources. Calendar checks
 use Asia/Seoul. Completed samples contain at most fifty Todos; daily metrics still
@@ -75,3 +75,24 @@ that a summary/recommendation is semantically entailed. Prompt separation and te
 filters cannot guarantee resistance to all prompt injection or unsupported claims.
 Live-model Korean quality, safety evaluation and provider latency need separate
 credentialed evaluation before relying on output quality in production.
+
+
+## Activity reaction context and compatibility
+
+API v2 requests add optional nullable `child_reaction` to each completed Todo:
+`ENJOYED`, `NEUTRAL` or `DIFFICULT`. Null/missing is unrecorded, never neutral.
+The original title remains the exact observation quotation; the reaction can only
+inform modest optional next steps tied to the supplied evidence. Numeric metrics,
+diagnostic restrictions, source ID validation, and the API's independent validator
+remain unchanged. This is not a persistent child preference or developmental score.
+
+The API hashes reactions across the full source set before truncating Worker input.
+Selecting, changing, clearing, or undoing completion therefore invalidates cached
+insights, including when a modified activity is outside the sampled fifty Todos.
+In-flight output for an old hash remains stale and is never returned as current.
+The cache key also includes `weekly-v2` as its prompt version.
+
+Deploy the compatible Worker first, then the API. The Worker accepts legacy
+`weekly-v1` with omitted/null reactions and the original prompt, and v2 with all
+three enum values or null. Non-null reactions in v1 are rejected. Shared v1 and v2
+fixtures live in `contracts/fixtures/reports`; the public API now advertises v2.

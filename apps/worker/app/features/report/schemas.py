@@ -1,4 +1,4 @@
-"""API-owned weekly-v1 wire types; metrics remain authoritative API data."""
+"""API-owned weekly-v1/v2 wire types; metrics remain authoritative API data."""
 
 import re
 from collections import Counter
@@ -8,6 +8,8 @@ from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
+
+from app.features.activity_feedback import ChildReaction
 
 Count = Annotated[int, Field(strict=True, ge=0, le=2**63 - 1)]
 Identifier = Annotated[int, Field(strict=True, ge=1, le=2**63 - 1)]
@@ -149,6 +151,7 @@ class Todo(WireModel):
     title: Text80
     date: ISODate
     time: LocalTime
+    child_reaction: ChildReaction | None = None
 
 
 class Diary(WireModel):
@@ -165,7 +168,7 @@ class Sources(WireModel):
 
 class ReportRequest(WireModel):
     source_hash: Hash
-    prompt_version: Literal["weekly-v1"]
+    prompt_version: Literal["weekly-v1", "weekly-v2"]
     period: Period
     metrics: Metrics
     child_context: ReportChildContext
@@ -174,6 +177,10 @@ class ReportRequest(WireModel):
     @model_validator(mode="after")
     def coherent_evidence(self) -> Self:
         period, metrics, sources = self.period, self.metrics, self.sources
+        if self.prompt_version == "weekly-v1" and any(
+            todo.child_reaction is not None for todo in sources.todos
+        ):
+            raise ValueError("Activity reactions require weekly-v2")
         today = period.as_of.astimezone(SEOUL).date()
         cutoff = min(today, period.end)
         expected_dates = [period.start + timedelta(days=i) for i in range(7)]
@@ -240,5 +247,5 @@ class ReportResult(WireModel):
 
 class ReportResponse(WireModel):
     source_hash: Hash
-    prompt_version: Literal["weekly-v1"]
+    prompt_version: Literal["weekly-v1", "weekly-v2"]
     result: ReportResult

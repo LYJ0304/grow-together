@@ -1,0 +1,68 @@
+{
+  "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "prompt_version": "weekly-v1",
+  "period": {
+    "start": "2026-11-09",
+    "end": "2026-11-15",
+    "end_exclusive": "2026-11-16",
+    "as_of": "2026-11-11T12:00:00+09:00",
+    "current": true
+  },
+  "metrics": {
+    "planned": 1,
+    "eligible": 1,
+    "completed": 1,
+    "diary_days": 0,
+    "completion_rate": 1.0,
+    "daily": [
+      {
+        "date": "2026-11-09",
+        "completed": 1
+      },
+      {
+        "date": "2026-11-10",
+        "completed": 0
+      },
+      {
+        "date": "2026-11-11",
+        "completed": 0
+      },
+      {
+        "date": "2026-11-12",
+        "completed": 0
+      },
+      {
+        "date": "2026-11-13",
+        "completed": 0
+      },
+      {
+        "date": "2026-11-14",
+        "completed": 0
+      },
+      {
+        "date": "2026-11-15",
+        "completed": 0
+      }
+    ]
+  },
+  "child_context": {
+    "age_months": 22,
+    "age_as_of": "2026-11-11",
+    "concern_codes": [
+      "communication"
+    ],
+    "available_activity_time": null
+  },
+  "sources": {
+    "todos": [
+      {
+        "id": 10,
+        "title": "그림책 읽기",
+        "date": "2026-11-09",
+        "time": "12:00:00"
+      }
+    ],
+    "diaries": [],
+    "todos_truncated": false
+  }
+}

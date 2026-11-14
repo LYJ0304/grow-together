@@ -21,7 +21,7 @@ public class ScheduleGenerationService {
         var context = contexts.read(userId, request.date());
         var input = new WorkerRequest(request.date(), request.instructions() == null || request.instructions().isBlank()
                 ? "아이와 함께할 부담 없는 활동을 제안해주세요." : request.instructions().trim(),
-                request.availableWindows(), context.existing(), request.limit(), context.child());
+                request.availableWindows(), context.existing(), request.limit(), context.child(), context.activityFeedback(), context.activityFeedbackTruncated());
         var output = worker.generate(input);
         if (output == null || !validator.validate(output).isEmpty() || !request.date().equals(output.date()))
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "일정 생성 응답을 확인하지 못했어요.");

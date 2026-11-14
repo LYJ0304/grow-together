@@ -1,4 +1,4 @@
-"""Conservative weekly-v1 policy, mirrored by the API's independent validator."""
+"""Conservative weekly-v1/v2 policy, mirrored by the API's independent validator."""
 
 import re
 import unicodedata

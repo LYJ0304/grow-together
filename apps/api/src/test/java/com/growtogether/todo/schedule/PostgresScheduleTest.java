@@ -62,4 +62,23 @@ class PostgresScheduleTest extends ScheduleIntegrationTest {
             assertThat(todos.findByUserIdAndScheduledDateOrderByScheduledTimeAsc(owner,request.date())).hasSize(1);
         }
     }
+    @org.springframework.beans.factory.annotation.Autowired ScheduleContextReader contexts;
+    @org.springframework.beans.factory.annotation.Autowired java.time.Clock clock;
+    @Test void feedbackQueryIsBoundedAndOwnerScopedOnPostgres() {
+        var owner=users.save(new User("Feedback","feedback-"+System.nanoTime()+"@test.com","test")).getId();
+        var other=users.save(new User("Other","feedback-other-"+System.nanoTime()+"@test.com","test")).getId();
+        var date=LocalDate.ofInstant(clock.instant(),java.time.ZoneId.of("Asia/Seoul"));
+        for(int i=0;i<55;i++) {
+            var todo=new com.growtogether.todo.Todo(owner,"feedback",null,date.minusDays(1),LocalTime.NOON);
+            todo.setCompleted(true);todo.setChildReaction(com.growtogether.todo.ChildReaction.ENJOYED);todos.save(todo);
+        }
+        var foreign=new com.growtogether.todo.Todo(other,"private",null,date.minusDays(1),LocalTime.NOON);
+        foreign.setCompleted(true);foreign.setChildReaction(com.growtogether.todo.ChildReaction.DIFFICULT);todos.save(foreign);
+        var result=contexts.read(owner,date);
+        assertThat(result.activityFeedback()).hasSize(50);
+        assertThat(result.activityFeedbackTruncated()).isTrue();
+        assertThat(result.activityFeedback()).allMatch(item -> item.childReaction()==com.growtogether.todo.ChildReaction.ENJOYED);
+        assertThat(result.activityFeedback()).noneMatch(item -> item.todoId().equals(foreign.getId()));
+    }
+
 }

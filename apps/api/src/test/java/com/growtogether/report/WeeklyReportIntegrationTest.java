@@ -175,4 +175,39 @@ class WeeklyReportIntegrationTest {
                 .andExpect(jsonPath("$.insight.state").value("INSUFFICIENT_EVIDENCE"));
     }
 
+    @Test void reactionOnlyChangesInvalidateCachedAndInFlightInsights() throws Exception {
+        var owner=users.saveAndFlush(new User("Parent","reaction-cache@example.com","test-hash"));
+        children.saveAndFlush(new ChildProfile(owner.getId(),"아이",LocalDate.of(2025,1,1)));
+        var date=LocalDate.of(2026,1,5);
+        var todo=new Todo(owner.getId(),"그림책 읽기",null,date,LocalTime.NOON);
+        todo.setCompleted(true);todo.setChildReaction(com.growtogether.todo.ChildReaction.ENJOYED);todos.saveAndFlush(todo);
+        var user=jwt().jwt(j->j.subject(owner.getId().toString()));
+        when(worker.generate(any())).thenAnswer(invocation -> {
+            ReportWorkerRequest input=invocation.getArgument(0);
+            var evidence=List.of(new ReportEvidence(ReportEvidenceType.TODO,todo.getId()));
+            return new ReportWorkerResponse(input.sourceHash(),PROMPT_VERSION,new ReportWorkerResult("함께한 활동을 기록했어요.",
+                List.of(new ReportObservation("그림책 읽기",evidence)),
+                List.of(new ReportNextStep("다시 함께하기","부담 없이 이어가세요.","기록에 바탕을 둔 제안이에요.",evidence))));
+        });
+        mvc.perform(post("/api/v1/reports/weekly/insights").param("weekStart",date.toString()).with(user))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.insight.state").value("AVAILABLE"));
+        todo.setChildReaction(com.growtogether.todo.ChildReaction.NEUTRAL);todos.saveAndFlush(todo);
+        mvc.perform(get("/api/v1/reports/weekly").param("weekStart",date.toString()).with(user))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.insight.state").value("STALE")).andExpect(jsonPath("$.insight.result").isEmpty());
+        doAnswer(invocation -> {
+            ReportWorkerRequest input=invocation.getArgument(0);
+            assertThat(input.sources().todos().getFirst().childReaction()).isEqualTo(com.growtogether.todo.ChildReaction.NEUTRAL);
+            todo.setChildReaction(null);todos.saveAndFlush(todo);
+            var evidence=List.of(new ReportEvidence(ReportEvidenceType.TODO,todo.getId()));
+            return new ReportWorkerResponse(input.sourceHash(),PROMPT_VERSION,new ReportWorkerResult("함께한 활동을 기록했어요.",
+                List.of(new ReportObservation("그림책 읽기",evidence)),
+                List.of(new ReportNextStep("다시 함께하기","부담 없이 이어가세요.","기록에 바탕을 둔 제안이에요.",evidence))));
+        }).when(worker).generate(any());
+        mvc.perform(post("/api/v1/reports/weekly/insights").param("weekStart",date.toString()).with(user))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.insight.state").value("STALE"));
+        mvc.perform(get("/api/v1/reports/weekly").param("weekStart",date.toString()).with(user))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.insight.state").value("STALE")).andExpect(jsonPath("$.insight.result").isEmpty());
+        verify(worker,times(2)).generate(any());
+    }
+
 }

@@ -10,5 +10,5 @@ public record ReportWorkerRequest(
     @JsonProperty("child_context") ReportChildContext childContext,
     ReportWorkerSources sources
 ) {
-    public static final String PROMPT_VERSION = "weekly-v1";
+    public static final String PROMPT_VERSION = "weekly-v2";
 }

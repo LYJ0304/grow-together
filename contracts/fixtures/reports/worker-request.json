@@ -1,6 +1,6 @@
 {
   "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "prompt_version": "weekly-v1",
+  "prompt_version": "weekly-v2",
   "period": {
     "start": "2026-11-09",
     "end": "2026-11-15",
@@ -59,7 +59,8 @@
         "id": 10,
         "title": "그림책 읽기",
         "date": "2026-11-09",
-        "time": "12:00:00"
+        "time": "12:00:00",
+        "child_reaction": null
       }
     ],
     "diaries": [],

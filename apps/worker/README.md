@@ -89,6 +89,23 @@ stored profiles to product chat/schedule requests; Spring integration remains se
 
 ## Weekly reports
 
-The internal weekly report generator follows the API-owned `weekly-v1` contract.
+The internal weekly report generator follows the API-owned `weekly-v1`/`weekly-v2` contract.
 See [generation, validation, errors and limits](docs/weekly-reports.md).
 `LLM_REPORT_MODEL` is optional and falls back to `LLM_DIARY_MODEL`.
+
+
+### Activity reactions
+
+The API supplies bounded `activity_feedback` to schedule generation: completed,
+recorded reactions from the preceding thirty days, at most fifty rows plus
+`activity_feedback_truncated`. These are distinct from occupied `existing_schedules`;
+unknown historical durations do not block feedback. Only the API queries the DB and
+applies ownership and the Asia/Seoul current-time cutoff. The Worker checks IDs,
+dates, enums, lengths, duplicates and limits. Missing feedback preserves the previous
+planner payload and behavior. Reactions are per-activity caregiver observations,
+not a persistent preference, diagnosis, score, or reason to force repetition.
+
+Weekly reports use `weekly-v2` and optional `sources.todos[].child_reaction`.
+The Worker continues to accept `weekly-v1` without recorded reactions and keeps
+that model payload/prompt unchanged. Upgrade the Worker before the API sends the
+new fields/version. No model training, Mobile changes or new DB columns are needed.
