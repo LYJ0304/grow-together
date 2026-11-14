@@ -1,3 +1,8 @@
+import {
+  DateField,
+  type DateFieldHandle,
+} from '../src/components/onboarding/date-field';
+import { localDate } from '../src/lib/onboarding';
 import { ActionButton } from '../src/components/action-button';
 import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
@@ -52,7 +57,7 @@ function ChildrenEditor() {
   const [discarding, setDiscarding] = useState(false);
   const pending = useRef(false);
   const nameInput = useRef<TextInput>(null);
-  const birthdayInput = useRef<TextInput>(null);
+  const birthdayInput = useRef<DateFieldHandle>(null);
   const navigation = useNavigation();
   const dirty =
     editing &&
@@ -299,40 +304,26 @@ function ChildrenEditor() {
                       {errors.name}
                     </Text>
                   ) : null}
-                  <Text style={styles.label}>생년월일 (필수)</Text>
-                  <TextInput
-                    selectionColor={colors.primary}
-                    ref={birthdayInput}
-                    editable={!saving}
-                    accessibilityLabel="생년월일"
-                    accessibilityHint={
-                      errors.birthday ??
-                      'YYYY-MM-DD 형식으로 입력해주세요. 예: 2024-03-15'
-                    }
-                    aria-describedby={
-                      errors.birthday
-                        ? 'child-birthday-error child-birthday-hint'
-                        : 'child-birthday-hint'
-                    }
-                    aria-invalid={Boolean(errors.birthday)}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.muted}
-                    value={birthday}
-                    onChangeText={(value) => {
-                      setBirthday(value);
-                      setErrors((current) => ({
-                        ...current,
-                        birthday: undefined,
-                      }));
-                    }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    returnKeyType="done"
-                    onSubmitEditing={() => void save()}
-                    style={[styles.input, errors.birthday && styles.invalid]}
-                  />
-                  <Text nativeID="child-birthday-hint" style={styles.hint}>
-                    예: 2024-03-15 · 오늘까지의 날짜를 입력해주세요.
+                  <View style={{ marginTop: 16 }}>
+                    <DateField
+                      ref={birthdayInput}
+                      label="생년월일"
+                      required
+                      value={birthday}
+                      maximum={localDate(new Date())}
+                      disabled={saving}
+                      error={errors.birthday}
+                      onChange={(value) => {
+                        setBirthday(value);
+                        setErrors((current) => ({
+                          ...current,
+                          birthday: undefined,
+                        }));
+                      }}
+                    />
+                  </View>
+                  <Text style={styles.hint}>
+                    연도, 월, 일을 선택해주세요. 오늘까지 선택할 수 있어요.
                   </Text>
                   {errors.birthday ? (
                     <Text

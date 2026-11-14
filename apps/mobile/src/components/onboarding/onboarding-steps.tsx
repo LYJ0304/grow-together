@@ -113,7 +113,9 @@ export function OnboardingStep({
           ) : null}
           <DateField
             label="생년월일"
+            required
             value={value.birthday}
+            error={errors.birthday}
             maximum={localDate(new Date())}
             onChange={(birthday) => update({ ...value, birthday })}
           />
@@ -157,6 +159,7 @@ export function OnboardingStep({
               <DateField
                 label="출산 예정일"
                 value={value.personalization.expectedDueDate ?? ''}
+                error={errors.expectedDueDate}
                 disabled={!supportsChoices}
                 onChange={(expectedDueDate) =>
                   choices({

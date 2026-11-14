@@ -81,10 +81,7 @@ try {
     const click = (name) =>
       page.getByRole('button', { name, exact: true }).click();
     const name = page.getByRole('textbox', { name: '아이 이름', exact: true });
-    const birthday = page.getByRole('textbox', {
-      name: '생년월일',
-      exact: true,
-    });
+    const birthday = page.getByLabel('생년월일', { exact: true });
     const alert = (text) =>
       page.getByRole('alert').filter({ hasText: text }).waitFor();
     await page.goto(`${url}/children`);
@@ -92,17 +89,21 @@ try {
     assert.deepEqual(writes, []);
     await page.getByText('로그인한 계정에 저장되는 아이 정보예요.').waitFor();
     await click('수정');
+    assert.equal(await birthday.getAttribute('type'), 'date');
+    assert.match(await birthday.getAttribute('max'), /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(await birthday.inputValue(), '2024-02-29');
+    await page.getByText('2024년 2월 29일', { exact: true }).waitFor();
+    await name.press('Enter');
+    assert.equal(
+      await birthday.evaluate((element) => element === document.activeElement),
+      true,
+    );
+    assert.deepEqual(writes, []);
     await name.fill('');
     await click('저장');
     await alert('아이 이름을 입력');
     await name.fill('  하늘  ');
-    for (const invalid of [
-      '2023-02-29',
-      '2024-04-31',
-      '0000-01-01',
-      '2024/03/15',
-      '9999-01-01',
-    ]) {
+    for (const invalid of ['', '9999-01-01']) {
       await birthday.fill(invalid);
       await click('저장');
       await alert(/생년월일/);
@@ -239,9 +240,12 @@ try {
   await page
     .getByRole('textbox', { name: '아이 이름', exact: true })
     .fill('미리보기 아이');
-  await page
-    .getByRole('textbox', { name: '생년월일', exact: true })
-    .fill('2024-02-29');
+  const birthday = page.getByLabel('생년월일', { exact: true });
+  assert.equal(await birthday.inputValue(), '');
+  await birthday.focus();
+  await birthday.blur();
+  assert.equal(await birthday.inputValue(), '', 'focus must not commit today');
+  await birthday.fill('2024-02-29');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await page
     .getByRole('heading', { name: '아이 프로필', exact: true })
