@@ -1,3 +1,4 @@
+import { selectDate } from './date-field-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -417,7 +418,7 @@ try {
   await missing
     .getByRole('textbox', { name: '아이 이름 또는 애칭', exact: true })
     .fill('하늘');
-  await missing.getByLabel('생년월일', { exact: true }).fill('2025-01-01');
+  await selectDate(missing, '생년월일', '2025-01-01');
   await missing.getByRole('button', { name: '다음', exact: true }).click();
   await missing.getByRole('checkbox', { name: '수면', exact: true }).waitFor();
   await roles(missing, ['이전', '다음', '건너뛰기']);

@@ -1,3 +1,4 @@
+import { selectDate } from './date-field-fixture.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 // Only use an isolated local API/database: this creates a disposable account.
@@ -42,7 +43,7 @@ try {
   await page
     .getByRole('textbox', { name: '아이 이름 또는 애칭', exact: true })
     .fill('  하늘  ');
-  await page.getByLabel('생년월일', { exact: true }).fill('2024-02-29');
+  await selectDate(page, '생년월일', '2024-02-29');
   await click('다음');
   await page.getByRole('checkbox', { name: '수면', exact: true }).click();
   await click('다음');

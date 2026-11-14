@@ -1,3 +1,4 @@
+import { selectDate } from './date-field-fixture.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
@@ -33,7 +34,7 @@ const intro = async (page, name = '내 입력') => {
   await page
     .getByRole('textbox', { name: '아이 이름 또는 애칭', exact: true })
     .fill(name);
-  await page.getByLabel('생년월일', { exact: true }).fill('2024-03-15');
+  await selectDate(page, '생년월일', '2024-03-15');
 };
 const summary = async (click) => {
   await click('다음');
@@ -79,9 +80,7 @@ try {
   await legacy.click('아이 정보 등록하기');
   await intro(legacy.page);
   await legacy.page.getByRole('radio', { name: '네', exact: true }).click();
-  await legacy.page
-    .getByLabel('출산 예정일', { exact: true })
-    .fill('2024-04-15');
+  await selectDate(legacy.page, '출산 예정일', '2024-04-15');
   await legacy.page.getByRole('radio', { name: '네', exact: true }).click();
   assert.equal(
     await legacy.page.getByLabel('출산 예정일', { exact: true }).count(),

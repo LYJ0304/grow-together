@@ -48,14 +48,21 @@ being applied to another account. Drafts contain no credentials.
 
 ## Platform validation
 
-Web uses a native HTML date input. iOS/Android use
-`@react-native-community/datetimepicker` 8.6.0, matching Expo SDK 55's bundled version.
+All platforms use the same React Native DateField modal. Year/month/day lists
+and direct numeric year entry support older birth years without month-by-month
+navigation. Only Done commits the local date; Cancel, Escape and Android Back
+preserve the field. Changing year/month clamps leap days and month ends; birthday
+choices stop at today, while optional due dates retain their unrestricted range.
+The field shows a Korean date and calendar icon; modal actions reuse primary and
+tertiary ActionButton variants. There is no native-picker or HTML-date override.
 The UI uses Safe Area, keyboard avoidance, scrolling, 44px minimum targets, selected
 accessibility states, step announcements/focus and Reduce Motion-aware transitions.
 
 Validation commands in `apps/mobile`:
 
 - `npm run typecheck`, `npm run lint`, `npm run format:check`
+- `node tests/date-field.mjs`, `node tests/date-modal-ui.mjs` — shared date model,
+  commit/cancel, keyboard and responsive modal flows.
 - `npm run test:children:onboarding` — calendar boundaries, selection rules,
   response verification, account-scoped drafts, expiry and logout/write races.
 - `npm run test:children:onboarding:ui` — new/existing/error gates, five steps,
@@ -68,5 +75,5 @@ Validation commands in `apps/mobile`:
 - `npx expo export --platform all` checks web, Android and iOS bundling.
 
 Browser tests include small screens and failure paths. Native bundle success does
-not establish real-device DatePicker, keyboard or screen-reader behavior; these
+not establish real-device modal, keyboard or screen-reader behavior; these
 still need device QA. No production deployment or AI generation is performed.

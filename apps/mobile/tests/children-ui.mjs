@@ -1,3 +1,4 @@
+import { selectDate } from './date-field-fixture.mjs';
 import { Buffer } from 'node:buffer';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -89,9 +90,7 @@ try {
     assert.deepEqual(writes, []);
     await page.getByText('로그인한 계정에 저장되는 아이 정보예요.').waitFor();
     await click('수정');
-    assert.equal(await birthday.getAttribute('type'), 'date');
-    assert.match(await birthday.getAttribute('max'), /^\d{4}-\d{2}-\d{2}$/);
-    assert.equal(await birthday.inputValue(), '2024-02-29');
+    assert.equal(await birthday.textContent(), '2024년 2월 29일');
     await page.getByText('2024년 2월 29일', { exact: true }).waitFor();
     await name.press('Enter');
     assert.equal(
@@ -103,12 +102,7 @@ try {
     await click('저장');
     await alert('아이 이름을 입력');
     await name.fill('  하늘  ');
-    for (const invalid of ['', '9999-01-01']) {
-      await birthday.fill(invalid);
-      await click('저장');
-      await alert(/생년월일/);
-    }
-    await birthday.fill('2024-02-29');
+    await selectDate(page, '생년월일', '2024-02-29');
     const started = new Promise((resolve) => {
       holdWrite = resolve;
     });
@@ -241,11 +235,13 @@ try {
     .getByRole('textbox', { name: '아이 이름', exact: true })
     .fill('미리보기 아이');
   const birthday = page.getByLabel('생년월일', { exact: true });
-  assert.equal(await birthday.inputValue(), '');
-  await birthday.focus();
-  await birthday.blur();
-  assert.equal(await birthday.inputValue(), '', 'focus must not commit today');
-  await birthday.fill('2024-02-29');
+  assert.equal(await birthday.textContent(), '날짜 선택');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page
+    .getByRole('alert')
+    .filter({ hasText: /생년월일/ })
+    .waitFor();
+  await selectDate(page, '생년월일', '2024-02-29');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await page
     .getByRole('heading', { name: '아이 프로필', exact: true })
