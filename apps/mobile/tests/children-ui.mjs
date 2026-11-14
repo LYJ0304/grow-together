@@ -124,7 +124,7 @@ try {
     holdWrite = null;
     await screen().getByText('하늘', { exact: true }).waitFor();
     await click('이전 화면으로 돌아가기');
-    await page.getByRole('heading', { name: '설정' }).waitFor();
+    await page.getByRole('heading', { name: '설정', exact: true }).waitFor();
     await page.getByText('하늘 · 2024-02-29', { exact: true }).waitFor();
     await page.getByRole('button', { name: /아이 프로필/ }).click();
     await click('수정');

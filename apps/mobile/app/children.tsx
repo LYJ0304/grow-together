@@ -1,4 +1,4 @@
-import { buttonSurface, buttonLabel } from '../src/theme/buttons';
+import { ActionButton } from '../src/components/action-button';
 import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/components/typography';
@@ -215,13 +215,13 @@ function ChildrenEditor() {
                 {error}
               </Text>
               {profile.accountKey && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void profile.refetch()}
-                  style={styles.button}
-                >
-                  <Text style={styles.buttonLabel}>다시 시도</Text>
-                </Pressable>
+                <View style={styles.actions}>
+                  <ActionButton
+                    label="다시 시도"
+                    variant="secondary"
+                    onPress={() => void profile.refetch()}
+                  />
+                </View>
               )}
             </View>
           ) : profile.isPending ? (
@@ -235,21 +235,18 @@ function ChildrenEditor() {
                   {profile.data ? (
                     <>
                       {status === 'authenticated' ? (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="개인화 설정 수정"
-                          onPress={() =>
-                            router.push({
-                              pathname: '/onboarding',
-                              params: { edit: 'true' },
-                            })
-                          }
-                          style={styles.button}
-                        >
-                          <Text style={styles.buttonLabel}>
-                            개인화 설정 수정
-                          </Text>
-                        </Pressable>
+                        <View style={styles.actions}>
+                          <ActionButton
+                            label="개인화 설정 수정"
+                            variant="secondary"
+                            onPress={() =>
+                              router.push({
+                                pathname: '/onboarding',
+                                params: { edit: 'true' },
+                              })
+                            }
+                          />
+                        </View>
                       ) : null}
                       <Text style={styles.label}>아이 이름</Text>
                       <Text style={styles.value}>{profile.data.name}</Text>
@@ -259,15 +256,13 @@ function ChildrenEditor() {
                   ) : (
                     <Text style={styles.value}>등록된 아이가 없어요.</Text>
                   )}
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={edit}
-                    style={styles.button}
-                  >
-                    <Text style={styles.buttonLabel}>
-                      {profile.data ? '수정' : '아이 추가'}
-                    </Text>
-                  </Pressable>
+                  <View style={styles.actions}>
+                    <ActionButton
+                      label={profile.data ? '수정' : '아이 추가'}
+                      variant="secondary"
+                      onPress={edit}
+                    />
+                  </View>
                 </>
               ) : (
                 <View pointerEvents={saving ? 'none' : 'auto'}>
@@ -349,56 +344,35 @@ function ChildrenEditor() {
                       {errors.birthday}
                     </Text>
                   ) : null}
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => void save()}
-                    disabled={saving || conflict}
-                    style={({ pressed }) => [
-                      styles.button,
-                      buttonSurface('primary', saving || conflict, pressed),
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.buttonLabel,
-                        buttonLabel('primary', saving || conflict),
-                      ]}
-                    >
-                      {saving ? '저장 중...' : '저장'}
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={cancel}
-                    disabled={saving}
-                    style={styles.back}
-                  >
-                    <Text style={styles.backLabel}>취소</Text>
-                  </Pressable>
+                  <View style={styles.actions}>
+                    <ActionButton
+                      label={saving ? '저장 중...' : '저장'}
+                      variant="primary"
+                      disabled={saving || conflict}
+                      onPress={() => void save()}
+                    />
+                    <ActionButton
+                      label="취소"
+                      variant="tertiary"
+                      disabled={saving}
+                      onPress={cancel}
+                    />
+                  </View>
                 </View>
               )}
             </View>
           )}
           {conflict ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={profile.isFetching}
-              onPress={() => void recheckRegistration()}
-              style={({ pressed }) => [
-                styles.button,
-                buttonSurface('secondary', profile.isFetching, pressed),
-              ]}
-            >
-              <Text
-                style={[
-                  styles.buttonLabel,
-                  buttonLabel('secondary', profile.isFetching),
-                ]}
-              >
-                {profile.isFetching ? '확인 중...' : '등록 정보 다시 확인'}
-              </Text>
-            </Pressable>
+            <View style={styles.actions}>
+              <ActionButton
+                label={
+                  profile.isFetching ? '확인 중...' : '등록 정보 다시 확인'
+                }
+                variant="secondary"
+                disabled={profile.isFetching}
+                onPress={() => void recheckRegistration()}
+              />
+            </View>
           ) : null}
           {notice ? (
             <Text
@@ -426,23 +400,21 @@ function ChildrenEditor() {
         >
           <View accessibilityRole="alert" style={styles.card}>
             <Text style={styles.value}>저장하지 않은 변경사항이 있어요.</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setLeaveAction(null)}
-              style={styles.button}
-            >
-              <Text style={styles.buttonLabel}>계속 작성</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setEditing(false);
-                setDiscarding(true);
-              }}
-              style={styles.back}
-            >
-              <Text style={styles.backLabel}>변경사항 버리고 나가기</Text>
-            </Pressable>
+            <View style={styles.actions}>
+              <ActionButton
+                label="계속 작성"
+                variant="secondary"
+                onPress={() => setLeaveAction(null)}
+              />
+              <ActionButton
+                label="변경사항 버리고 나가기"
+                variant="tertiary"
+                onPress={() => {
+                  setEditing(false);
+                  setDiscarding(true);
+                }}
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -528,18 +500,5 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     color: colors.text,
   },
-  button: {
-    minHeight: 48,
-    marginTop: 24,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...buttonSurface('secondary'),
-  },
-  buttonLabel: {
-    ...typography.button,
-    fontSize: 16,
-    ...buttonLabel('secondary'),
-  },
-  pressed: { ...buttonSurface('secondary', false, true) },
+  actions: { marginTop: 24, gap: 12 },
 });
