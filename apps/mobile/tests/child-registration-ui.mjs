@@ -1,3 +1,4 @@
+import { selectDate } from './date-field-fixture.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
@@ -130,7 +131,7 @@ try {
   await page
     .getByRole('textbox', { name: '아이 이름 또는 애칭', exact: true })
     .fill('하늘');
-  await page.getByLabel('생년월일', { exact: true }).fill('2024-03-15');
+  await selectDate(page, '생년월일', '2024-03-15');
   await click('다음');
   await click('건너뛰기');
   await click('건너뛰기');
