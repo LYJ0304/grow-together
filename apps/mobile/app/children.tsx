@@ -338,7 +338,7 @@ function ChildrenEditor() {
                   <View style={styles.actions}>
                     <ActionButton
                       label={saving ? '저장 중...' : '저장'}
-                      variant="primary"
+                      variant="secondary"
                       disabled={saving || conflict}
                       onPress={() => void save()}
                     />

@@ -22,41 +22,52 @@ export function AppHeader({
 }) {
   return (
     <View testID="app-header" style={styles.header}>
-      <View style={styles.tools}>
-        <HeaderButton
-          polished={polished}
-          accessibilityRole="button"
-          accessibilityLabel="아이 프로필 열기"
-          disabled={disabled}
-          accessibilityState={{ disabled }}
-          onPress={() => router.push('/children')}
-        >
-          <Image
-            source={require('../../assets/images/main/user.svg')}
-            style={styles.icon}
-            tintColor={disabled ? colors.muted : colors.brand}
-            accessible={false}
-          />
-        </HeaderButton>
-        <HeaderButton
-          polished={polished}
-          accessibilityRole="button"
-          accessibilityLabel="앱 설정"
-          disabled={disabled}
-          accessibilityState={{ disabled }}
-          onPress={() => router.push('/mypage')}
-        >
-          <Image
-            source={require('../../assets/images/chat/settings.svg')}
-            style={styles.icon}
-            tintColor={disabled ? colors.muted : colors.brand}
-            accessible={false}
-          />
-        </HeaderButton>
-      </View>
+      <HeaderTools disabled={disabled} polished={polished} />
       {title ? (
         <Greeting title={title} subtitle={subtitle} polished={polished} />
       ) : null}
+    </View>
+  );
+}
+export function HeaderTools({
+  disabled = false,
+  polished = false,
+}: {
+  disabled?: boolean;
+  polished?: boolean;
+}) {
+  return (
+    <View style={styles.tools}>
+      <HeaderButton
+        polished={polished}
+        accessibilityRole="button"
+        accessibilityLabel="아이 프로필 열기"
+        disabled={disabled}
+        accessibilityState={{ disabled }}
+        onPress={() => router.push('/children')}
+      >
+        <Image
+          source={require('../../assets/images/main/user.svg')}
+          style={styles.icon}
+          tintColor={disabled ? colors.muted : colors.brand}
+          accessible={false}
+        />
+      </HeaderButton>
+      <HeaderButton
+        polished={polished}
+        accessibilityRole="button"
+        accessibilityLabel="앱 설정"
+        disabled={disabled}
+        accessibilityState={{ disabled }}
+        onPress={() => router.push('/mypage')}
+      >
+        <Image
+          source={require('../../assets/images/chat/settings.svg')}
+          style={styles.icon}
+          tintColor={disabled ? colors.muted : colors.brand}
+          accessible={false}
+        />
+      </HeaderButton>
     </View>
   );
 }
