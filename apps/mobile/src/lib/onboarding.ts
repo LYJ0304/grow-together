@@ -144,3 +144,10 @@ export function withPrematurity(
     expectedDueDate: status === 'yes' ? value.expectedDueDate : null,
   };
 }
+
+export function dateLabel(value: string) {
+  const date = parseDate(value);
+  return date
+    ? `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
+    : '날짜 선택';
+}
