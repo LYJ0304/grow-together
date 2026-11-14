@@ -495,7 +495,7 @@ export default function CalendarScreen() {
             style={({ pressed }) => [
               styles.generateButton,
               buttonSurface(
-                'primary',
+                'secondary',
                 loadingDiaries || !!diaryNotice,
                 pressed,
               ),
@@ -504,7 +504,7 @@ export default function CalendarScreen() {
             <Text
               style={[
                 styles.generateLabel,
-                buttonLabel('primary', loadingDiaries || !!diaryNotice),
+                buttonLabel('secondary', loadingDiaries || !!diaryNotice),
               ]}
             >
               {loadingDiaries
@@ -695,18 +695,18 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     minHeight: 48,
     borderRadius: 14,
-    ...buttonSurface('primary'),
+    ...buttonSurface('secondary'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  generatePressed: { ...buttonSurface('primary', false, true) },
+  generatePressed: { ...buttonSurface('secondary', false, true) },
   generateLabel: {
     ...typography.button,
     fontSize: 16,
     lineHeight: 22,
-    ...buttonLabel('primary'),
+    ...buttonLabel('secondary'),
     textAlign: 'center',
   },
   notice: {
