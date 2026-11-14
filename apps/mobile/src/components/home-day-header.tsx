@@ -1,3 +1,4 @@
+import { HeaderTools } from './app-header';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
@@ -29,36 +30,7 @@ export function HomeDayHeader({
   };
   return (
     <View testID="app-header" style={styles.header}>
-      <View style={styles.tools}>
-        <View style={styles.toolGroup}>
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel="아이 프로필 열기"
-            onPress={() => router.push('/children')}
-            style={styles.tool}
-          >
-            <Image
-              source={require('../../assets/images/main/user.svg')}
-              tintColor={colors.brand}
-              style={styles.icon}
-              accessible={false}
-            />
-          </MotionPressable>
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel="앱 설정"
-            onPress={() => router.push('/mypage')}
-            style={styles.tool}
-          >
-            <Image
-              source={require('../../assets/images/chat/settings.svg')}
-              tintColor={colors.brand}
-              style={styles.icon}
-              accessible={false}
-            />
-          </MotionPressable>
-        </View>
-      </View>
+      <HeaderTools />
       <View style={styles.dayRow}>
         <Animated.View testID="home-day-heading" style={[styles.copy, heading]}>
           <Text accessibilityRole="header" style={styles.title}>
@@ -100,9 +72,12 @@ export function HomeDayHeader({
                 onPress={() => change(offset)}
                 style={[styles.arrow, disabled && styles.disabled]}
               >
-                <Text accessible={false} style={styles.arrowText}>
-                  {offset < 0 ? '‹' : '›'}
-                </Text>
+                <Image
+                  source={require('../../assets/images/main/chevron-left.svg')}
+                  tintColor={colors.text}
+                  style={[styles.arrowIcon, offset > 0 && styles.nextArrowIcon]}
+                  accessible={false}
+                />
               </MotionPressable>
             );
           })}
@@ -113,26 +88,6 @@ export function HomeDayHeader({
 }
 const styles = StyleSheet.create({
   header: { gap: 14 },
-  tools: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toolGroup: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-  },
-  tool: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: { width: 22, height: 22 },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   copy: { flex: 1, minWidth: 0 },
   title: {
@@ -152,6 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrowText: { fontSize: 28, lineHeight: 32, color: colors.text },
+  arrowIcon: { width: 20, height: 20 },
+  nextArrowIcon: { transform: [{ rotate: '180deg' }] },
   disabled: { backgroundColor: colors.disabled },
 });
