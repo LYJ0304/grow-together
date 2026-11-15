@@ -52,6 +52,9 @@ try {
     })
     .waitFor();
   failMonth = true;
+  await page
+    .getByRole('button', { name: '월간 캘린더 펼치기', exact: true })
+    .click();
   await page.getByRole('button', { name: '다음 달', exact: true }).click();
   await page
     .getByRole('button', { name: '일기 목록 다시 불러오기', exact: true })

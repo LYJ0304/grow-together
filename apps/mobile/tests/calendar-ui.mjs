@@ -37,8 +37,13 @@ try {
   await page
     .getByRole('heading', { name: '2026년 11월', exact: true })
     .waitFor();
+  assert.equal(
+    await page.getByTestId('records-week-calendar').getByRole('button').count(),
+    7,
+  );
+  await click('월간 캘린더 펼치기');
   const grid = page.getByTestId('calendar-grid');
-  assert.equal(await grid.getByRole('button').count(), 35);
+  assert.equal(await grid.getByRole('button').count(), 42);
   await click('이전 달');
   await page
     .getByRole('heading', { name: '2026년 10월', exact: true })
@@ -76,7 +81,7 @@ try {
   await click('일기 목록 다시 불러오기');
   await click('오늘로 이동');
   await page
-    .getByText('저장된 미리보기 기록이 없어요. 오늘의 순간을 남겨보세요.', {
+    .getByText('이날의 기록이 아직 없어요', {
       exact: true,
     })
     .waitFor();

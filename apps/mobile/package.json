@@ -61,7 +61,9 @@
     "test:main:floating-add": "node tests/main-floating-add.mjs",
     "test:chat:messages": "node tests/chat-message-fixture.mjs && node tests/chat-messages.mjs",
     "test:todo:reaction": "node tests/todo-reaction.mjs",
-    "test:main:dashboard": "node tests/main-dashboard.mjs && node tests/main-dashboard-gesture.mjs"
+    "test:main:dashboard": "node tests/main-dashboard.mjs && node tests/main-dashboard-gesture.mjs",
+    "test:records:ui": "node tests/records-browser.mjs && node tests/records-states.mjs",
+    "test:scroll-target": "node tests/tab-scroll-target.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

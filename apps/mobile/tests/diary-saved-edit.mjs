@@ -56,7 +56,10 @@ try {
   await click('인증 없이 미리보기 진입');
   await page.getByRole('tab', { name: '기록', exact: true }).click();
   const month = page.getByRole('heading', { name: /2026년 10월/ });
-  if (!(await month.count())) await click('이전 달');
+  if (!(await month.count())) {
+    await click('월간 캘린더 펼치기');
+    await click('이전 달');
+  }
   await click('2026년 10월 31일, 일기 있음');
   await click('선택한 날짜의 일기 보기');
   await page.getByText(original.content, { exact: true }).last().waitFor();

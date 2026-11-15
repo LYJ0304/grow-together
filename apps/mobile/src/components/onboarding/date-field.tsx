@@ -115,10 +115,11 @@ export const DateField = forwardRef<DateFieldHandle, DateFieldProps>(
     );
   },
 );
-function DateSelection({
+export function DateSelection({
   label,
   value,
   maximum,
+  minimumYear = 1,
   onCancel,
   onConfirm,
   onDismiss,
@@ -126,6 +127,7 @@ function DateSelection({
   label: string;
   value: string;
   maximum?: string;
+  minimumYear?: number;
   onCancel(): void;
   onConfirm(value: string): void;
   onDismiss(): void;
@@ -134,7 +136,9 @@ function DateSelection({
   const [year, setYear] = useState(String(draft.year));
   const maxYear = partMaximum(draft, 'year', maximum);
   const validYear =
-    /^\d{1,4}$/.test(year) && Number(year) >= 1 && Number(year) <= maxYear;
+    /^\d{1,4}$/.test(year) &&
+    Number(year) >= minimumYear &&
+    Number(year) <= maxYear;
   const pick = (part: DatePart, next: number) => {
     setDraft((current) =>
       clampSelection({ ...current, [part]: next }, maximum),
@@ -175,13 +179,16 @@ function DateSelection({
                 <Text style={styles.label}>연도 바로 입력</Text>
                 <TextInput
                   accessibilityLabel="연도 바로 입력"
-                  accessibilityHint={`1년부터 ${maxYear}년까지 입력할 수 있어요.`}
+                  accessibilityHint={`${minimumYear}년부터 ${maxYear}년까지 입력할 수 있어요.`}
                   aria-invalid={!validYear}
                   value={year}
                   onChangeText={(text) => {
                     const digits = text.replace(/\D/g, '').slice(0, 4);
                     setYear(digits);
-                    if (Number(digits) >= 1 && Number(digits) <= maxYear)
+                    if (
+                      Number(digits) >= minimumYear &&
+                      Number(digits) <= maxYear
+                    )
                       pick('year', Number(digits));
                   }}
                   selectTextOnFocus
@@ -194,7 +201,7 @@ function DateSelection({
                 />
                 {!validYear ? (
                   <Text accessibilityRole="alert" style={styles.error}>
-                    1~{maxYear}년 사이의 연도를 입력해주세요.
+                    {minimumYear}~{maxYear}년 사이의 연도를 입력해주세요.
                   </Text>
                 ) : null}
               </View>
@@ -204,6 +211,7 @@ function DateSelection({
                     key={part}
                     part={part}
                     selected={draft[part]}
+                    minimum={part === 'year' ? minimumYear : 1}
                     maximum={partMaximum(draft, part, maximum)}
                     onChange={(next) => pick(part, next)}
                   />
@@ -238,11 +246,13 @@ function DateColumn({
   part,
   selected,
   maximum,
+  minimum = 1,
   onChange,
 }: {
   part: DatePart;
   selected: number;
   maximum: number;
+  minimum?: number;
   onChange(value: number): void;
 }) {
   const list = useRef<FlatList<number>>(null);
@@ -256,10 +266,10 @@ function DateColumn({
   );
   const values = useMemo(
     () =>
-      Array.from({ length: maximum }, (_, index) =>
+      Array.from({ length: maximum - minimum + 1 }, (_, index) =>
         part === 'year' ? maximum - index : index + 1,
       ),
-    [maximum, part],
+    [maximum, minimum, part],
   );
   const index = values.indexOf(selected);
   useEffect(() => {
