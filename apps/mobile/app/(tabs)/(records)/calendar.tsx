@@ -1,44 +1,38 @@
-import { buttonSurface, buttonLabel } from '../../../src/theme/buttons';
-import { colors } from '../../../src/theme/colors';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AppState,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ViewToken,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
-import { useAuth } from '../../../src/components/auth-provider';
 import {
   useSessionStore,
   useSessionValue,
 } from '../../../src/lib/session-state';
-import { typography } from '../../../src/components/typography';
-import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
-import { PageIntro } from '../../../src/components/page-intro';
-import { editorial } from '../../../src/theme/editorial';
+import { useRecordIndex } from '../../../src/lib/use-records';
+import {
+  calendarDays,
+  getWeek,
+  shiftCalendarDate,
+} from '../../../src/lib/calendar';
+import { diaryDateKey, parseDiaryDate } from '../../../src/lib/diary-storage';
 import { AppHeader } from '../../../src/components/app-header';
-import { Image } from 'expo-image';
-import { useQuery } from '@tanstack/react-query';
-import { StatusBar } from 'expo-status-bar';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { calendarDays } from '../../../src/lib/calendar';
-import {
-  diaryDateKey,
-  parseDiaryDate,
-  savedDiaryDates,
-  readDiary,
-} from '../../../src/lib/diary-storage';
+import { ActionButton } from '../../../src/components/action-button';
+import { RecordCalendar } from '../../../src/components/records/record-calendar';
+import { RecordCard } from '../../../src/components/records/record-card';
+import { colors } from '../../../src/theme/colors';
+import { typography } from '../../../src/theme/typography';
 
+type RecordRow = { date: string };
 export default function CalendarScreen() {
-  const { status, client, epoch } = useAuth();
-  const preview = status === 'preview';
-  const values = useSessionStore((state) => state.values);
-  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
-  useEffect(() => setHydrated(true), []);
   const {
     date: dateParam,
     saved,
@@ -48,76 +42,89 @@ export default function CalendarScreen() {
     saved?: string;
     deleted?: string;
   }>();
-  const scroll = useRef<ScrollView>(null);
-  useTabScrollToTop(scroll);
-  const [initialDate] = useState(() => {
-    const fromRoute = parseDiaryDate(dateParam);
-    if (fromRoute) return fromRoute;
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  });
+  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
+  useEffect(() => setHydrated(true), []);
+  const [initialDate] = useState(() => parseDiaryDate(dateParam) ?? new Date());
+  const [selected, setSelected] = useSessionValue('calendarDate', initialDate);
   const [month, setMonth] = useSessionValue(
     'calendarMonth',
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
   );
-  const [selected, setSelected] = useSessionValue('calendarDate', initialDate);
-  const [notice, setNotice] = useState('');
-  const [recordView, setRecordView] = useSessionValue<'calendar' | 'list'>(
+  const [view, setView] = useSessionValue<'calendar' | 'list'>(
     'recordsView',
     'calendar',
   );
-  const monthKey = diaryDateKey(month).slice(0, 7);
-  const {
-    data: dates,
-    isFetching: loadingDiaries,
-    error: diaryError,
-    refetch,
-  } = useQuery({
-    queryKey: ['savedDiaryDates', preview ? 'preview' : epoch, monthKey],
-    enabled: preview || status === 'authenticated',
-    queryFn: async () =>
-      preview
-        ? savedDiaryDates()
-        : (await createDiaryApi(client).getMonth(monthKey)).map(
-            (entry) => entry.diaryDate,
-          ),
-    retry: false,
-  });
-  const savedDates = new Set(dates ?? []);
-  const summary = useQuery({
-    queryKey: [
-      'diarySummary',
-      preview ? 'preview' : epoch,
-      diaryDateKey(selected),
-    ],
-    enabled: savedDates.has(diaryDateKey(selected)),
-    retry: false,
-    queryFn: async () =>
-      preview
-        ? ((await readDiary(diaryDateKey(selected)))?.content ?? '')
-        : ((await createDiaryApi(client).getByDate(diaryDateKey(selected)))
-            .content ?? ''),
-  });
-  const diaryNotice =
-    diaryError instanceof Error
-      ? diaryError.message
-      : savedDates.has(diaryDateKey(selected)) && summary.isError
-        ? '일기 요약을 불러오지 못했어요.'
-        : '';
+  const [expanded, setExpanded] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [today, setToday] = useState(() => diaryDateKey(new Date()));
+  const list = useRef<FlatList<RecordRow>>(null);
+  useTabScrollToTop(list);
+  const values = useSessionStore((state) => state.values);
+  const dateKey = diaryDateKey(selected),
+    monthKey = diaryDateKey(month).slice(0, 7);
+  const range =
+    view === 'list'
+      ? [month]
+      : expanded
+        ? calendarDays(month, 1)
+        : getWeek(selected, 1);
+  const months = [
+    ...new Set(
+      range
+        .map((day) => diaryDateKey(day).slice(0, 7))
+        .filter((key) => /^\d{4}-\d{2}$/.test(key)),
+    ),
+  ].sort();
+  const [visibleDates, setVisibleDates] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const index = useRecordIndex(months, [...visibleDates]);
+  const dateKeys = [...index.dates].sort().join('|');
+  const rows = useMemo<RecordRow[]>(() => {
+    const keys = dateKeys ? dateKeys.split('|') : [];
+    return (
+      view === 'calendar'
+        ? keys.filter((key) => key === dateKey)
+        : keys
+            .filter((key) => key.startsWith(monthKey))
+            .sort((a, b) => b.localeCompare(a))
+    ).map((date) => ({ date }));
+  }, [dateKeys, view, dateKey, monthKey]);
+  const current = index.stateFor(
+    view === 'calendar' ? dateKey.slice(0, 7) : monthKey,
+  );
+  const unavailable = Boolean(current?.isError),
+    pending = !current || current.isPending;
   const hasDraft = Object.entries(values).some(
     ([key, value]) =>
-      key.startsWith(`diary:${diaryDateKey(selected)}:`) &&
+      key.startsWith(`diary:${dateKey}:`) &&
       key.endsWith(':dirty') &&
       value === true,
   );
-  const selectedHasDiary = savedDates.has(diaryDateKey(selected));
-
+  const hasDiary = index.dates.has(dateKey);
+  const monthCount = [...index.dates].filter((key) =>
+    key.startsWith(monthKey),
+  ).length;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken<RecordRow>[] }) => {
+      const dates = new Set(
+        viewableItems
+          .filter((item) => item.isViewable)
+          .map((item) => item.item.date),
+      );
+      setVisibleDates((old) =>
+        old.size === dates.size && [...old].every((date) => dates.has(date))
+          ? old
+          : dates,
+      );
+    },
+  ).current;
   useEffect(() => {
-    const fromRoute = parseDiaryDate(dateParam);
-    if (!fromRoute) return;
-    setSelected(fromRoute);
-    setMonth(new Date(fromRoute.getFullYear(), fromRoute.getMonth(), 1));
-    router.setParams({ date: '', saved: '', deleted: '' });
+    const day = parseDiaryDate(dateParam);
+    if (!day) return;
+    setSelected(day);
+    setMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+    setExpanded(false);
     setNotice(
       deleted === 'true'
         ? '일기를 삭제했어요.'
@@ -125,596 +132,359 @@ export default function CalendarScreen() {
           ? '일기를 저장했어요.'
           : '',
     );
-  }, [dateParam, saved, deleted, setMonth, setSelected]);
-
+    router.setParams({ date: '', saved: '', deleted: '' });
+  }, [dateParam, saved, deleted, setSelected, setMonth]);
+  useEffect(() => {
+    if (
+      !parseDiaryDate(dateParam) &&
+      view === 'calendar' &&
+      !expanded &&
+      monthKey !== dateKey.slice(0, 7)
+    )
+      setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  }, [dateParam, view, expanded, monthKey, dateKey, selected, setMonth]);
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      let timer: ReturnType<typeof setTimeout>;
+      const update = () => {
+        const now = new Date();
+        setToday(diaryDateKey(now));
+        clearTimeout(timer);
+        timer = setTimeout(
+          update,
+          new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1,
+          ).getTime() - now.getTime(),
+        );
+      };
+      update();
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') update();
+      });
+      if (Platform.OS === 'web') window.addEventListener('focus', update);
+      return () => {
+        clearTimeout(timer);
+        subscription.remove();
+        if (Platform.OS === 'web') window.removeEventListener('focus', update);
+      };
+    }, []),
   );
-  const days = calendarDays(month);
-  const today = new Date();
-  const todayKey = diaryDateKey(today);
-  const selectedDateLabel = `${selected.getFullYear()}년 ${selected.getMonth() + 1}월 ${selected.getDate()}일 ${['일', '월', '화', '수', '목', '금', '토'][selected.getDay()]}요일`;
-  const selectionHint = diaryNotice
-    ? '일기 목록을 다시 불러온 뒤 확인해주세요.'
-    : loadingDiaries
-      ? '저장된 일기를 확인하고 있어요.'
-      : hasDraft
-        ? '이 세션에서 작성하던 내용이 있어요.'
-        : selectedHasDiary
-          ? preview
-            ? '이 기기에 저장된 미리보기 일기예요.'
-            : '서버에 저장된 일기예요.'
-          : preview
-            ? '저장된 미리보기 기록이 없어요. 오늘의 순간을 남겨보세요.'
-            : '저장된 일기가 없어요. 오늘의 순간을 남겨보세요.';
-
-  const changeMonth = (offset: number) => {
-    setMonth(
-      (current) =>
-        new Date(current.getFullYear(), current.getMonth() + offset, 1),
-    );
-    setNotice('');
+  const chooseDate = useCallback(
+    (day: Date) => {
+      if (!parseDiaryDate(diaryDateKey(day))) return;
+      setSelected(day);
+      setMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+      setExpanded(false);
+      setNotice('');
+    },
+    [setSelected, setMonth],
+  );
+  const step = (offset: number) => {
+    if (view === 'list' || expanded) {
+      const next = new Date(month.getFullYear(), month.getMonth() + offset, 1);
+      const day = new Date(
+        next.getFullYear(),
+        next.getMonth(),
+        Math.min(
+          selected.getDate(),
+          new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate(),
+        ),
+      );
+      if (!parseDiaryDate(diaryDateKey(day))) return;
+      setSelected(day);
+      setMonth(next);
+      setNotice('');
+    } else chooseDate(shiftCalendarDate(selected, offset * 7));
   };
-
-  if (!hydrated)
-    return (
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-        <StatusBar style="dark" />
-        <View style={[styles.content, { flex: 1 }]}>
-          <Text style={styles.notice}>캘린더를 불러오는 중이에요.</Text>
-        </View>
-      </SafeAreaView>
-    );
-
-  return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-      <StatusBar style="dark" />
-      <AppHeader />
-      <ScrollView
-        ref={scroll}
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-      >
-        <View style={styles.intro}>
-          <PageIntro
-            eyebrow="THE DAYS WE SHARE"
-            title="우리의 기록"
-            description="함께한 날들이 하나씩 쌓여가는 공간이에요."
-          />
-          <View style={editorial.segment}>
-            {(
-              [
-                { key: 'calendar', label: '캘린더' },
-                { key: 'list', label: '모아보기' },
-              ] as const
-            ).map((item) => (
-              <Pressable
-                key={item.key}
-                accessibilityRole="button"
-                aria-pressed={recordView === item.key}
-                accessibilityState={{ selected: recordView === item.key }}
-                onPress={() => setRecordView(item.key)}
+  const openRecord = useCallback(
+    (date: string, id?: number) => {
+      const day = parseDiaryDate(date);
+      if (!day) return;
+      setSelected(day);
+      setMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+      router.push({
+        pathname: '/diary',
+        params: { date, mode: 'view', ...(id ? { id: String(id) } : {}) },
+      });
+    },
+    [setSelected, setMonth],
+  );
+  const statusForDate = (date: string): 'loading' | 'error' | 'ready' => {
+    const state = index.stateFor(date.slice(0, 7));
+    return state?.isError
+      ? 'error'
+      : !state || state.isPending
+        ? 'loading'
+        : 'ready';
+  };
+  const anyError = index.queries.some((query) => query.isError);
+  const selectedLabel = selected.toLocaleDateString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
+  const header = (
+    <View>
+      <View style={styles.top}>
+        <Text accessibilityRole="header" style={styles.title}>
+          우리의 기록
+        </Text>
+        <View
+          role="group"
+          accessibilityLabel="기록 보기 방식"
+          style={styles.switch}
+        >
+          {(
+            [
+              { key: 'calendar', label: '캘린더' },
+              { key: 'list', label: '모아보기' },
+            ] as const
+          ).map((item) => (
+            <Pressable
+              key={item.key}
+              accessibilityRole="button"
+              aria-pressed={view === item.key}
+              accessibilityState={{ selected: view === item.key }}
+              onPress={() => {
+                setView(item.key);
+                setExpanded(false);
+              }}
+              style={styles.switchTarget}
+            >
+              <View
                 style={[
-                  editorial.segmentButton,
-                  recordView === item.key && editorial.segmentActive,
+                  styles.switchFace,
+                  view === item.key && styles.switchSelected,
                 ]}
               >
                 <Text
                   style={[
-                    typography.label,
-                    {
-                      color:
-                        recordView === item.key ? colors.primary : colors.muted,
-                    },
+                    styles.switchText,
+                    view === item.key && styles.switchActive,
                   ]}
                 >
                   {item.label}
                 </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        <View style={styles.monthHeader}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="이전 달"
-            onPress={() => changeMonth(-1)}
-            style={({ pressed }) => [
-              styles.monthButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image
-              source={require('../../../assets/images/calendar/previous.svg')}
-              style={styles.arrow}
-              contentFit="contain"
-              accessible={false}
-            />
-          </Pressable>
-          <View style={styles.monthTitle}>
-            <Text accessibilityRole="header" style={styles.month}>
-              {month.getFullYear()}년 {month.getMonth() + 1}월
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="다음 달"
-            onPress={() => changeMonth(1)}
-            style={({ pressed }) => [
-              styles.monthButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Image
-              source={require('../../../assets/images/calendar/next.svg')}
-              style={[styles.arrow, styles.nextArrow]}
-              contentFit="contain"
-              accessible={false}
-            />
-          </Pressable>
-        </View>
-
-        <View style={styles.calendarToolbar}>
-          <Text style={styles.calendarCaption}>우리의 기록</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="오늘로 이동"
-            onPress={() => {
-              const current = new Date();
-              setSelected(
-                new Date(
-                  current.getFullYear(),
-                  current.getMonth(),
-                  current.getDate(),
-                ),
-              );
-              setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
-              setNotice('');
-            }}
-            style={({ pressed }) => [
-              styles.todayButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.todayLabel}>오늘</Text>
-          </Pressable>
-        </View>
-        <View
-          style={[
-            styles.calendar,
-            recordView !== 'calendar' && { display: 'none' },
-          ]}
-        >
-          <View style={styles.weekdays}>
-            {['일', '월', '화', '수', '목', '금', '토'].map((label, index) => (
-              <Text
-                key={label}
-                style={[
-                  styles.weekday,
-                  (index === 0 || index === 6) && styles.weekend,
-                ]}
-              >
-                {label}
-              </Text>
-            ))}
-          </View>
-          <View testID="calendar-grid" style={styles.weeks}>
-            {Array.from({ length: days.length / 7 }, (_, week) => (
-              <View testID="calendar-week" key={week} style={styles.week}>
-                {days.slice(week * 7, week * 7 + 7).map((date) => {
-                  const isSelected = date.getTime() === selected.getTime();
-                  const outsideMonth = date.getMonth() !== month.getMonth();
-                  const isToday = diaryDateKey(date) === todayKey;
-                  const hasDiary = savedDates.has(diaryDateKey(date));
-                  return (
-                    <Pressable
-                      key={date.getTime()}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${isToday ? ', 오늘' : ''}${hasDiary ? ', 일기 있음' : ''}`}
-                      accessibilityState={{ selected: isSelected }}
-                      aria-pressed={isSelected}
-                      onPress={() => {
-                        setSelected(date);
-                        if (outsideMonth)
-                          setMonth(
-                            new Date(date.getFullYear(), date.getMonth(), 1),
-                          );
-                        setNotice('');
-                      }}
-                      style={({ pressed }) => [
-                        styles.day,
-                        isToday && styles.todayDay,
-                        isSelected && styles.selectedDay,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dayText,
-                          (date.getDay() === 0 || date.getDay() === 6) &&
-                            styles.weekend,
-                          outsideMonth && styles.outsideDay,
-                          isSelected && styles.selectedDayText,
-                        ]}
-                      >
-                        {date.getDate()}
-                      </Text>
-                      {hasDiary ? (
-                        <View
-                          accessible={false}
-                          style={[
-                            styles.diaryDot,
-                            isSelected && styles.selectedDiaryDot,
-                          ]}
-                        />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
               </View>
-            ))}
-          </View>
-        </View>
-        {recordView === 'list' ? (
-          <View style={styles.recordList}>
-            {diaryError ? (
-              <>
-                <Text accessibilityRole="alert" style={styles.notice}>
-                  일기 목록을 불러오지 못했어요.
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void refetch()}
-                  style={styles.retryButton}
-                >
-                  <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
-                </Pressable>
-              </>
-            ) : loadingDiaries ? (
-              <Text style={styles.selectionHint}>
-                일기 목록을 불러오고 있어요.
-              </Text>
-            ) : (dates ?? []).filter((key) => key.startsWith(monthKey))
-                .length === 0 ? (
-              <Text style={styles.selectionHint}>
-                이번 달에 저장된 일기가 없어요.
-              </Text>
-            ) : (
-              (dates ?? [])
-                .filter((key) => key.startsWith(monthKey))
-                .sort((a, b) => b.localeCompare(a))
-                .map((key) => {
-                  const entryDate = parseDiaryDate(key);
-                  if (!entryDate) return null;
-                  const label = `${entryDate.getFullYear()}년 ${entryDate.getMonth() + 1}월 ${entryDate.getDate()}일`;
-                  return (
-                    <Pressable
-                      key={key}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${label} 일기 보기`}
-                      onPress={() => {
-                        setSelected(entryDate);
-                        router.push({
-                          pathname: '/diary',
-                          params: { date: key, mode: 'view' },
-                        });
-                      }}
-                      style={styles.recordItem}
-                    >
-                      <View style={{ flex: 1, gap: 4 }}>
-                        <Text style={styles.recordTitle}>{label}</Text>
-                        <Text style={styles.selectionHint}>
-                          저장한 일기 열기
-                        </Text>
-                      </View>
-                      <Text accessible={false} style={styles.recordChevron}>
-                        ›
-                      </Text>
-                    </Pressable>
-                  );
-                })
-            )}
-          </View>
-        ) : null}
-        {recordView === 'calendar' && savedDates.size > 0 ? (
-          <Text style={styles.diaryLegend}>
-            <Text style={styles.legendDot}>●</Text> 일기가 저장된 날
-          </Text>
-        ) : null}
-        <View
-          testID="calendar-selection"
-          style={[
-            styles.actions,
-            recordView !== 'calendar' && { display: 'none' },
-          ]}
-        >
-          <Text style={styles.selectionEyebrow}>선택한 날의 기록</Text>
-          <Text style={styles.selectionDate}>{selectedDateLabel}</Text>
-          <Text accessibilityLiveRegion="polite" style={styles.selectionHint}>
-            {selectionHint}
-          </Text>
-          {!preview ? (
-            <Text style={styles.selectionHint}>
-              로그인한 계정의 서버 일기를 표시해요. 날짜가 없는 과거 기록은
-              표시되지 않아요.
-            </Text>
-          ) : null}
-          {summary.data ? (
-            <Text
-              numberOfLines={4}
-              style={[
-                typography.body,
-                { color: colors.text, alignSelf: 'stretch', marginBottom: 12 },
-              ]}
-            >
-              {summary.data}
-            </Text>
-          ) : null}
-          {diaryNotice || notice ? (
-            <Text
-              accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
-              style={styles.notice}
-            >
-              {diaryNotice || notice}
-            </Text>
-          ) : null}
-          {diaryNotice ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                void refetch();
-                if (selectedHasDiary) void summary.refetch();
-              }}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryLabel}>일기 목록 다시 불러오기</Text>
             </Pressable>
-          ) : null}
+          ))}
+        </View>
+      </View>
+      <RecordCalendar
+        month={month}
+        selected={selected}
+        today={today}
+        expanded={expanded}
+        list={view === 'list'}
+        dates={index.dates}
+        statusForDate={statusForDate}
+        onExpanded={setExpanded}
+        onDate={chooseDate}
+        onToday={() => chooseDate(parseDiaryDate(diaryDateKey(new Date()))!)}
+        onStep={step}
+      />
+      <View testID="calendar-selection" style={styles.selection}>
+        <Text accessibilityRole="header" style={styles.selectionDate}>
+          {view === 'calendar' ? selectedLabel : '이번 달의 기록'}
+        </Text>
+        <Text accessibilityLiveRegion="polite" style={styles.count}>
+          {unavailable
+            ? '조회 실패'
+            : pending
+              ? '확인 중'
+              : `기록 ${view === 'calendar' ? (hasDiary ? 1 : 0) : monthCount}개`}
+        </Text>
+      </View>
+      {notice ? (
+        <Text accessibilityRole="alert" style={styles.notice}>
+          {notice}
+        </Text>
+      ) : null}
+      {anyError ? (
+        <View style={styles.message}>
+          <Text accessibilityRole="alert" style={styles.error}>
+            일기 목록을 불러오지 못했어요.
+          </Text>
+          <ActionButton
+            label="일기 목록 다시 불러오기"
+            variant="secondary"
+            onPress={index.retry}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+  const empty = (
+    <View style={styles.message}>
+      {pending ? (
+        <Text accessibilityLiveRegion="polite" style={styles.meta}>
+          기록을 불러오는 중이에요.
+        </Text>
+      ) : unavailable ? (
+        view === 'calendar' ? (
+          <ActionButton
+            label="선택한 날짜의 일기 확인"
+            disabled
+            variant="secondary"
+            onPress={() => {}}
+          />
+        ) : null
+      ) : view === 'list' ? (
+        <>
+          <Text style={styles.body}>이번 달에 저장된 일기가 없어요.</Text>
+          <Text style={styles.meta}>
+            다른 달을 살펴보거나 캘린더에서 하루를 선택해보세요.
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.body}>
+            {hasDraft ? '작성하던 일기가 있어요' : '이날의 기록이 아직 없어요'}
+          </Text>
+          <Text style={styles.meta}>
+            {hasDraft
+              ? '이 세션에서 작성하던 내용을 이어갈 수 있어요.'
+              : '함께한 작은 순간을 기록으로 남겨보세요.'}
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              selectedHasDiary
-                ? '선택한 날짜의 일기 보기'
-                : hasDraft
-                  ? '작성하던 일기 이어 쓰기'
-                  : '선택한 날짜의 일기 작성하기'
+              hasDraft
+                ? '작성하던 일기 이어 쓰기'
+                : '선택한 날짜의 일기 작성하기'
             }
-            disabled={loadingDiaries || !!diaryNotice}
             onPress={() =>
               router.push({
                 pathname: '/diary',
-                params: {
-                  date: diaryDateKey(selected),
-                  mode: selectedHasDiary ? 'view' : 'create',
-                },
+                params: { date: dateKey, mode: 'create' },
               })
             }
-            style={({ pressed }) => [
-              styles.generateButton,
-              buttonSurface(
-                'secondary',
-                loadingDiaries || !!diaryNotice,
-                pressed,
-              ),
-            ]}
+            style={({ pressed }) => [styles.create, pressed && styles.pressed]}
           >
-            <Text
-              style={[
-                styles.generateLabel,
-                buttonLabel('secondary', loadingDiaries || !!diaryNotice),
-              ]}
-            >
-              {loadingDiaries
-                ? '불러오는 중...'
-                : selectedHasDiary
-                  ? '일기 보기'
-                  : hasDraft
-                    ? '작성하던 일기 이어 쓰기'
-                    : '일기 작성하기'}
+            <Text style={styles.createLabel}>
+              {hasDraft ? '작성하던 일기 이어 쓰기' : '일기 작성하기'}
             </Text>
           </Pressable>
-        </View>
-      </ScrollView>
+        </>
+      )}
+    </View>
+  );
+  return (
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+      <StatusBar style="dark" />
+      <AppHeader />
+      {hydrated ? (
+        <FlatList<RecordRow>
+          ref={list}
+          testID="records-list"
+          data={rows}
+          keyExtractor={(item) => item.date}
+          ListHeaderComponent={header}
+          ListEmptyComponent={empty}
+          renderItem={({ item }) => (
+            <View style={styles.cardWrap}>
+              <RecordCard
+                date={item.date}
+                visible={visibleDates.has(item.date)}
+                selected={view === 'calendar'}
+                disabled={unavailable}
+                onOpen={openRecord}
+              />
+            </View>
+          )}
+          onViewableItemsChanged={onViewableItemsChanged}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        />
+      ) : (
+        <Text style={styles.meta}>캘린더를 불러오는 중이에요.</Text>
+      )}
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: {
-    paddingTop: 12,
-    // Seven 44px touch targets still fit a 320px viewport.
-    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingHorizontal: 6,
     paddingBottom: 24,
-    alignItems: 'center',
-  },
-  intro: {
     width: '100%',
     maxWidth: 600,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    alignSelf: 'center',
   },
-  recordList: {
-    ...editorial.card,
-    width: '100%',
-    maxWidth: 600,
-    marginTop: 12,
-  },
-  recordItem: {
-    minHeight: 70,
-    paddingVertical: 12,
+  top: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  recordTitle: { ...typography.button, color: colors.heading },
-  recordChevron: { fontSize: 24, color: colors.muted },
-  monthHeader: {
-    flexDirection: 'row',
-    width: '100%',
-    maxWidth: 360,
-    alignItems: 'center',
-  },
-  monthButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrow: { width: 7, height: 14 },
-  nextArrow: { transform: [{ scaleX: -1 }] },
-  monthTitle: { flex: 1, alignItems: 'center' },
-  month: {
-    ...typography.section,
-    fontSize: 22,
-    lineHeight: 28,
-    color: colors.text,
-  },
-  calendarToolbar: {
-    width: '100%',
-    maxWidth: 360,
-    flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 12,
-    marginTop: 6,
-    marginBottom: 6,
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
   },
-  calendarCaption: { ...typography.caption, fontSize: 13, color: colors.muted },
-  todayButton: {
-    minWidth: 52,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayLabel: { ...typography.label, fontSize: 14, color: colors.primary },
-  calendar: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 16,
-  },
-  weekdays: { flexDirection: 'row', marginTop: 2, marginBottom: 4 },
-  weekday: {
-    flex: 1,
-    ...typography.caption,
-    lineHeight: 16,
-    textAlign: 'center',
-    color: colors.muted,
-  },
-  weekend: { color: colors.primary },
-  weeks: { marginTop: 8, gap: 2 },
-  week: { flexDirection: 'row' },
-  day: {
-    flex: 1,
-    minHeight: 48,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayText: {
-    ...typography.label,
-    fontSize: 15,
-    lineHeight: 20,
-    color: colors.text,
-  },
-  outsideDay: { color: colors.muted },
-  todayDay: { borderColor: colors.primary },
-  selectedDay: { backgroundColor: colors.primary, borderColor: colors.primary },
-  selectedDayText: { color: colors.surface },
-  diaryDot: {
-    position: 'absolute',
-    bottom: 5,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-  },
-  selectedDiaryDot: { backgroundColor: colors.surface },
-  legendDot: { color: colors.primary },
-  diaryLegend: {
-    marginTop: 10,
-    ...typography.caption,
-    lineHeight: 16,
-    color: colors.muted,
-  },
-  retryButton: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  retryLabel: { ...typography.label, fontSize: 14, color: colors.primary },
-  actions: {
-    width: '100%',
-    maxWidth: 360,
-    alignItems: 'center',
-    padding: 14,
-    marginTop: 12,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-  },
-  selectionEyebrow: {
-    ...typography.caption,
-    lineHeight: 16,
-    color: colors.primary,
-  },
-  selectionDate: {
+  title: {
     ...typography.section,
-    fontSize: 18,
-    lineHeight: 24,
-    color: colors.text,
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 24,
+    lineHeight: 32,
+    color: colors.heading,
   },
-  selectionHint: {
+  switch: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    backgroundColor: colors.border,
+    borderRadius: 12,
+  },
+  switchTarget: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  switchFace: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  switchSelected: { backgroundColor: colors.surface },
+  switchText: { ...typography.label, color: colors.muted },
+  switchActive: { color: colors.primary, fontWeight: '600' },
+  selection: {
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  selectionDate: { ...typography.button, color: colors.heading },
+  count: { ...typography.caption, color: colors.muted },
+  cardWrap: { paddingHorizontal: 10 },
+  message: { paddingHorizontal: 10, paddingVertical: 12, gap: 10 },
+  body: { ...typography.body, color: colors.heading },
+  meta: { ...typography.caption, color: colors.muted },
+  error: { ...typography.caption, color: colors.danger },
+  notice: {
     ...typography.caption,
-    lineHeight: 18,
-    color: colors.muted,
-    marginTop: 6,
-    marginBottom: 14,
-    textAlign: 'center',
+    color: colors.primary,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
   },
-  generateButton: {
-    width: '100%',
-    maxWidth: 320,
+  create: {
     minHeight: 48,
     borderRadius: 14,
-    ...buttonSurface('secondary'),
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  generatePressed: { ...buttonSurface('secondary', false, true) },
-  generateLabel: {
-    ...typography.button,
-    fontSize: 16,
-    lineHeight: 22,
-    ...buttonLabel('secondary'),
-    textAlign: 'center',
-  },
-  notice: {
-    marginBottom: 12,
-    ...typography.label,
-    lineHeight: 20,
-    color: colors.primary,
-    textAlign: 'center',
-  },
-  pressed: { backgroundColor: colors.surface },
+  createLabel: { ...typography.button, color: colors.onTint },
+  pressed: { backgroundColor: colors.secondaryPressed },
 });
