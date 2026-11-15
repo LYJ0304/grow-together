@@ -22,6 +22,21 @@ EXPO_PUBLIC_API_URL=http://192.168.1.10:8080 npm start
 
 Replace the example IP with the computer's LAN address.
 
+## Vercel 정적 Web 경로
+
+`app.json`의 `expo.web.output`은 `static`이며 export는 경로별 HTML을 생성한다.
+앱 루트의 `vercel.json`은 `cleanUrls: true`로 `/children` → `children.html`처럼
+확장자 없는 경로를 처리한다. 모든 경로를 `index.html`로 보내는 SPA fallback은 사용하지 않는다.
+환경변수, 빌드 명령, 출력 디렉터리와 네이티브 라우팅 설정은 변경하지 않는다.
+
+이 설정 파일은 Vercel의 기존 Root Directory가 `apps/mobile`일 때 읽힌다.
+실제 대시보드의 Root Directory와 배포 산출물을 확인해야 하며, 저장소 루트에서 빌드하는
+프로젝트라면 기존 Root Directory를 바꾸지 말고 그 위치에서 설정을 읽도록 맞춘다.
+배포 후 `/`, `/children`, `/login`, `/diary?id=<실제 일기 ID>`에 직접 접근하고
+새로고침해 서버 404가 없는지 확인한다. 로그인하지 않은 보호 화면의 로그인 이동은 정상이다.
+현재 `[id]` 동적 경로는 없고 상세 ID는 query parameter로 전달한다. 존재하지 않는 경로나
+누락된 JS 자산까지 HTML로 응답하도록 바꾸지 않는다.
+
 ## Authentication settings
 
 `EXPO_PUBLIC_APP_ENV` selects `development` (default), `staging`, or
