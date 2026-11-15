@@ -73,3 +73,41 @@ for (let year = 2024; year <= 2032; year++) {
 console.log(
   `PASS: minimal 4/5/6-week grids, leap years, year boundaries, local dates/DST (${process.env.TZ ?? 'system timezone'})`,
 );
+
+const { getWeek, shiftCalendarDate } = module.exports;
+for (const key of [
+  '2026-11-14',
+  '2026-12-31',
+  '2028-02-29',
+  '2026-03-08',
+  '2026-11-01',
+]) {
+  const date = new Date(`${key}T12:00:00`);
+  const original = date.getTime();
+  const week = getWeek(date, 1);
+  assert.equal(week.length, 7);
+  assert.equal(week[0].getDay(), 1);
+  assert.equal(week[6].getDay(), 0);
+  assert(
+    week.some(
+      (day) =>
+        day.getDate() === date.getDate() && day.getMonth() === date.getMonth(),
+    ),
+  );
+  assert.equal(shiftCalendarDate(date, 7).getDay(), date.getDay());
+  assert.equal(shiftCalendarDate(date, -7).getDay(), date.getDay());
+  assert.equal(date.getTime(), original);
+  const mondayGrid = calendarDays(
+    new Date(date.getFullYear(), date.getMonth(), 1),
+    1,
+  );
+  assert.equal(mondayGrid[0].getDay(), 1);
+}
+assert.equal(
+  getWeek(new Date(2026, 10, 14))[0].getDay(),
+  0,
+  'Existing todo week stays Sunday-first',
+);
+console.log(
+  'PASS shared week/month helpers: Monday/Sunday starts, week navigation, month/year/leap/DST boundaries',
+);

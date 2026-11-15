@@ -127,7 +127,9 @@ Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://loc
 
 ## 홈·일기 UI 검증
 
-홈은 날짜 → 질문 입력 진입점 → 아이 이름·월령 또는 아이 등록 → 다음 활동 → 일정 요약 → 기록 순서다. 일정과 아이 정보는 기존 API를 사용하며, 미리보기에서는 보호된 API를 호출하지 않는다. 네 메뉴는 오늘·일정·기록·질문이며 아이 프로필과 앱 설정은 주요 화면의 공통 상단에서 별도 버튼으로 연다. 상단은 스크롤 영역 밖에 둔다. 홈의 입력창 모양 질문 버튼은 실제 입력 필드가 아니며, 누르면 `/chat`의 입력창으로 이동한다. 질문 초안을 공유하고 자동 전송하지 않으며, 하단 질문 탭은 시안 비교를 위해 유지한다. 날짜와 초안은 로그인 세션 안에서 보존한다.
+홈은 프로필·설정 → 월 헤더와 월요일 시작 주간 캘린더 → 선택 날짜와 아이 정보 → 통합 통계 → 활동 목록·진행률 → 작은 일기 CTA → 질문 진입점 순서다. 월간 날짜 선택은 기록 화면 이동 대신 홈 안의 모달에서 수행하며, 선택 날짜는 기존 MainScreen 상태와 Todo/Diary query key를 공유한다. 주간 화살표와 가로 스와이프는 선택 요일을 유지해 7일씩 이동하고, 세로 스크롤은 캘린더 제스처가 가로채지 않는다. 일정 화면은 기존 일요일 시작 주간을 유지하며 날짜 계산 유틸리티만 공유한다.
+
+미래 날짜도 활동 계획용으로 탐색한다. 미래에는 일기 CTA가 활동 추가로 연결되고 빠른 추가의 일기 메뉴는 비활성화된다. 기존 헤더의 미래 이동 차단 외에 DiaryCreateRequest에는 과거/오늘 제한이 없으나, 홈에서는 요청한 기록/계획 UX 정책을 적용하며 API 계약은 변경하지 않는다. 자정과 포그라운드 복귀의 today 갱신은 유지하고 명시적으로 고른 과거 날짜는 초기화하지 않는다. 일정 저장 성공 후에만 완료 상태·진행률·반응 모달이 갱신되며 pending 중 날짜 전환은 잠긴다. 기존 하단 탭·FAB·질문 초안은 유지한다.
 
 홈과 일기는 `src/components/typography.ts`의 역할별 스타일을 공유한다. 짧은 제목은 Jua, 본문·입력·버튼은 플랫폼 시스템 글꼴이다. 본문 읽기와 수정은 같은 16px/27px 규칙을 사용한다.
 
@@ -137,6 +139,8 @@ Expo web export를 제공하는 서버를 준비한 뒤 `CHILDREN_URL=http://loc
 MAIN_URL=http://localhost:8156 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:main:ui
 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:diary:typography
 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:ux
+MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run test:main:dashboard
+MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/chromium node tests/header-tools-ui.mjs
 ```
 
 홈 검사는 프로필·월령·미등록·오류·재시도·자정·복귀·다음 활동과 반응형을 확인한다. 일기 검사는 완료 재료 선택·직접 작성·초안/편집본 보존·저장 실패·수정/삭제·타이포그래피를 확인한다. API 응답은 가로채므로 실서버 연결을 증명하지 않으며 네이티브 키보드·사진 권한·OS 글씨 확대는 기기에서 별도로 확인한다.

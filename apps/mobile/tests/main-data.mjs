@@ -62,10 +62,17 @@ try {
   await text('일정을 불러오고 있어요.').waitFor();
   hold = undefined;
   release();
-  await text('완료 1개 / 전체 2개').waitFor();
+  await page.getByRole('button', { name: '일정 2개', exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByTestId('home-summary')
+      .getByText('1', { exact: true })
+      .count(),
+    1,
+  );
   await text('09:00 · 시간이 지난 미완료 일정').waitFor();
   await page
-    .getByRole('heading', { name: '오늘의 일정', exact: true })
+    .getByRole('heading', { name: '오늘의 활동', exact: true })
     .waitFor();
   const progress = page.getByRole('progressbar', { name: '오늘 일정 완료율' });
   assert.equal(await progress.getAttribute('aria-valuenow'), '50');
@@ -92,7 +99,7 @@ try {
   await text('일정을 불러오지 못했어요.').waitFor();
   assert.equal(
     await page
-      .getByRole('button', { name: '일정 만들기', exact: true })
+      .getByRole('button', { name: '+ 활동 추가하기', exact: true })
       .count(),
     0,
     'Failure is not empty',
@@ -101,7 +108,7 @@ try {
   empty = true;
   await click('일정 다시 불러오기');
   await page
-    .getByRole('button', { name: '일정 만들기', exact: true })
+    .getByRole('button', { name: '+ 활동 추가하기', exact: true })
     .waitFor();
   // The date heading can render before the query's request effect runs.
   const midnightRead = page.waitForResponse(
@@ -110,7 +117,7 @@ try {
   );
   await page.clock.fastForward(601000);
   await midnightRead;
-  await text('2026년 11월 1일 일요일').waitFor();
+  await text('11월 1일 일요일').waitFor();
   assert.equal(reads.at(-1), '2026-11-01');
   const foregroundRead = page.waitForResponse(
     (response) =>
@@ -118,7 +125,7 @@ try {
   );
   await page.clock.setSystemTime(new Date('2026-11-02T12:00:00+09:00'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await text('2026년 11월 2일 월요일').waitFor();
+  await text('11월 2일 월요일').waitFor();
   await foregroundRead;
   assert.equal(reads.at(-1), '2026-11-02');
   console.log(

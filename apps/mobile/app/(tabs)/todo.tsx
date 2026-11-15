@@ -1,3 +1,4 @@
+import { getWeek } from '../../src/lib/calendar';
 import {
   TodoReactionModal,
   childReactionLabels,
@@ -45,16 +46,6 @@ const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
 function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function getWeek(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  start.setDate(start.getDate() - start.getDay());
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + index);
-    return day;
-  });
 }
 
 export default function TodoScreen() {
