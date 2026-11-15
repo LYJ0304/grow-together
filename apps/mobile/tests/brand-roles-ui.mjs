@@ -109,7 +109,10 @@ try {
   );
   await home.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
   await home.goto(base + '/main');
-  const make = home.getByRole('button', { name: '일정 만들기', exact: true });
+  const make = home.getByRole('button', {
+    name: '+ 활동 추가하기',
+    exact: true,
+  });
   await make.waitFor();
   const secondary = await buttonColors(make);
   assert.equal(secondary.bg, rgb(colors.primary));
@@ -256,7 +259,9 @@ try {
       !document.querySelector('[aria-label="선택한 날짜의 일기 작성하기"]')
         ?.disabled,
   );
-  assert.equal((await buttonColors(writeDiary)).bg, rgb(colors.primary));
+  const calendarWrite = await buttonColors(writeDiary);
+  assert.equal(calendarWrite.bg, rgb(colors.tint));
+  assert(ratio(calendarWrite.bg, calendarWrite.fg) >= 4.5);
   await page.screenshot({ path: `${artifacts}/calendar.png` });
   await writeDiary.click();
   await page

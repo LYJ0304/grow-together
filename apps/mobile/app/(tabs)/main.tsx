@@ -24,7 +24,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { HomeDayHeader } from '../../src/components/home-day-header';
-import { HomeMoments } from '../../src/components/home-moments';
 import { createDiaryApi } from '../../src/lib/features/diary/diaryApi';
 import { ApiError } from '../../src/lib/api/errors';
 import { ActionButton } from '../../src/components/action-button';
@@ -178,6 +177,9 @@ export default function MainScreen() {
   const viewAll = () =>
     router.navigate({ pathname: '/todo', params: { date } });
   const hasDiary = diary.data?.id != null;
+  const future = date > today;
+  const addSchedule = () =>
+    router.navigate({ pathname: '/todo', params: { date, add: 'true' } });
   const diaryLabel =
     status === 'preview'
       ? '일기 미리보기'
@@ -186,7 +188,11 @@ export default function MainScreen() {
         : diary.isPending
           ? '일기 확인 중'
           : `일기 ${hasDiary ? 1 : 0}개`;
-  const openDiary = () =>
+  const openDiary = () => {
+    if (future) {
+      addSchedule();
+      return;
+    }
     router.navigate({
       pathname: '/diary',
       params: {
@@ -194,6 +200,19 @@ export default function MainScreen() {
         ...(hasDiary ? { id: String(diary.data!.id), mode: 'view' } : {}),
       },
     });
+  };
+  const diaryBusy = !future && status === 'authenticated' && diary.isPending;
+  const diaryCta = future
+    ? '이날의 활동 계획하기'
+    : status === 'authenticated' && diary.isError
+      ? '일기를 다시 불러오기'
+      : status === 'authenticated' && diary.isPending
+        ? '일기를 확인하고 있어요.'
+        : hasDiary
+          ? '이날의 기록 보기'
+          : date === today
+            ? '오늘의 순간 기록하기'
+            : '이날의 추억 기록하기';
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
@@ -259,7 +278,7 @@ export default function MainScreen() {
               </View>
             )}
           </View>
-          <View style={styles.summaryRow}>
+          <View testID="home-summary" style={styles.summaryRow}>
             {[
               {
                 label: '계획한 활동',
@@ -300,72 +319,30 @@ export default function MainScreen() {
                   diary.isError ? void diary.refetch() : openDiary(),
                 name: diaryLabel,
               },
-            ].map((metric) => (
+            ].map((metric, index) => (
               <MotionPressable
                 key={metric.label}
                 accessibilityRole="button"
                 accessibilityLabel={metric.name}
                 onPress={metric.onPress}
-                style={styles.metric}
+                style={[styles.metric, index > 0 && styles.metricDivider]}
               >
                 <Text style={styles.metricValue}>{metric.value}</Text>
                 <Text style={styles.metricLabel}>{metric.label}</Text>
               </MotionPressable>
             ))}
           </View>
-          <View style={editorial.hero}>
-            <Text style={editorial.eyebrow}>OUR DAILY MOMENT</Text>
-            <Text accessibilityRole="header" style={styles.heroTitle}>
-              하루의 작은 순간을{'\n'}함께 기록해요.
-            </Text>
-            <Text style={editorial.description}>
-              함께한 활동과 기억하고 싶은 마음을 남겨주세요.
-            </Text>
-            <MotionPressable
-              accessibilityRole="button"
-              onPress={openDiary}
-              style={styles.journalLink}
-            >
-              <Text style={styles.journalLinkText}>
-                {hasDiary ? '선택한 날 일기 보기' : '선택한 날 일기 남기기'} ›
-              </Text>
-            </MotionPressable>
-          </View>
-          <HomeMoments
-            diaryText={
-              status === 'preview'
-                ? '기록에서 확인'
-                : diary.isError
-                  ? '불러오기 실패'
-                  : diary.isPending
-                    ? '확인 중'
-                    : `일기 ${hasDiary ? 1 : 0}개 · 사진 ${diary.data?.diaryFiles?.length ?? 0}장`
-            }
-            activitiesText={
-              status === 'preview'
-                ? '일정에서 확인'
-                : todos.isError
-                  ? '불러오기 실패'
-                  : todos.isPending
-                    ? '확인 중'
-                    : `${completed}개`
-            }
-            onDiaryPress={() =>
-              diary.isError ? void diary.refetch() : openDiary()
-            }
-            onActivitiesPress={viewAll}
-          />
           <View style={styles.schedule}>
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.title}>
-                {date === today ? '오늘의 일정' : '이날의 일정'}
+                {date === today ? '오늘의 활동' : '이날의 활동'}
               </Text>
               <MotionPressable
                 accessibilityRole="button"
                 onPress={viewAll}
                 style={styles.link}
               >
-                <Text style={styles.linkText}>전체 일정 보기</Text>
+                <Text style={styles.linkText}>전체 보기</Text>
               </MotionPressable>
             </View>
             {status === 'preview' ? (
@@ -390,9 +367,6 @@ export default function MainScreen() {
               </View>
             ) : (
               <>
-                <Text style={styles.meta}>
-                  완료 {completed}개 / 전체 {schedules.length}개
-                </Text>
                 <ScheduleProgress
                   progress={progress}
                   accessibilityLabel={
@@ -403,10 +377,13 @@ export default function MainScreen() {
                 />
                 {schedules.length === 0 ? (
                   <View style={styles.empty}>
-                    <Text style={styles.body}>등록된 일정이 없어요.</Text>
+                    <Text style={styles.body}>아직 계획된 활동이 없어요</Text>
+                    <Text style={styles.meta}>
+                      아이와 함께할 작은 활동을 찾아보세요.
+                    </Text>
                     <ActionButton
                       motionEnabled
-                      label="일정 만들기"
+                      label="+ 활동 추가하기"
                       variant="primary"
                       onPress={() =>
                         router.navigate({
@@ -431,7 +408,9 @@ export default function MainScreen() {
                         todo={todo}
                         index={index}
                         entrance={!hasShownSchedules}
-                        now={date < today ? '23:59:59' : now}
+                        now={
+                          date < today ? '23:59:59' : future ? '00:00:00' : now
+                        }
                         pendingId={pendingId}
                         onToggle={() => void toggle(todo)}
                         onReaction={() => setReactionTodo(todo)}
@@ -458,13 +437,41 @@ export default function MainScreen() {
               </View>
             ) : null}
           </View>
+          <MotionPressable
+            accessibilityRole="button"
+            accessibilityLabel={diaryCta}
+            disabled={diaryBusy}
+            accessibilityState={{
+              disabled: diaryBusy,
+            }}
+            onPress={() =>
+              !future && diary.isError ? void diary.refetch() : openDiary()
+            }
+            style={[styles.diaryCta, diaryBusy && styles.disabledSurface]}
+          >
+            <Text
+              style={[styles.journalLinkText, diaryBusy && styles.disabledText]}
+            >
+              {diaryCta}
+            </Text>
+            <Text
+              accessible={false}
+              style={[styles.journalLinkText, diaryBusy && styles.disabledText]}
+            >
+              ›
+            </Text>
+          </MotionPressable>
           <HomeQuestionEntry currentDay={date === today} />
         </ScrollView>
       </KeyboardAvoidingView>
       <MotionPressable
         accessibilityRole="button"
         accessibilityLabel={
-          hasDiary ? '선택한 날 일기 열기' : '선택한 날 일기 작성하기'
+          future
+            ? '선택한 날 활동 추가하기'
+            : hasDiary
+              ? '선택한 날 일기 열기'
+              : '선택한 날 일기 작성하기'
         }
         ref={quickButton}
         onPress={() => setQuickOpen(true)}
@@ -480,6 +487,7 @@ export default function MainScreen() {
       {quickOpen ? (
         <HomeQuickAdd
           authenticated={status === 'authenticated'}
+          allowDiary={!future}
           onClose={() => {
             setQuickOpen(false);
             requestAnimationFrame(() => quickButton.current?.focus());
@@ -526,35 +534,54 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     // End-of-scroll clearance, without shrinking the scrolling viewport.
     paddingBottom: QUICK_ADD_SIZE + QUICK_ADD_BOTTOM + 24,
-    gap: 20,
+    gap: 16,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
   },
   metric: {
-    ...editorial.card,
     flex: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 14,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
     alignItems: 'center',
-    gap: 4,
-    minHeight: 80,
+    justifyContent: 'center',
+    gap: 2,
+    minHeight: 78,
   },
-  metricValue: { ...editorial.title, fontSize: 24, lineHeight: 30 },
+  metricDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+  metricValue: { ...editorial.title, fontSize: 22, lineHeight: 28 },
   metricLabel: {
     ...typography.caption,
     fontSize: 11,
     color: colors.muted,
     textAlign: 'center',
   },
-  heroTitle: { ...editorial.section, fontSize: 23, lineHeight: 34 },
-  journalLink: { minHeight: 44, justifyContent: 'center' },
+  diaryCta: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: colors.tint,
+  },
+  disabledSurface: { backgroundColor: colors.disabled },
+  disabledText: { color: colors.muted },
   journalLinkText: {
     ...typography.label,
     color: colors.onTint,
     fontWeight: '700',
   },
-  summaryRow: { flexDirection: 'row', gap: 10 },
+  summaryRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   fab: {
     position: 'absolute',
     bottom: QUICK_ADD_BOTTOM,

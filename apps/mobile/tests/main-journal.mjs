@@ -50,18 +50,23 @@ await page.route('**/api/v1/diary**', (r) =>
 );
 try {
   await page.goto(base + '/main');
-  await page.getByRole('heading', { name: '오늘', exact: true }).waitFor();
+  await page
+    .getByRole('heading', { name: '2026년 11월', exact: true })
+    .waitFor();
   await page.getByRole('button', { name: '일기 0개', exact: true }).waitFor();
-  assert(
+  assert.equal(
     await page
-      .getByRole('button', { name: '다음 날', exact: true })
+      .getByRole('button', { name: '다음 주', exact: true })
       .isDisabled(),
+    false,
   );
   assert.equal(
     await page.getByRole('textbox', { name: '홈 질문 입력' }).count(),
     0,
   );
-  await page.getByRole('button', { name: '이전 날', exact: true }).click();
+  await page
+    .getByRole('button', { name: '2026년 11월 11일', exact: true })
+    .click();
   await page.getByRole('button', { name: '일기 1개', exact: true }).waitFor();
   assert.equal(
     await page
@@ -77,10 +82,7 @@ try {
     1,
   );
   await page
-    .getByRole('button', {
-      name: '일기와 사진, 일기 1개 · 사진 1장',
-      exact: true,
-    })
+    .getByRole('button', { name: '이날의 기록 보기', exact: true })
     .waitFor();
   await page
     .getByRole('button', { name: '선택한 날 일기 열기', exact: true })
@@ -91,7 +93,9 @@ try {
   await page.waitForURL('**/diary?**');
   assert.equal(new URL(page.url()).searchParams.get('id'), '8');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
-  await page.getByRole('button', { name: '다음 날', exact: true }).click();
+  await page
+    .getByRole('button', { name: '오늘로 돌아가기', exact: true })
+    .click();
   await page.getByRole('button', { name: '일기 0개', exact: true }).waitFor();
   for (const [width, height] of [
     [320, 700],
@@ -149,8 +153,12 @@ try {
   );
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   failDiary = true;
-  await page.getByRole('button', { name: '이전 날', exact: true }).click();
-  await page.getByRole('button', { name: '이전 날', exact: true }).click();
+  await page
+    .getByRole('button', { name: '2026년 11월 11일', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: '2026년 11월 10일', exact: true })
+    .click();
   await page
     .getByRole('button', { name: '일기 다시 확인', exact: true })
     .waitFor();

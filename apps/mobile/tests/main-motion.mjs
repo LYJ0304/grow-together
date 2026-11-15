@@ -125,6 +125,13 @@ try {
     true,
     'Pending control must be disabled',
   );
+  for (const name of ['이전 주', '다음 주', '날짜 선택'])
+    assert(await page.getByRole('button', { name, exact: true }).isDisabled());
+  for (const day of await page
+    .getByTestId('home-week-calendar')
+    .getByRole('button')
+    .all())
+    assert(await day.isDisabled());
   assert.equal(
     await check.getAttribute('aria-checked'),
     'false',
@@ -138,7 +145,12 @@ try {
     window.homeMotionFrames = [];
   });
   release();
-  await page.getByText('완료 1개 / 전체 1개', { exact: true }).waitFor();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[role=progressbar]')
+        ?.getAttribute('aria-valuenow') === '100',
+  );
   await page.getByRole('button', { name: '나중에', exact: true }).click();
   assert.equal(
     await page.getByRole('progressbar').getAttribute('aria-valuenow'),

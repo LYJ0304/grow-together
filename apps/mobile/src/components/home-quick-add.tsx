@@ -16,12 +16,14 @@ import { useReduceMotion } from '../theme/motion';
 
 export function HomeQuickAdd({
   authenticated,
+  allowDiary = true,
   onClose,
   onDiary,
   onSchedule,
   onRecommend,
 }: {
   authenticated: boolean;
+  allowDiary?: boolean;
   onClose: () => void;
   onDiary: () => void;
   onSchedule: () => void;
@@ -49,15 +51,21 @@ export function HomeQuickAdd({
           keyboardShouldPersistTaps="handled"
         >
           <View accessible={false} style={styles.handle} />
-          <Text style={editorial.eyebrow}>하루의 기록</Text>
+          <Text style={editorial.eyebrow}>
+            {allowDiary ? '하루의 기록' : '하루의 계획'}
+          </Text>
           <Text accessibilityRole="header" style={editorial.section}>
-            무엇을 남길까요?
+            {allowDiary ? '무엇을 남길까요?' : '어떤 활동을 계획할까요?'}
           </Text>
           <Text style={editorial.description}>
             지금 하고 싶은 일을 골라주세요.
           </Text>
           {[
-            { label: '하루의 순간 기록하기', action: onDiary, disabled: false },
+            {
+              label: '하루의 순간 기록하기',
+              action: onDiary,
+              disabled: !allowDiary,
+            },
             {
               label: '일정 직접 추가하기',
               action: onSchedule,
@@ -88,6 +96,11 @@ export function HomeQuickAdd({
               </Text>
             </MotionPressable>
           ))}
+          {!allowDiary ? (
+            <Text style={editorial.description}>
+              미래 날짜는 함께할 활동을 먼저 계획해보세요.
+            </Text>
+          ) : null}
           {!authenticated ? (
             <Text style={editorial.description}>
               일정 추가와 AI 활동 추천은 로그인 후 이용할 수 있어요.

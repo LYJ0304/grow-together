@@ -55,7 +55,7 @@ try {
     );
     assert.equal(await profile().count(), 1);
     assert.equal(await settings().count(), 1);
-    for (const name of ['이전 날', '다음 날']) {
+    for (const name of ['이전 주', '다음 주']) {
       const alignment = await page
         .getByRole('button', { name, exact: true })
         .evaluate((button) => {
@@ -104,12 +104,13 @@ try {
     );
   }
   await page.goto(`${base}/main`);
-  await page.getByRole('button', { name: '이전 날', exact: true }).click();
-  await page.getByRole('button', { name: '다음 날', exact: true }).click();
-  assert(
+  await page.getByRole('button', { name: '이전 주', exact: true }).click();
+  await page.getByRole('button', { name: '다음 주', exact: true }).click();
+  assert.equal(
     await page
-      .getByRole('button', { name: '다음 날', exact: true })
+      .getByRole('button', { name: '다음 주', exact: true })
       .isDisabled(),
+    false,
   );
   await profile().click();
   await page.waitForURL('**/children');
