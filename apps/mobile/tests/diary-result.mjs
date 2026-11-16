@@ -86,6 +86,9 @@ try {
     `${process.env.MOBILE_URL ?? 'http://localhost:8156'}/diary?date=${date}`,
     { waitUntil: 'commit', timeout: 120000 },
   );
+  await page
+    .getByRole('button', { name: '함께한 활동 선택', exact: true })
+    .click();
   await page.getByRole('checkbox', { name: /완료한 책 읽기/ }).waitFor();
   assert.equal(
     await page.getByRole('checkbox', { name: /아직 안 한 산책/ }).count(),
@@ -93,20 +96,15 @@ try {
   );
   await page.getByRole('checkbox', { name: /완료한 책 읽기/ }).click();
   await page
-    .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+    .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('책장을 보며 웃었어요');
   await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
-    .click();
-  await page
-    .getByRole('textbox', { name: '일기 본문 수정', exact: true })
+    .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('내가 다듬은 오늘의 기록');
   await page.getByRole('tab', { name: '질문', exact: true }).click();
   await page.getByRole('tab', { name: '기록', exact: true }).click();
   // A mounted records stack resumes its editor immediately after a tab round trip.
-  await page
-    .getByRole('textbox', { name: '일기 본문 수정', exact: true })
-    .waitFor();
+  await page.getByRole('textbox', { name: '일기 본문', exact: true }).waitFor();
   await page
     .getByRole('button', { name: '기록으로 돌아가기', exact: true })
     .click();
@@ -115,13 +113,13 @@ try {
     .click();
   assert.equal(
     await page
-      .getByRole('textbox', { name: '일기 본문 수정', exact: true })
+      .getByRole('textbox', { name: '일기 본문', exact: true })
       .inputValue(),
     '내가 다듬은 오늘의 기록',
   );
-  await page.getByRole('button', { name: '수정 완료', exact: true }).click();
+  await page.getByRole('button', { name: '문장 정리', exact: true }).click();
   await page
-    .getByRole('button', { name: '초안 다시 정리', exact: true })
+    .getByRole('button', { name: '입력한 기록으로 문장 정리', exact: true })
     .click();
   await page
     .getByRole('heading', {
@@ -130,12 +128,17 @@ try {
     })
     .waitFor();
   await page.getByRole('button', { name: '취소', exact: true }).click();
-  await page.getByText('내가 다듬은 오늘의 기록', { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole('textbox', { name: '일기 본문', exact: true })
+      .inputValue(),
+    '내가 다듬은 오늘의 기록',
+  );
   held = new Promise((resolve) => {
     release = resolve;
   });
   await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .click();
   await page.getByRole('button', { name: '저장 중…', exact: true }).waitFor();
   assert(
@@ -164,7 +167,7 @@ try {
   assert.deepEqual(last.todoIds, [1]);
   failure = false;
   await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .click();
   await page.waitForURL('**/calendar**');
   assert.equal(writes, 2);
@@ -216,7 +219,7 @@ try {
     .click();
   assert.equal(
     await page
-      .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+      .getByRole('textbox', { name: '일기 본문', exact: true })
       .inputValue(),
     '',
     'Saved/deleted draft does not reappear as a new draft',

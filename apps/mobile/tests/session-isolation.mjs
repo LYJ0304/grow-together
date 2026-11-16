@@ -12,7 +12,14 @@ const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
 page.setDefaultTimeout(15000);
 await page.addInitScript(authenticatedSessionFixture);
 await page.route('**/api/v1/children/me', (r) =>
-  r.fulfill({ status: 404, json: {} }),
+  r.fulfill({ json: { name: '하늘', birthday: '2024-01-01' } }),
+);
+await page.route('**/api/v1/diary**', (r) =>
+  r.fulfill(
+    new URL(r.request().url()).searchParams.has('month')
+      ? { json: [] }
+      : { status: 404, json: {} },
+  ),
 );
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 await page.route('**/api/v1/auth/logout', (r) => r.fulfill({ status: 204 }));
@@ -34,7 +41,7 @@ try {
     { timeout: 120000, waitUntil: 'commit' },
   );
   await page
-    .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+    .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('첫 계정의 비공개 관찰');
   await page.getByRole('tab', { name: '질문', exact: true }).click();
   await page

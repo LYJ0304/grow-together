@@ -91,31 +91,27 @@ try {
       });
     }
   }
-  await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
-    .click();
   const editor = page.getByRole('textbox', {
-    name: '일기 본문 수정',
+    name: '일기 본문',
     exact: true,
   });
   await editor.fill('긴 본문을 작성하고 있어요.\n'.repeat(80));
   await page.setViewportSize({ width: 320, height: 360 });
   await editor.focus();
   await page
-    .getByRole('button', { name: '수정 완료', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .scrollIntoViewIfNeeded();
   const done = await page
-    .getByRole('button', { name: '수정 완료', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .boundingBox();
   const nav = await page.getByRole('tablist').boundingBox();
   assert(done.y + done.height <= nav.y + 1);
-  await page.getByRole('button', { name: '수정 완료', exact: true }).click();
   await page.addStyleTag({
     content:
       '[dir="auto"] {font-size:24px !important; line-height:36px !important;}',
   });
   await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .scrollIntoViewIfNeeded();
   assert(
     await page.evaluate(
@@ -125,8 +121,9 @@ try {
   await page.screenshot({
     path: '/tmp/growtogether-156/large-text-long-diary.png',
   });
+  await page.getByRole('button', { name: '문장 정리', exact: true }).click();
   await page
-    .getByRole('button', { name: '초안 다시 정리', exact: true })
+    .getByRole('button', { name: '입력한 기록으로 문장 정리', exact: true })
     .click();
   for (const label of ['취소', '교체하고 다시 정리']) {
     const action = page.getByRole('button', { name: label, exact: true });

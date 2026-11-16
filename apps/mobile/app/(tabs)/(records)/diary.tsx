@@ -1,4 +1,3 @@
-import { PageIntro } from '../../../src/components/page-intro';
 import { editorial } from '../../../src/theme/editorial';
 import { colors } from '../../../src/theme/colors';
 import { useChatKeyboard } from '../../../src/lib/use-chat-keyboard';
@@ -23,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useAuth } from '../../../src/components/auth-provider';
 import { AppHeader } from '../../../src/components/app-header';
+import { DiaryPhotos } from '../../../src/components/diary/diary-photos';
 import { ActionButton } from '../../../src/components/action-button';
 import {
   DiaryResultView,
@@ -101,17 +101,16 @@ function DiaryEditor() {
       : dateLookup.data?.id;
   const viewing = params.mode === 'view' || !!params.id || !!id;
   const prefix = `diary:${dateKey}:${viewing ? (id ?? 'preview') : 'new'}:`;
-  const [step, setStep] = useSessionValue<'materials' | 'result'>(
-    prefix + 'step',
-    'materials',
-  );
+  const [bodyHeight, setBodyHeight] = useState(190);
+  const [activitiesOpen, setActivitiesOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [selected, setSelected] = useSessionValue<number[]>(
     prefix + 'selected',
     [],
   );
-  const [note, setNote] = useSessionValue(prefix + 'note', '');
+  const [note] = useSessionValue(prefix + 'note', '');
   const [photos, setPhotos] = useSessionValue<string[]>(prefix + 'photos', []);
-  const [draft, setDraft] = useSessionValue(prefix + 'body', '');
+  const [draft, setDraft] = useSessionValue(prefix + 'body', note);
   const [editing, setEditing] = useSessionValue<string | null>(
     prefix + 'editing',
     null,
@@ -119,10 +118,6 @@ function DiaryEditor() {
   const [source, setSource] = useSessionValue<DiarySourceRecords | undefined>(
     prefix + 'source',
     undefined,
-  );
-  const [sourceIds, setSourceIds] = useSessionValue<number[]>(
-    prefix + 'sourceIds',
-    [],
   );
   const [result, setResult] = useSessionValue<DiaryGenerationResult | null>(
     prefix + 'result',
@@ -205,12 +200,10 @@ function DiaryEditor() {
   const dirty =
     !saved &&
     (viewing
-      ? editing !== null && editing !== savedQuery.data?.content
-      : !!draft ||
-        !!editing ||
-        !!note ||
-        selected.length > 0 ||
-        photos.length > 0);
+      ? editing !== null &&
+        (editing !== savedQuery.data?.content ||
+          JSON.stringify(photos) !== JSON.stringify(savedQuery.data?.photoUris))
+      : !!draft || !!editing || selected.length > 0 || photos.length > 0);
   useEffect(() => setDirty(dirty), [dirty, setDirty]);
   useEffect(() => {
     if (!dirty || Platform.OS !== 'web') return;
@@ -228,17 +221,12 @@ function DiaryEditor() {
     });
   const makeSource = (): DiarySourceRecords => ({
     activities: materials.map((todo) => todo.planName),
-    note: note.trim(),
+    note: (viewing ? (editing ?? '') : draft).trim(),
     tags: [],
   });
-  const prepare = async (manual = false, replace = false) => {
+  const prepare = async (replace = false) => {
     if (pending.current) return;
-    if (
-      !manual &&
-      (draft.trim() || editing?.trim()) &&
-      (!result || draft !== result.content || editing !== null) &&
-      !replace
-    ) {
+    if ((draft.trim() || editing?.trim()) && !replace) {
       setConfirm('regenerate');
       return;
     }
@@ -246,19 +234,14 @@ function DiaryEditor() {
     setNotice('');
     const records = makeSource();
     try {
-      if (!manual) setGenerating(true);
-      const generated = manual
-        ? { content: draft, emotions: [], growthPoints: [] }
-        : await generateDiary(date, records);
+      setGenerating(true);
+      const generated = await generateDiary(date, records);
       if (!stillActive()) return;
       setSource(records);
-      setSourceIds(materials.map((todo) => todo.id));
-      if (!manual) {
-        setResult(generated);
-        setDraft(generated.content);
-        setEditing(null);
-      } else setEditing(draft);
-      setStep('result');
+
+      setResult(generated);
+      setDraft(generated.content);
+      setEditing(null);
     } catch (error) {
       if (stillActive())
         setNotice(
@@ -285,7 +268,7 @@ function DiaryEditor() {
     setNotice('');
     try {
       if (preview) {
-        if (viewing) await updateDiary(dateKey, content);
+        if (viewing) await updateDiary(dateKey, content, photos);
         else
           await saveDiary({
             date: dateKey,
@@ -299,18 +282,21 @@ function DiaryEditor() {
         // Keep image URLs and todo associations supplied by the server when editing the body.
         const original = await api.getDiary(id!);
         if (!stillActive()) return;
+        const existingUrls = new Set(
+          original.diaryFiles.map((file) => file.imageUrl),
+        );
         await api.updateDiary(id!, {
           content: content.trim(),
           todoIds: original.todos.map((todo) => todo.id),
-          diaryFiles: original.diaryFiles.map((file) => ({
-            imageUrl: file.imageUrl,
-          })),
+          diaryFiles: photos
+            .filter((uri) => existingUrls.has(uri))
+            .map((imageUrl) => ({ imageUrl })),
         });
       } else {
         await api.createDiary({
           diaryDate: dateKey,
           content: content.trim(),
-          todoIds: sourceIds,
+          todoIds: materials.map((todo) => todo.id),
           diaryFiles: [],
         });
       }
@@ -380,19 +366,31 @@ function DiaryEditor() {
     }
   };
   const pickPhotos = async () => {
-    if (preparing || pending.current) return;
+    if (preparing || pending.current || !preview || photos.length >= 3) return;
+    pending.current = true;
     setPreparing(true);
     setNotice('');
+    let selectedUris: string[] = [];
     try {
       const selection = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        selectionLimit: 3,
+        selectionLimit: 3 - photos.length,
         quality: 0.8,
       });
       if (selection.canceled) return;
+      selectedUris = selection.assets.map((asset) => asset.uri);
       const encoded: string[] = [];
       for (const asset of selection.assets.slice(0, 3)) {
+        if (
+          (asset.mimeType &&
+            !/^image\/(jpeg|jpg|png|webp|heic|heif)$/.test(asset.mimeType)) ||
+          (asset.fileSize ?? 0) > 10 * 1024 * 1024
+        ) {
+          throw new Error(
+            'JPEG, PNG, WebP, HEIC 형식의 10MB 이하 사진을 선택해주세요.',
+          );
+        }
         const context = ImageManipulator.manipulate(asset.uri);
         try {
           const scale = Math.min(1, 960 / Math.max(asset.width, asset.height));
@@ -414,14 +412,25 @@ function DiaryEditor() {
           }
         } finally {
           context.release();
-          if (Platform.OS === 'web') URL.revokeObjectURL(asset.uri);
         }
       }
-      if (stillActive()) setPhotos(encoded);
-    } catch {
+      if (stillActive()) {
+        const combined = [...new Set([...photos, ...encoded])];
+        setPhotos(combined.slice(0, 3));
+        if (combined.length > 3)
+          setNotice('사진은 최대 3장까지 첨부할 수 있어요.');
+      }
+    } catch (error) {
       if (stillActive())
-        setNotice('사진을 선택하지 못했어요. 다시 시도해주세요.');
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : '사진을 선택하지 못했어요. 다시 시도해주세요.',
+        );
     } finally {
+      pending.current = false;
+      if (Platform.OS === 'web')
+        selectedUris.forEach((uri) => URL.revokeObjectURL(uri));
       if (stillActive()) setPreparing(false);
     }
   };
@@ -454,26 +463,21 @@ function DiaryEditor() {
             disabled={busy || generating || preparing}
             onPress={back}
           />
-          <PageIntro
-            eyebrow="OUR DAILY JOURNAL"
-            title={viewing ? '소중한 하루의 기록' : '오늘의 이야기를 남겨요'}
-            description="함께한 활동, 메모와 사진을 모아 나만의 기록으로 남겨요."
-          />
           <Text style={styles.meta}>
-            {viewing && !params.date ? '날짜 정보 미지원' : dateKey} ·{' '}
-            {viewing
-              ? '저장된 일기'
-              : step === 'materials'
-                ? '1. 오늘의 재료 확인'
-                : '3. 수정하고 저장'}
+            {date.toLocaleDateString('ko-KR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long',
+            })}
           </Text>
           <Text accessibilityRole="header" style={styles.title}>
-            {viewing ? '육아 일기' : '오늘의 순간을 남겨요'}
+            {viewing ? '하루의 일기' : '오늘의 일기'}
           </Text>
           <Text style={styles.meta}>
             {preview
-              ? '미리보기 · 이 기기에만 저장돼요. 과거 소유자 미확인 기록은 별도로 보존돼 있어요.'
-              : '초안은 이 로그인 세션에서 유지돼요. 앱을 종료하면 저장하지 않은 내용은 사라져요.'}
+              ? '미리보기 · 이 기기에만 저장돼요.'
+              : '저장 전 내용은 이 로그인 세션에서 유지돼요.'}
           </Text>
           {!preview &&
           !params.id &&
@@ -519,209 +523,209 @@ function DiaryEditor() {
                 />
               ) : null}
             </View>
-          ) : generating ? (
-            <>
-              <Text style={styles.meta}>
-                2. 초안 만들기 · 입력한 기록 정리 중
-              </Text>
-              <DiaryGeneratingView />
-            </>
-          ) : !viewing && step === 'materials' ? (
-            <>
-              <View style={styles.card}>
-                <Text accessibilityRole="header" style={styles.section}>
-                  함께한 활동 선택
-                </Text>
-                {preview ? (
-                  <Text style={styles.body}>
-                    미리보기에서는 실제 활동을 불러오지 않아요. 관찰 메모로
-                    시작해보세요.
-                  </Text>
-                ) : todos.isPending ? (
-                  <Text style={styles.body}>활동을 불러오고 있어요.</Text>
-                ) : todos.isError ? (
-                  <>
-                    <Text accessibilityRole="alert" style={styles.body}>
-                      활동을 불러오지 못했어요. 메모만으로 직접 작성할 수도
-                      있어요.
-                    </Text>
-                    <ActionButton
-                      label="활동 다시 불러오기"
-                      variant="secondary"
-                      onPress={() => void todos.refetch()}
-                    />
-                  </>
-                ) : completed.length === 0 ? (
-                  <Text style={styles.body}>
-                    완료한 일정이 없어요. 메모만으로 작성해도 괜찮아요.
-                  </Text>
-                ) : (
-                  completed.map((todo) => (
-                    <Pressable
-                      key={todo.id}
-                      accessibilityRole="checkbox"
-                      accessibilityLabel={`${todo.scheduledTime.slice(0, 5)} ${todo.planName}`}
-                      accessibilityState={{
-                        checked: selected.includes(todo.id),
-                      }}
-                      onPress={() =>
-                        setSelected((current) =>
-                          current.includes(todo.id)
-                            ? current.filter((value) => value !== todo.id)
-                            : [...current, todo.id],
-                        )
-                      }
-                      style={styles.record}
-                    >
-                      <Text style={styles.body}>
-                        {selected.includes(todo.id) ? '☑' : '☐'}{' '}
-                        {todo.scheduledTime.slice(0, 5)} · {todo.planName}
-                      </Text>
-                      {todo.content ? (
-                        <Text style={styles.meta}>
-                          일정 메모: {todo.content}
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  ))
-                )}
-                <Text style={styles.meta}>
-                  선택한 완료 활동만 일기에 포함돼요. 일정 메모는 계획일 수도
-                  있으니 실제 관찰은 아래에 직접 적어주세요.
-                </Text>
-              </View>
-              <View style={styles.card}>
-                <Text accessibilityRole="header" style={styles.section}>
-                  관찰 메모 (선택)
-                </Text>
-                <TextInput
-                  selectionColor={colors.primary}
-                  accessibilityLabel="추가 관찰 메모"
-                  placeholder="함께한 상황과 아이의 반응을 적어주세요"
-                  placeholderTextColor={colors.muted}
-                  multiline
-                  maxLength={1000}
-                  value={note}
-                  onChangeText={setNote}
-                  style={styles.input}
-                  textAlignVertical="top"
-                />
-                <Text style={styles.meta}>
-                  아이의 반응과 보호자의 감정을 구분해 적어주세요.
-                </Text>
-                {preview ? (
-                  <>
-                    <ActionButton
-                      variant="tertiary"
-                      label={
-                        preparing
-                          ? '사진 준비 중…'
-                          : photos.length
-                            ? '첨부 사진 변경'
-                            : '사진 첨부'
-                      }
-                      disabled={preparing}
-                      onPress={() => void pickPhotos()}
-                    />
-                    {photos.length ? (
-                      <>
-                        <Text style={styles.meta}>
-                          사진 {photos.length}장 · 미리보기 기기 저장 전용
-                        </Text>
-                        <ActionButton
-                          label="첨부 사진 삭제"
-                          variant="tertiary"
-                          onPress={() => setPhotos([])}
-                        />
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <Text style={styles.meta}>
-                    사진 업로드와 활동별 반응 저장은 연결 준비 중이에요.
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.meta}>
-                2. 초안 만들기 · 실제 AI 연결 없이 선택한 활동과 메모를 문장으로
-                정리해요.
-              </Text>
-              <ActionButton
-                label="입력한 기록으로 초안 정리"
-                variant="primary"
-                disabled={preparing}
-                onPress={() => void prepare()}
-              />
-              <ActionButton
-                label="직접 작성하기"
-                variant="secondary"
-                disabled={preparing}
-                onPress={() => void prepare(true)}
-              />
-            </>
           ) : (
             <>
-              <DiaryResultView
-                result={{
-                  ...(result ?? { emotions: [], growthPoints: [] }),
-                  content: display,
-                }}
-                photos={viewing ? (savedQuery.data?.photoUris ?? []) : photos}
-                source={viewing ? savedQuery.data?.sourceRecords : source}
-                editingText={editing}
-                persisted={viewing}
-                busy={busy}
-                onChangeText={setEditing}
-                onEdit={() => setEditing(display)}
-                onCancel={() => setEditing(null)}
-                onComplete={() => {
-                  if (viewing) void persist();
-                  else if (editing?.trim()) {
-                    setDraft(editing.trim());
-                    setEditing(null);
-                  }
-                }}
+              {viewing && editing === null ? (
+                <DiaryResultView
+                  result={{
+                    ...(result ?? { emotions: [], growthPoints: [] }),
+                    content: display,
+                  }}
+                  source={savedQuery.data?.sourceRecords}
+                  busy={busy}
+                  onEdit={() => {
+                    setPhotos(savedQuery.data?.photoUris ?? []);
+                    setEditing(display);
+                  }}
+                />
+              ) : (
+                <View style={{ gap: 8 }}>
+                  <TextInput
+                    accessibilityLabel={
+                      viewing ? '일기 본문 수정' : '일기 본문'
+                    }
+                    placeholder="함께한 순간을 글과 사진으로 남겨요."
+                    placeholderTextColor={colors.muted}
+                    multiline
+                    editable={!busy && !generating && !preparing}
+                    value={viewing ? (editing ?? '') : draft}
+                    onChangeText={viewing ? setEditing : setDraft}
+                    textAlignVertical="top"
+                    selectionColor={colors.primary}
+                    onContentSizeChange={(event) =>
+                      setBodyHeight(event.nativeEvent.contentSize.height)
+                    }
+                    style={[
+                      styles.input,
+                      { height: Math.max(190, bodyHeight) },
+                    ]}
+                  />
+                  <Text style={styles.meta}>
+                    {(viewing ? (editing ?? '') : draft).length} /{' '}
+                    {preview ? '미리보기' : '1000자'}
+                  </Text>
+                </View>
+              )}
+              <DiaryPhotos
+                photos={
+                  viewing && editing === null
+                    ? (savedQuery.data?.photoUris ?? [])
+                    : photos
+                }
+                editable={!viewing || editing !== null}
+                canAdd={preview}
+                busy={busy || preparing || generating}
+                onAdd={() => void pickPhotos()}
+                onRemove={(index) =>
+                  setPhotos((current) => current.filter((_, i) => i !== index))
+                }
               />
-              {editing === null ? (
-                !viewing ? (
-                  <>
-                    <ActionButton
-                      variant="primary"
-                      label={busy ? '저장 중…' : '이 일기 저장하기'}
-                      disabled={busy || !draft.trim() || uncertain}
-                      onPress={() => void persist()}
-                    />
-                    {!preview ? (
+              {!viewing ? (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="함께한 활동 선택"
+                    accessibilityState={{ expanded: activitiesOpen }}
+                    onPress={() => setActivitiesOpen(!activitiesOpen)}
+                    style={styles.disclosure}
+                  >
+                    <Text style={styles.section}>함께한 활동</Text>
+                    <Text style={styles.meta}>
+                      {selected.length}개 선택 ·{' '}
+                      {activitiesOpen ? '접기' : '펼치기'}
+                    </Text>
+                  </Pressable>
+                  {activitiesOpen ? (
+                    <View style={{ gap: 10 }}>
+                      {preview ? (
+                        <Text style={styles.meta}>
+                          미리보기에서는 실제 활동을 불러오지 않아요. 본문만으로
+                          작성해도 괜찮아요.
+                        </Text>
+                      ) : todos.isPending ? (
+                        <Text style={styles.meta}>활동을 불러오고 있어요.</Text>
+                      ) : todos.isError ? (
+                        <>
+                          <Text accessibilityRole="alert" style={styles.error}>
+                            활동을 불러오지 못했어요. 본문은 계속 작성할 수
+                            있어요.
+                          </Text>
+                          <ActionButton
+                            label="활동 다시 불러오기"
+                            variant="secondary"
+                            onPress={() => void todos.refetch()}
+                          />
+                        </>
+                      ) : !completed.length ? (
+                        <Text style={styles.meta}>
+                          완료한 일정이 없어요. 본문만으로 작성해도 괜찮아요.
+                        </Text>
+                      ) : (
+                        completed.map((todo) => (
+                          <Pressable
+                            key={todo.id}
+                            accessibilityRole="checkbox"
+                            accessibilityLabel={`${todo.scheduledTime.slice(0, 5)} ${todo.planName}`}
+                            accessibilityState={{
+                              checked: selected.includes(todo.id),
+                            }}
+                            disabled={busy || generating}
+                            onPress={() =>
+                              setSelected((current) =>
+                                current.includes(todo.id)
+                                  ? current.filter((value) => value !== todo.id)
+                                  : [...current, todo.id],
+                              )
+                            }
+                            style={styles.record}
+                          >
+                            <Text style={styles.body}>
+                              {selected.includes(todo.id) ? '☑' : '☐'}{' '}
+                              {todo.scheduledTime.slice(0, 5)} · {todo.planName}
+                            </Text>
+                            {todo.content ? (
+                              <Text style={styles.meta}>
+                                일정 메모: {todo.content}
+                              </Text>
+                            ) : null}
+                          </Pressable>
+                        ))
+                      )}
                       <Text style={styles.meta}>
-                        본문과 선택한 활동을 서버에 저장해요. 날짜 정보·관찰
-                        메모 원본·초안 재료는 서버 일기 계약에 별도로 저장되지
-                        않아요.
+                        완료한 활동만 선택해요. 일정 메모는 계획일 수 있으니
+                        실제 관찰은 본문에 적어주세요.
                       </Text>
-                    ) : null}
+                    </View>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="문장 정리"
+                    accessibilityState={{ expanded: helpOpen }}
+                    onPress={() => setHelpOpen(!helpOpen)}
+                    style={styles.disclosure}
+                  >
+                    <Text style={styles.section}>글쓰기 도움</Text>
+                    <Text style={styles.meta}>
+                      {helpOpen ? '접기' : '문장 정리'}
+                    </Text>
+                  </Pressable>
+                  {helpOpen ? (
+                    <View style={{ gap: 10 }}>
+                      <Text style={styles.meta}>
+                        실제 AI 호출 없이 본문과 선택한 활동을 문장으로
+                        정리해요. 기존 본문을 바꾸기 전에 확인해요.
+                      </Text>
+                      <ActionButton
+                        label="입력한 기록으로 문장 정리"
+                        variant="secondary"
+                        disabled={busy || generating || preparing}
+                        onPress={() => void prepare()}
+                      />
+                    </View>
+                  ) : null}
+                  {generating ? <DiaryGeneratingView /> : null}
+                </>
+              ) : null}
+              {!viewing || editing !== null ? (
+                <>
+                  <ActionButton
+                    label={
+                      busy
+                        ? '저장 중…'
+                        : viewing
+                          ? '변경사항 저장'
+                          : '일기 저장하기'
+                    }
+                    variant="primary"
+                    disabled={
+                      busy ||
+                      generating ||
+                      preparing ||
+                      !(viewing ? editing : draft)?.trim() ||
+                      uncertain
+                    }
+                    onPress={() => void persist()}
+                  />
+                  {viewing ? (
                     <ActionButton
-                      label="재료 다시 확인"
+                      label="취소"
                       variant="tertiary"
                       disabled={busy}
-                      onPress={() => setStep('materials')}
+                      onPress={() => {
+                        setEditing(null);
+                        setPhotos([]);
+                      }}
                     />
-                    <ActionButton
-                      label="초안 다시 정리"
-                      variant="secondary"
-                      disabled={busy}
-                      onPress={() => void prepare()}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <ActionButton
-                      label="일기 삭제"
-                      variant="destructive"
-                      disabled={busy}
-                      onPress={() => setConfirm('delete')}
-                    />
-                  </>
-                )
-              ) : null}
+                  ) : null}
+                </>
+              ) : (
+                <ActionButton
+                  label="일기 삭제"
+                  variant="destructive"
+                  disabled={busy}
+                  onPress={() => setConfirm('delete')}
+                />
+              )}
             </>
           )}
           {conflict || uncertain ? (
@@ -827,7 +831,7 @@ function DiaryEditor() {
                   if (confirm === 'delete') void remove();
                   else {
                     setConfirm(null);
-                    void prepare(false, true);
+                    void prepare(true);
                   }
                 }}
               />
@@ -860,12 +864,21 @@ const styles = StyleSheet.create({
     outlineColor: colors.primary,
     ...typography.body,
     color: colors.text,
-    minHeight: 130,
+    minHeight: 190,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.controlBorder,
     borderRadius: 12,
     backgroundColor: colors.background,
+  },
+  disclosure: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   record: {
     minHeight: 48,

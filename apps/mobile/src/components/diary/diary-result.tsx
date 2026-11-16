@@ -10,17 +10,15 @@ import { typography } from '../typography';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import type {
   DiaryGenerationResult,
   DiarySourceRecords,
 } from '../../lib/diary-generation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export function DiaryGeneratingView() {
   return (
@@ -54,34 +52,19 @@ export function DiaryGeneratingView() {
 
 type Props = {
   result: DiaryGenerationResult;
-  photos: string[];
   source?: DiarySourceRecords;
-  editingText: string | null;
-  persisted?: boolean;
   busy?: boolean;
-  onChangeText: (text: string) => void;
   onEdit?: () => void;
-  onCancel: () => void;
-  onComplete: () => void;
 };
 
+// Saved-record reading only. The screen owns the single body/photo composer.
 export function DiaryResultView({
   result,
-  photos,
   source,
-  editingText,
-  persisted = false,
   busy = false,
-  onChangeText,
   onEdit,
-  onCancel,
-  onComplete,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [editorHeight, setEditorHeight] = useState<number>();
-  useEffect(() => {
-    if (editingText === null) setEditorHeight(undefined);
-  }, [editingText]);
   const hasInsights =
     result.growthPoints.length > 0 ||
     result.emotions.length > 0 ||
@@ -99,69 +82,15 @@ export function DiaryResultView({
           <Text accessibilityRole="header" style={[styles.title, styles.grow]}>
             오늘의 일기
           </Text>
-          {onEdit && editingText === null ? (
-            <Action label="내용 수정" onPress={onEdit} />
+          {onEdit ? (
+            <Action label="내용 수정" disabled={busy} onPress={onEdit} />
           ) : null}
         </View>
-        {editingText === null ? (
-          <Text style={styles.body} selectable>
-            {result.content}
-          </Text>
-        ) : (
-          <>
-            <TextInput
-              placeholderTextColor={colors.muted}
-              selectionColor={colors.primary}
-              accessibilityLabel="일기 본문 수정"
-              multiline
-              editable={!busy}
-              autoFocus
-              textAlignVertical="top"
-              scrollEnabled={false}
-              value={editingText}
-              onChangeText={onChangeText}
-              onContentSizeChange={({ nativeEvent }) =>
-                setEditorHeight(Math.ceil(nativeEvent.contentSize.height) + 2)
-              }
-              style={[
-                styles.body,
-                styles.editor,
-                editorHeight === undefined
-                  ? undefined
-                  : { height: editorHeight },
-              ]}
-            />
-            {!editingText.trim() ? (
-              <Text accessibilityLiveRegion="polite" style={styles.meta}>
-                일기 내용을 입력해주세요.
-              </Text>
-            ) : null}
-            <View style={styles.editActions}>
-              <Action label="취소" disabled={busy} onPress={onCancel} />
-              <Action
-                label={
-                  persisted
-                    ? busy
-                      ? '저장 중...'
-                      : '변경사항 저장'
-                    : '수정 완료'
-                }
-                disabled={busy || !editingText.trim()}
-                variant="primary"
-                onPress={onComplete}
-              />
-            </View>
-          </>
-        )}
-        {onEdit ? (
-          <Text style={styles.caption}>
-            {persisted
-              ? '저장된 일기의 본문을 수정할 수 있어요.'
-              : '기록을 엮은 초안 · 저장 전 자유롭게 다듬어주세요'}
-          </Text>
-        ) : null}
+        <Text style={styles.body} selectable>
+          {result.content}
+        </Text>
+        <Text style={styles.caption}>본문과 사진을 함께 수정할 수 있어요.</Text>
       </View>
-      <DiaryPhotoGallery photos={photos} />
       {hasInsights ? (
         <View style={styles.insights}>
           {result.growthPoints.length ? (
@@ -243,31 +172,6 @@ export function DiaryResultView({
   );
 }
 
-function DiaryPhotoGallery({ photos }: { photos: string[] }) {
-  if (!photos.length) return null;
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      accessibilityLabel="일기 사진 목록"
-      style={styles.gallery}
-      contentContainerStyle={styles.galleryContent}
-    >
-      {photos.slice(0, 3).map((uri, index) => (
-        <Image
-          key={index}
-          source={{ uri }}
-          contentFit="cover"
-          style={styles.photo}
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel={`일기 사진 ${index + 1}, 총 ${Math.min(3, photos.length)}장`}
-        />
-      ))}
-    </ScrollView>
-  );
-}
-
 function Action({
   label,
   onPress,
@@ -337,27 +241,6 @@ const styles = StyleSheet.create({
   actionText: {
     ...typography.button,
     color: colors.primary,
-  },
-  editor: {
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-  },
-  editActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  gallery: { flexGrow: 0, flexShrink: 0 },
-  galleryContent: { gap: 10 },
-  photo: {
-    width: 152,
-    height: 114,
-    borderRadius: 12,
-    backgroundColor: colors.border,
   },
   insights: { paddingHorizontal: 4 },
   section: {
