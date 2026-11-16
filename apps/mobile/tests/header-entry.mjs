@@ -19,16 +19,27 @@ await mkdir('/tmp/growtogether-header-entry', { recursive: true });
 try {
   await page.goto(`${base}/main`);
   await page
-    .getByRole('button', { name: '아이 프로필 열기', exact: true })
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: '아이 정보 관리', exact: true })
     .click();
   await page.waitForURL('**/children');
   await page
     .getByRole('button', { name: '이전 화면으로 돌아가기', exact: true })
     .click();
-  await page.waitForURL('**/main');
-  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
   await page.waitForURL('**/mypage');
-  await page.getByRole('heading', { name: '설정', exact: true }).waitFor();
+  await page
+    .getByRole('button', { name: '이전 화면으로', exact: true })
+    .click();
+  await page.waitForURL('**/main');
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
+  await page.waitForURL('**/mypage');
+  await page
+    .getByRole('heading', { name: '마이페이지', exact: true })
+    .waitFor();
   assert.equal(
     await page.getByRole('button', { name: '알림 설정', exact: true }).count(),
     0,
@@ -38,7 +49,10 @@ try {
   });
   for (const route of ['todo', 'calendar', 'chat']) {
     await page.goto(`${base}/${route}`);
-    const settings = page.getByRole('button', { name: '앱 설정', exact: true });
+    const settings = page.getByRole('button', {
+      name: '내 프로필 열기',
+      exact: true,
+    });
     await settings.waitFor();
     const before = await settings.boundingBox();
     await page

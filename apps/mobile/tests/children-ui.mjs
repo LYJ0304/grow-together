@@ -119,9 +119,13 @@ try {
     holdWrite = null;
     await screen().getByText('하늘', { exact: true }).waitFor();
     await click('이전 화면으로 돌아가기');
-    await page.getByRole('heading', { name: '설정', exact: true }).waitFor();
-    await page.getByText('하늘 · 2024-02-29', { exact: true }).waitFor();
-    await page.getByRole('button', { name: /아이 프로필/ }).click();
+    await page
+      .getByRole('heading', { name: '마이페이지', exact: true })
+      .waitFor();
+    await page.getByText('하늘 · 2024년 2월 29일', { exact: true }).waitFor();
+    await page
+      .getByRole('button', { name: '아이 정보 관리', exact: true })
+      .click();
     await click('수정');
     assert.equal(await name.inputValue(), '하늘');
     await name.fill('취소할 이름');
@@ -149,7 +153,9 @@ try {
     await click('이전 화면으로 돌아가기');
     await click('변경사항 버리고 나가기');
     await page.waitForURL('**/mypage');
-    await page.getByRole('button', { name: /아이 프로필/ }).click();
+    await page
+      .getByRole('button', { name: '아이 정보 관리', exact: true })
+      .click();
     await screen().getByText('바다', { exact: true }).waitFor();
     // A different account using the same device storage sees an empty profile.
     const other = await browser.newContext({
@@ -225,8 +231,12 @@ try {
   await page.goto(`${url}/login`);
   await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
   await page.waitForURL('**/main');
-  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
-  await page.getByRole('button', { name: /아이 프로필/ }).click();
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: '아이 정보 관리', exact: true })
+    .click();
   await page
     .getByText('이 기기에 저장되는 미리보기용 아이 정보예요.')
     .waitFor();
@@ -249,8 +259,12 @@ try {
     .getByText('미리보기 아이', { exact: true })
     .waitFor();
   await page.getByRole('button', { name: '이전 화면으로 돌아가기' }).click();
-  await page.getByText('미리보기 아이 · 2024-02-29', { exact: true }).waitFor();
-  await page.getByRole('button', { name: /아이 프로필/ }).click();
+  await page
+    .getByText('미리보기 아이 · 2024년 2월 29일', { exact: true })
+    .waitFor();
+  await page
+    .getByRole('button', { name: '아이 정보 관리', exact: true })
+    .click();
   await page
     .getByRole('heading', { name: '아이 프로필', exact: true })
     .locator('..')

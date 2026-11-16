@@ -30,6 +30,10 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public User(String name, String email, String passwordHash) {
         this.name = name;
         this.email = email;

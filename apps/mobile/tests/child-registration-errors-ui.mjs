@@ -70,7 +70,7 @@ try {
   await click('나중에 등록하기');
   await page.getByRole('tab', { name: '오늘', exact: true }).click();
   assert.equal(await missing().count(), 0);
-  await click('앱 설정');
+  await click('내 프로필 열기');
   await click('로그아웃');
   await page.getByRole('textbox', { name: '이메일', exact: true }).waitFor();
   await page

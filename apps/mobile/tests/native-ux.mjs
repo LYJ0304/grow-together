@@ -194,7 +194,7 @@ try {
       0,
       'Reselect scrolls to top, including Reduce Motion',
     );
-    await button('앱 설정').click();
+    await button('내 프로필 열기').click();
     await button('이전 화면으로').click();
     await page.waitForURL('**/main');
     assert.equal(await page.getByRole('tablist').count(), 1);
@@ -217,7 +217,7 @@ try {
           .querySelector('[role="checkbox"]')
           ?.getAttribute('aria-disabled') === 'true',
     );
-    await button('앱 설정').click();
+    await button('내 프로필 열기').click();
     await button('로그아웃').click();
     await button('인증 없이 미리보기 진입').click();
     await page.waitForURL('**/main');

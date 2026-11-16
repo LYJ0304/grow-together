@@ -137,7 +137,7 @@ try {
   await active.locator('img').first().waitFor();
   assert.equal(await active.getAttribute('aria-selected'), 'true');
   const headerIcon = home
-    .getByRole('button', { name: '아이 프로필 열기', exact: true })
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
     .locator('img');
   await headerIcon.waitFor();
   await home.screenshot({ path: `${artifacts}/home.png` });

@@ -30,7 +30,9 @@ try {
       ),
     ['오늘', '일정', '기록', '리포트', '질문'],
   );
-  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
   await page.waitForURL('**/mypage');
   await page
     .getByRole('button', { name: '이전 화면으로', exact: true })
