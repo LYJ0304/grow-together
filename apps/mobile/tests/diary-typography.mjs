@@ -8,6 +8,9 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
 await page.addInitScript(authenticatedSessionFixture);
+await page.route('**/api/v1/diary/by-date**', (r) =>
+  r.fulfill({ status: 404, json: {} }),
+);
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 const style = (locator) =>
   locator.evaluate((node) => {
@@ -20,14 +23,14 @@ try {
     { waitUntil: 'commit', timeout: 120000 },
   );
   const heading = page.getByRole('heading', {
-    name: '오늘의 순간을 남겨요',
+    name: '오늘의 일기',
     exact: true,
   });
   await heading.waitFor();
   await page.evaluate(() => document.fonts.ready);
   assert.match((await style(heading)).font, /Jua/);
   const note = page.getByRole('textbox', {
-    name: '추가 관찰 메모',
+    name: '일기 본문',
     exact: true,
   });
   const body = await style(note);
@@ -35,20 +38,10 @@ try {
   assert.equal(body.size, '16px');
   assert.equal(body.line, '27px');
   await note.fill('책장을 넘기며 웃었어요');
-  await page
-    .getByRole('button', { name: '입력한 기록으로 초안 정리', exact: true })
-    .click();
-  await page
-    .getByRole('heading', { name: '오늘의 일기', exact: true })
-    .waitFor();
-  await page.getByRole('button', { name: '내용 수정', exact: true }).click();
-  assert.deepEqual(
-    await style(
-      page.getByRole('textbox', { name: '일기 본문 수정', exact: true }),
-    ),
-    body,
-  );
-  const button = page.getByRole('button', { name: '수정 완료', exact: true });
+  const button = page.getByRole('button', {
+    name: '일기 저장하기',
+    exact: true,
+  });
   assert.doesNotMatch(
     (await style(button.locator('[dir="auto"]'))).font,
     /Jua/,

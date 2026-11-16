@@ -43,23 +43,21 @@ try {
     { waitUntil: 'commit', timeout: 120000 },
   );
   await page
-    .getByRole('textbox', { name: '추가 관찰 메모', exact: true })
+    .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('내가 작성하던 초안');
   await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
-    .click();
-  await page
-    .getByRole('textbox', { name: '일기 본문 수정', exact: true })
+    .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('저장 충돌에도 보존할 본문');
-  await page.getByRole('button', { name: '수정 완료', exact: true }).click();
   await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .click();
   await page
     .getByRole('button', { name: '기존 일기 확인', exact: true })
     .waitFor();
   assert(
-    await page.getByText('저장 충돌에도 보존할 본문', { exact: true }).count(),
+    (await page
+      .getByRole('textbox', { name: '일기 본문', exact: true })
+      .inputValue()) === '저장 충돌에도 보존할 본문',
   );
   assert.equal(posts, 1);
   assert.equal(puts, 0);

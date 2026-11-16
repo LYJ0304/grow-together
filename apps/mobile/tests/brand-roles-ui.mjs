@@ -265,16 +265,18 @@ try {
   await page.screenshot({ path: `${artifacts}/calendar.png` });
   await writeDiary.click();
   await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
+    .getByRole('button', { name: '일기 저장하기', exact: true })
     .waitFor();
   const roles = async (target, names) => {
-    const primary = ['입력한 기록으로 초안 정리', '이 일기 저장하기', '다음'];
+    const primary = ['일기 저장하기', '다음'];
     const tertiary = [
       '기록으로 돌아가기',
       '사진 첨부',
       '첨부 사진 변경',
       '첨부 사진 삭제',
       '재료 다시 확인',
+      '사진 닫기',
+      '이 사진 제거',
       '이전',
       '건너뛰기',
     ];
@@ -299,81 +301,43 @@ try {
     }
     assert(names.filter((name) => primary.includes(name)).length <= 1);
   };
+  const save = page.getByRole('button', { name: '일기 저장하기', exact: true });
+  assert(await save.isDisabled());
+  const disabledPair = await buttonColors(save);
+  assert.equal(disabledPair.opacity, '1');
+  assert.equal(disabledPair.bg, rgb(colors.disabled));
+  assert.equal(disabledPair.fg, rgb(colors.muted));
+  await page
+    .getByRole('textbox', { name: '일기 본문', exact: true })
+    .fill('함께한 하루를 기록해요.');
+  await page.getByRole('button', { name: '문장 정리', exact: true }).click();
   await roles(page, [
     '기록으로 돌아가기',
-    '사진 첨부',
-    '입력한 기록으로 초안 정리',
-    '직접 작성하기',
+    '입력한 기록으로 문장 정리',
+    '일기 저장하기',
   ]);
-  await page
-    .getByRole('button', { name: '입력한 기록으로 초안 정리', exact: true })
-    .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: `${artifacts}/diary-materials.png`,
-    fullPage: true,
-  });
   const upload = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: '사진 첨부', exact: true }).click();
+  await page.getByRole('button', { name: '사진 추가', exact: true }).click();
   await (
     await upload
   ).setFiles(
     new URL('../assets/images/grow-together-logo.png', import.meta.url)
       .pathname,
   );
-  await page
-    .getByRole('button', { name: '첨부 사진 삭제', exact: true })
-    .waitFor();
-  await roles(page, [
-    '기록으로 돌아가기',
-    '첨부 사진 변경',
-    '첨부 사진 삭제',
-    '입력한 기록으로 초안 정리',
-    '직접 작성하기',
-  ]);
-  await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
-    .scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${artifacts}/diary-with-photo.png` });
-  await page
-    .getByRole('button', { name: '첨부 사진 삭제', exact: true })
-    .click();
-
-  await page
-    .getByRole('button', { name: '직접 작성하기', exact: true })
-    .click();
-  const emptyCompletion = page.getByRole('button', {
-    name: '수정 완료',
-    exact: true,
-  });
-  assert(await emptyCompletion.isDisabled());
-  const disabledPair = await buttonColors(emptyCompletion);
-  assert.equal(disabledPair.opacity, '1');
-  assert.equal(disabledPair.bg, rgb(colors.disabled));
-  assert.equal(disabledPair.fg, rgb(colors.muted));
-  await page.screenshot({ path: `${artifacts}/disabled.png` });
-  await page
-    .getByRole('textbox', { name: '일기 본문 수정', exact: true })
-    .fill('함께한 하루를 기록해요.');
-  await page.getByRole('button', { name: '수정 완료', exact: true }).click();
-  await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
-    .waitFor();
-  await roles(page, [
-    '기록으로 돌아가기',
-    '재료 다시 확인',
-    '초안 다시 정리',
-    '이 일기 저장하기',
-  ]);
-  await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
-    .scrollIntoViewIfNeeded();
+  await page.getByText('1 / 3장', { exact: true }).waitFor();
   await page.screenshot({
-    path: `${artifacts}/diary-draft.png`,
+    path: artifacts + '/diary-with-photo.png',
     fullPage: true,
   });
   await page
-    .getByRole('button', { name: '이 일기 저장하기', exact: true })
+    .getByRole('button', { name: '사진 1 크게 보기', exact: true })
     .click();
+  await roles(page, ['사진 닫기', '이 사진 제거']);
+  await page.getByRole('button', { name: '이 사진 제거', exact: true }).click();
+  await page
+    .getByRole('button', { name: '첨부에서 빼기', exact: true })
+    .click();
+  await save.click();
   await page.waitForURL('**/calendar?**');
   await page
     .getByRole('button', { name: '선택한 날짜의 일기 보기', exact: true })

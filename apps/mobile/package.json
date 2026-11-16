@@ -63,7 +63,8 @@
     "test:todo:reaction": "node tests/todo-reaction.mjs",
     "test:main:dashboard": "node tests/main-dashboard.mjs && node tests/main-dashboard-gesture.mjs",
     "test:records:ui": "node tests/records-browser.mjs && node tests/records-states.mjs",
-    "test:scroll-target": "node tests/tab-scroll-target.mjs"
+    "test:scroll-target": "node tests/tab-scroll-target.mjs",
+    "test:diary:compose": "node tests/diary-photos.mjs && node tests/diary-compose-ui.mjs && node tests/diary-photo-ui.mjs && node tests/diary-photo-auth.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

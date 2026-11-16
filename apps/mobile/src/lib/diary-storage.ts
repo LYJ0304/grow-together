@@ -130,12 +130,17 @@ export async function deleteDiary(date: string): Promise<void> {
 export async function updateDiary(
   date: string,
   content: string,
+  photoUris?: string[],
 ): Promise<SavedDiary> {
   if (!content.trim()) throw new Error('일기 내용을 확인해주세요.');
   const original = await readDiary(date);
   if (!original)
     throw new Error('수정할 일기가 없어요. 캘린더에서 다시 확인해주세요.');
-  const diary = { ...original, content: content.trim() };
+  const diary = {
+    ...original,
+    content: content.trim(),
+    photoUris: photoUris ?? original.photoUris,
+  };
   const encoded = encodeDiary(diary);
   try {
     await AsyncStorage.setItem(prefix + date, encoded);
