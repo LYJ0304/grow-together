@@ -41,28 +41,13 @@ export function HeaderTools({
       <HeaderButton
         polished={polished}
         accessibilityRole="button"
-        accessibilityLabel="아이 프로필 열기"
-        disabled={disabled}
-        accessibilityState={{ disabled }}
-        onPress={() => router.push('/children')}
-      >
-        <Image
-          source={require('../../assets/images/main/user.svg')}
-          style={styles.icon}
-          tintColor={disabled ? colors.muted : colors.brand}
-          accessible={false}
-        />
-      </HeaderButton>
-      <HeaderButton
-        polished={polished}
-        accessibilityRole="button"
-        accessibilityLabel="앱 설정"
+        accessibilityLabel="내 프로필 열기"
         disabled={disabled}
         accessibilityState={{ disabled }}
         onPress={() => router.push('/mypage')}
       >
         <Image
-          source={require('../../assets/images/chat/settings.svg')}
+          source={require('../../assets/images/main/user.svg')}
           style={styles.icon}
           tintColor={disabled ? colors.muted : colors.brand}
           accessible={false}

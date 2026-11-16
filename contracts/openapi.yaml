@@ -3,6 +3,48 @@ info:
   title: GrowTogether API
   version: 0.1.0
 paths:
+  /api/v1/users/me:
+    get:
+      operationId: getUserProfile
+      summary: Read the authenticated user's name and email
+      description: Uses the JWT subject only. No password or authentication internals are returned.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/UserProfile'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Authenticated user no longer exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      operationId: updateUserProfile
+      summary: Update only the authenticated user's name
+      description: >-
+        The name must contain a non-whitespace character and be at most 50 UTF-16 code units.
+        Leading and trailing Unicode whitespace is removed before persistence.
+        Email, password and user identity cannot be changed through this operation.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserProfileRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/UserProfile' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: Authenticated user no longer exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/reports/weekly:
     get:
       operationId: getWeeklyReport
@@ -670,6 +712,23 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    UserProfileResponse:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string, maxLength: 50 }
+        email: { type: string, maxLength: 254 }
+    UpdateUserProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '[^\s\u0085]'
+          description: Unicode whitespace-only names are invalid; the server limit counts UTF-16 code units.
     ChildProfileRequest:
       type: object
       required: [name, birthday]
@@ -1334,6 +1393,15 @@ components:
               - type: TODO
                 id: 10
   responses:
+    UserProfile:
+      description: Current user's public profile fields; name updates are persisted
+      headers:
+        Cache-Control:
+          description: Personal profile responses must not be stored by intermediaries
+          schema: { type: string, enum: [no-store] }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/UserProfileResponse' }
     ScheduleConflict:
       description: Existing duration is unknown, or schedule/profile conditions conflict; inspect and regenerate
       content:

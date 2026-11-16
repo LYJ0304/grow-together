@@ -333,7 +333,9 @@ try {
       await button('목록 새로고침').click();
       await oldRequest;
       const beforeLogout = reads;
-      await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+      await page
+        .getByRole('button', { name: '내 프로필 열기', exact: true })
+        .click();
       await button('로그아웃').click();
       await page
         .getByRole('heading', { name: '다시 만났네요!', exact: true })
@@ -348,7 +350,9 @@ try {
         await button('＋ 직접 추가').getAttribute('aria-disabled'),
         'true',
       );
-      await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+      await page
+        .getByRole('button', { name: '내 프로필 열기', exact: true })
+        .click();
       await button('미리보기 종료').click();
       await page
         .getByRole('textbox', { name: '이메일', exact: true })

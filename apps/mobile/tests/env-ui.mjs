@@ -36,7 +36,9 @@ try {
   await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
   await page.waitForURL('**/main');
   await page.getByRole('tablist').waitFor();
-  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
   await page.getByRole('button', { name: /아이 프로필/ }).click();
   await page.getByRole('button', { name: '아이 추가', exact: true }).click();
   await page

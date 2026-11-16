@@ -85,6 +85,7 @@ function AuthenticatedStack() {
           </Stack.Protected>
           <Stack.Protected guard={status === 'authenticated'}>
             <Stack.Screen name="onboarding" />
+            <Stack.Screen name="profile" />
           </Stack.Protected>
         </Stack>
       </View>

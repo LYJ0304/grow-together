@@ -123,7 +123,9 @@ try {
   });
   await fits(400);
   assert.equal(await input.inputValue(), '');
-  await page.getByRole('button', { name: '앱 설정', exact: true }).click();
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .click();
   await page.waitForURL('**/mypage');
   await page
     .getByRole('button', { name: '이전 화면으로', exact: true })

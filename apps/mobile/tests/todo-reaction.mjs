@@ -231,7 +231,9 @@ try {
     .getByRole('textbox', { name: '비밀번호', exact: true })
     .fill('password123');
   await page.getByRole('button', { name: '로그인', exact: true }).click();
-  await page.getByRole('button', { name: '앱 설정', exact: true }).waitFor();
+  await page
+    .getByRole('button', { name: '내 프로필 열기', exact: true })
+    .waitFor();
   assert.equal(await heading.count(), 0);
   assert.equal(
     await page.getByRole('button', { name: /산책 반응/ }).count(),

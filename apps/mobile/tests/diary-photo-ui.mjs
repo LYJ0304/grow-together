@@ -184,7 +184,7 @@ try {
   await click('내용 수정');
   await pick([files[1]]);
   await page.getByText('2 / 3장', { exact: true }).waitFor();
-  await click('앱 설정');
+  await click('내 프로필 열기');
   await click('미리보기 종료');
   await click('인증 없이 미리보기 진입');
   await page.getByRole('tab', { name: '기록', exact: true }).click();
