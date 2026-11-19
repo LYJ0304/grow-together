@@ -142,6 +142,12 @@ try {
     .click();
   await page.getByRole('button', { name: '저장 중…', exact: true }).waitFor();
   assert(
+    await page
+      .getByRole('button', { name: '기록으로 돌아가기', exact: true })
+      .isDisabled(),
+    'Diary back remains disabled while saving',
+  );
+  assert(
     await page.getByRole('tab', { name: '질문', exact: true }).isDisabled(),
     'Navigation is disabled while saving',
   );
@@ -179,6 +185,7 @@ try {
     .getByText('내가 다듬은 오늘의 기록', { exact: true })
     .last()
     .waitFor();
+  await page.getByText('1 / 3장', { exact: true }).waitFor();
   await page.getByRole('button', { name: '내용 수정', exact: true }).click();
   const editor = page.getByRole('textbox', {
     name: '일기 본문 수정',

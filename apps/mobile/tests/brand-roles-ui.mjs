@@ -270,7 +270,6 @@ try {
   const roles = async (target, names) => {
     const primary = ['일기 저장하기', '다음'];
     const tertiary = [
-      '기록으로 돌아가기',
       '사진 첨부',
       '첨부 사진 변경',
       '첨부 사진 삭제',
@@ -311,11 +310,7 @@ try {
     .getByRole('textbox', { name: '일기 본문', exact: true })
     .fill('함께한 하루를 기록해요.');
   await page.getByRole('button', { name: '문장 정리', exact: true }).click();
-  await roles(page, [
-    '기록으로 돌아가기',
-    '입력한 기록으로 문장 정리',
-    '일기 저장하기',
-  ]);
+  await roles(page, ['입력한 기록으로 문장 정리', '일기 저장하기']);
   const upload = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: '사진 추가', exact: true }).click();
   await (

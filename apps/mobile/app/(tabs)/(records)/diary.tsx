@@ -452,17 +452,15 @@ function DiaryEditor() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <AppHeader disabled={busy || generating || preparing} />
+        <AppHeader
+          disabled={busy || generating || preparing}
+          onBack={back}
+          backLabel="기록으로 돌아가기"
+        />
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <ActionButton
-            label="기록으로 돌아가기"
-            variant="tertiary"
-            disabled={busy || generating || preparing}
-            onPress={back}
-          />
           <Text style={styles.meta}>
             {date.toLocaleDateString('ko-KR', {
               year: 'numeric',

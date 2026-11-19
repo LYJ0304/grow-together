@@ -14,15 +14,41 @@ export function AppHeader({
   polished = false,
   title,
   subtitle,
+  onBack,
+  backLabel = '이전 화면으로 돌아가기',
 }: {
   disabled?: boolean;
   polished?: boolean;
   title?: string;
   subtitle?: string;
+  onBack?: () => void;
+  backLabel?: string;
 }) {
   return (
     <View testID="app-header" style={styles.header}>
-      <HeaderTools disabled={disabled} polished={polished} />
+      <View style={[styles.navigation, !onBack && styles.toolsOnly]}>
+        {onBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={backLabel}
+            accessibilityState={{ disabled }}
+            disabled={disabled}
+            onPress={onBack}
+            style={({ pressed }) => [
+              styles.back,
+              pressed && { backgroundColor: colors.border },
+            ]}
+          >
+            <Image
+              source={require('../../assets/images/main/chevron-left.svg')}
+              tintColor={disabled ? colors.muted : colors.text}
+              style={styles.backIcon}
+              accessible={false}
+            />
+          </Pressable>
+        ) : null}
+        <HeaderTools disabled={disabled} polished={polished} />
+      </View>
       {title ? (
         <Greeting title={title} subtitle={subtitle} polished={polished} />
       ) : null}
@@ -115,6 +141,19 @@ function HeaderButton({
   );
 }
 const styles = StyleSheet.create({
+  navigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toolsOnly: { justifyContent: 'flex-end' },
+  back: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: { width: 24, height: 24 },
   header: {
     width: '100%',
     maxWidth: 600,
