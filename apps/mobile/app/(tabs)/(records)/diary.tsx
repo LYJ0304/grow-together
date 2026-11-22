@@ -21,7 +21,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useAuth } from '../../../src/components/auth-provider';
-import { AppHeader } from '../../../src/components/app-header';
+import { AppHeader, HeaderTools } from '../../../src/components/app-header';
 import { DiaryPhotos } from '../../../src/components/diary/diary-photos';
 import { ActionButton } from '../../../src/components/action-button';
 import {
@@ -456,6 +456,9 @@ function DiaryEditor() {
           disabled={busy || generating || preparing}
           onBack={back}
           backLabel="기록으로 돌아가기"
+          rightActions={
+            <HeaderTools disabled={busy || generating || preparing} />
+          }
         />
         <ScrollView
           contentContainerStyle={styles.content}

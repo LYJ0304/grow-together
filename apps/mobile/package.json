@@ -66,7 +66,8 @@
     "test:scroll-target": "node tests/tab-scroll-target.mjs",
     "test:diary:compose": "node tests/diary-photos.mjs && node tests/diary-compose-ui.mjs && node tests/diary-photo-ui.mjs && node tests/diary-photo-auth.mjs",
     "test:profile:ui": "node tests/guardian-profile-ui.mjs && node tests/guardian-profile-states.mjs && node tests/guardian-profile-session.mjs",
-    "test:diary:back": "node tests/diary-back-ui.mjs"
+    "test:diary:back": "node tests/diary-back-ui.mjs",
+    "test:header:ui": "node tests/common-header-ui.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

@@ -1,3 +1,4 @@
+import { spacing } from '../../src/theme/spacing';
 import { useCallback, useRef, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -105,6 +106,7 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: 'center',
     padding: 20,
+    paddingTop: spacing.sm,
     gap: 24,
     paddingBottom: 36,
   },
