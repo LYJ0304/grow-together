@@ -1,3 +1,4 @@
+import { spacing } from '../../src/theme/spacing';
 import { ChatMessageList } from '../../src/components/chat/chat-message-list';
 import type { ChatMessage } from '../../src/lib/features/chat/types';
 import { useSessionValue } from '../../src/lib/session-state';
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     maxWidth: 720,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: spacing.sm,
     paddingBottom: 20,
   },
   conversationHeader: {

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { HeaderTools } from './app-header';
+import { AppHeader } from './app-header';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -34,8 +34,8 @@ export function HomeDayHeader({
     requestAnimationFrame(() => pickerButton.current?.focus());
   };
   return (
-    <View testID="app-header" style={styles.header}>
-      <HeaderTools />
+    <View style={styles.header}>
+      <AppHeader disabled={blocked} style={styles.navigation} />
       <View style={styles.monthRow}>
         <CalendarArrow
           direction="previous"
@@ -115,6 +115,7 @@ export function HomeDayHeader({
 }
 const styles = StyleSheet.create({
   header: { gap: 8 },
+  navigation: { paddingHorizontal: 0 },
   monthRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   copy: { flex: 1, minWidth: 0 },
   title: {

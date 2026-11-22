@@ -1,3 +1,4 @@
+import { AppHeader } from '../src/components/app-header';
 import {
   DateField,
   type DateFieldHandle,
@@ -17,7 +18,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -186,24 +186,20 @@ function ChildrenEditor() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="이전 화면으로 돌아가기"
+          <AppHeader
+            title={
+              editing
+                ? creating
+                  ? '아이 추가'
+                  : '아이 정보 수정'
+                : '아이 프로필'
+            }
             disabled={saving}
-            onPress={() =>
+            onBack={() =>
               router.canGoBack() ? router.back() : router.replace('/mypage')
             }
-            style={styles.back}
-          >
-            <Text style={styles.backLabel}>‹ 뒤로</Text>
-          </Pressable>
-          <Text accessibilityRole="header" style={styles.title}>
-            {editing
-              ? creating
-                ? '아이 추가'
-                : '아이 정보 수정'
-              : '아이 프로필'}
-          </Text>
+            style={styles.navigation}
+          />
           <Text style={styles.subtitle}>
             이름과 생일로 아이의 이야기를 시작해요.
           </Text>
@@ -423,14 +419,7 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     alignSelf: 'center',
   },
-  back: {
-    alignSelf: 'flex-start',
-    minHeight: 44,
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  backLabel: { ...typography.button, fontSize: 16, color: colors.text },
-  title: { ...editorial.title },
+  navigation: { paddingHorizontal: 0 },
   subtitle: {
     marginTop: 8,
     ...typography.label,

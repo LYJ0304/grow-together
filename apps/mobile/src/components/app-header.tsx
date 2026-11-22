@@ -1,32 +1,38 @@
 import type { ReactNode } from 'react';
-import Animated from 'react-native-reanimated';
-import { useEntranceOnce } from '../theme/motion';
-import { MotionPressable } from './motion-pressable';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { typography } from './typography';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { MotionPressable } from './motion-pressable';
+import { typography } from '../theme/typography';
+import { spacing } from '../theme/spacing';
 import { colors } from '../theme/colors';
-import { editorial } from '../theme/editorial';
 
+// The screen owns Safe Area. This row contains navigation, never page content.
 export function AppHeader({
   disabled = false,
-  polished = false,
   title,
-  subtitle,
   onBack,
   backLabel = '이전 화면으로 돌아가기',
+  rightActions,
+  style,
 }: {
   disabled?: boolean;
-  polished?: boolean;
   title?: string;
-  subtitle?: string;
   onBack?: () => void;
   backLabel?: string;
+  rightActions?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View testID="app-header" style={styles.header}>
-      <View style={[styles.navigation, !onBack && styles.toolsOnly]}>
+    <View testID="app-header" style={[styles.header, style]}>
+      <View style={styles.identity}>
         {onBack ? (
           <Pressable
             accessibilityRole="button"
@@ -34,10 +40,7 @@ export function AppHeader({
             accessibilityState={{ disabled }}
             disabled={disabled}
             onPress={onBack}
-            style={({ pressed }) => [
-              styles.back,
-              pressed && { backgroundColor: colors.border },
-            ]}
+            style={({ pressed }) => [styles.target, pressed && styles.pressed]}
           >
             <Image
               source={require('../../assets/images/main/chevron-left.svg')}
@@ -46,150 +49,94 @@ export function AppHeader({
               accessible={false}
             />
           </Pressable>
+        ) : (
+          <Image
+            source={require('../../assets/images/brand/emblem.svg')}
+            style={styles.logo}
+            contentFit="contain"
+            accessible={false}
+          />
+        )}
+        {!onBack || title ? (
+          <Text
+            accessibilityRole={onBack ? 'header' : undefined}
+            style={[styles.title, onBack && styles.detailTitle]}
+          >
+            {title ?? '같이 키우기'}
+          </Text>
         ) : null}
-        <HeaderTools disabled={disabled} polished={polished} />
       </View>
-      {title ? (
-        <Greeting title={title} subtitle={subtitle} polished={polished} />
-      ) : null}
+      <View style={styles.actions}>
+        {rightActions}
+        {!onBack ? <HeaderTools disabled={disabled} /> : null}
+      </View>
     </View>
   );
 }
-export function HeaderTools({
-  disabled = false,
-  polished = false,
-}: {
-  disabled?: boolean;
-  polished?: boolean;
-}) {
+export function HeaderTools({ disabled = false }: { disabled?: boolean }) {
   return (
-    <View style={styles.tools}>
-      <HeaderButton
-        polished={polished}
-        accessibilityRole="button"
-        accessibilityLabel="내 프로필 열기"
-        disabled={disabled}
-        accessibilityState={{ disabled }}
-        onPress={() => router.push('/mypage')}
-      >
+    <MotionPressable
+      accessibilityRole="button"
+      accessibilityLabel="내 프로필 열기"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={() => router.push('/mypage')}
+      style={styles.target}
+    >
+      <View style={[styles.avatar, disabled && styles.disabled]}>
         <Image
           source={require('../../assets/images/main/user.svg')}
           style={styles.icon}
           tintColor={disabled ? colors.muted : colors.brand}
           accessible={false}
         />
-      </HeaderButton>
-    </View>
-  );
-}
-function Greeting({
-  title,
-  subtitle,
-  polished,
-}: {
-  title: string;
-  subtitle?: string;
-  polished: boolean;
-}) {
-  const entrance = useEntranceOnce(polished);
-  return (
-    <Animated.View style={[styles.copy, entrance]}>
-      <View style={styles.greetingLine}>
-        <Text
-          accessibilityRole="header"
-          style={[styles.title, polished && styles.warmTitle]}
-        >
-          {title}
-        </Text>
-        {polished ? (
-          <View accessible={false} style={styles.brandPoint} />
-        ) : null}
       </View>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-    </Animated.View>
-  );
-}
-function HeaderButton({
-  polished,
-  children,
-  ...props
-}: {
-  polished: boolean;
-  children: ReactNode;
-} & import('react-native').PressableProps) {
-  const style = [
-    styles.button,
-    props.disabled && {
-      backgroundColor: colors.disabled,
-      borderColor: colors.disabled,
-    },
-  ];
-  return polished ? (
-    <MotionPressable {...props} style={style}>
-      {children}
     </MotionPressable>
-  ) : (
-    <Pressable
-      {...props}
-      style={({ pressed }) => [
-        style,
-        pressed && { backgroundColor: colors.background },
-      ]}
-    >
-      {children}
-    </Pressable>
   );
 }
 const styles = StyleSheet.create({
-  navigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  toolsOnly: { justifyContent: 'flex-end' },
-  back: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: { width: 24, height: 24 },
   header: {
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    minHeight: 60,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    gap: 8,
+    minHeight: 56,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     backgroundColor: colors.background,
     flexShrink: 0,
   },
-  tools: { flexDirection: 'row', gap: 8, alignSelf: 'flex-end' },
-  button: {
-    minWidth: 44,
-    minHeight: 44,
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 6,
+  identity: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  logo: { width: 32, height: 32 },
+  title: { ...typography.button, color: colors.heading, flexShrink: 1 },
+  detailTitle: { ...typography.section, fontSize: 18, lineHeight: 26 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  target: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+  },
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: { width: 22, height: 22 },
-  label: { ...typography.label, color: colors.primary, flexShrink: 1 },
-  copy: { flex: 1, minWidth: 0, gap: 2, paddingHorizontal: 4 },
-  title: { ...editorial.title, flexShrink: 1 },
-  greetingLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  warmTitle: { fontSize: 22, lineHeight: 30, fontWeight: '600' },
-  brandPoint: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.brand,
-  },
-  subtitle: { ...typography.caption, color: colors.muted },
+  icon: { width: 20, height: 20 },
+  backIcon: { width: 24, height: 24 },
+  pressed: { backgroundColor: colors.border },
+  disabled: { backgroundColor: colors.disabled },
 });

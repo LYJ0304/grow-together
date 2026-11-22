@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     padding: 20,
-    paddingTop: 8,
+    paddingTop: 0,
     // End-of-scroll clearance, without shrinking the scrolling viewport.
     paddingBottom: QUICK_ADD_SIZE + QUICK_ADD_BOTTOM + 24,
     gap: 16,

@@ -1,3 +1,4 @@
+import { spacing } from '../../src/theme/spacing';
 import { getWeek } from '../../src/lib/calendar';
 import {
   TodoReactionModal,
@@ -28,10 +29,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlanModal } from '../../src/components/add-plan-modal';
 import { useAuth } from '../../src/components/auth-provider';
@@ -50,7 +48,6 @@ function localDateKey(date: Date) {
 
 export default function TodoScreen() {
   const requestChild = useChildRegistration();
-  const insets = useSafeAreaInsets();
   const { client, status, epoch } = useAuth();
   const scroll = useRef<ScrollView>(null);
   useTabScrollToTop(scroll);
@@ -220,19 +217,14 @@ export default function TodoScreen() {
           stickyHeaderIndices={[2]}
           contentContainerStyle={styles.content}
         >
-          <View style={{ paddingHorizontal: 22, paddingTop: 20 }}>
+          <View style={{ paddingHorizontal: 22, paddingTop: spacing.sm }}>
             <PageIntro
               eyebrow="PLAN THE DAY"
               title="함께할 시간"
               description="부담 없는 하루 계획을 만들고, 하나씩 실행해요."
             />
           </View>
-          <View
-            style={[
-              styles.dateHeader,
-              { paddingTop: Math.max(18, 25 - insets.top) },
-            ]}
-          >
+          <View style={styles.dateHeader}>
             <View style={styles.dateSummary}>
               <Text accessibilityRole="header" style={styles.dateNumber}>
                 {selectedDate.getDate()}
@@ -628,6 +620,7 @@ const styles = StyleSheet.create({
   },
   content: { paddingBottom: 32 },
   dateHeader: {
+    paddingTop: spacing.lg,
     minHeight: 64,
     paddingHorizontal: 24,
     paddingBottom: 12,
