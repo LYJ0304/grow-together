@@ -1,4 +1,5 @@
 import {
+  type ComponentRef,
   forwardRef,
   useEffect,
   useImperativeHandle,
@@ -6,10 +7,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
 } from 'react';
 import {
   FlatList,
+  type KeyDownEvent,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -23,7 +24,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { radius } from '../../theme/radius';
@@ -53,7 +54,7 @@ export const DateField = forwardRef<DateFieldHandle, DateFieldProps>(
     ref,
   ) {
     const [open, setOpen] = useState(false);
-    const trigger = useRef<View>(null);
+    const trigger = useRef<ComponentRef<typeof View>>(null);
     const valueId = useId();
     const begin = () => {
       if (disabled) return;
@@ -256,8 +257,8 @@ function DateColumn({
   onChange(value: number): void;
 }) {
   const list = useRef<FlatList<number>>(null);
-  const scroll = useRef<ScrollView>(null);
-  const options = useRef(new Map<number, View>());
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const options = useRef(new Map<number, ComponentRef<typeof View>>());
   const focusNext = useRef<number | null>(null);
   const { fontScale } = useWindowDimensions();
   const rowHeight = Math.max(
@@ -289,15 +290,16 @@ function DateColumn({
   const keyboardProps =
     Platform.OS === 'web'
       ? {
-          onKeyDown: (event: KeyboardEvent) => {
+          onKeyDown: (event: KeyDownEvent) => {
+            const { key } = event.nativeEvent;
             const nextIndex =
-              event.key === 'ArrowDown'
+              key === 'ArrowDown'
                 ? Math.min(values.length - 1, index + 1)
-                : event.key === 'ArrowUp'
+                : key === 'ArrowUp'
                   ? Math.max(0, index - 1)
-                  : event.key === 'Home'
+                  : key === 'Home'
                     ? 0
-                    : event.key === 'End'
+                    : key === 'End'
                       ? values.length - 1
                       : null;
             if (nextIndex === null) return;

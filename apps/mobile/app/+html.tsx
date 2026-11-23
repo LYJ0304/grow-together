@@ -1,10 +1,15 @@
 import { colors } from '../src/theme/colors';
-import { ScrollViewStyleReset } from 'expo-router/html';
+import {
+  ScrollViewStyleReset,
+  useServerDocumentContext,
+} from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
 export default function RootHtml({ children }: PropsWithChildren) {
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } =
+    useServerDocumentContext();
   return (
-    <html lang="ko">
+    <html {...htmlAttributes} lang="ko">
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -16,8 +21,12 @@ export default function RootHtml({ children }: PropsWithChildren) {
           html, body { background-color: ${colors.background}; }
           #root { height: 100vh; height: 100dvh; }
         `}</style>
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }

@@ -8,11 +8,10 @@ import { ActionButton } from '../src/components/action-button';
 import { editorial } from '../src/theme/editorial';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/components/typography';
-import { router, useNavigation } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { router, usePreventRemove } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -24,7 +23,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { useAuth } from '../src/components/auth-provider';
 import {
   saveChildProfile,
@@ -56,9 +55,8 @@ function ChildrenEditor() {
   const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const pending = useRef(false);
-  const nameInput = useRef<TextInput>(null);
+  const nameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const birthdayInput = useRef<DateFieldHandle>(null);
-  const navigation = useNavigation();
   const dirty =
     editing &&
     (name !== (profile.data?.name ?? '') ||
@@ -66,9 +64,8 @@ function ChildrenEditor() {
   const current = () =>
     client.getSnapshot().epoch === epoch &&
     client.getSnapshot().accountKey === profile.accountKey;
-  usePreventRemove(dirty || saving, ({ data }) => {
-    if (!pending.current)
-      setLeaveAction(() => () => navigation.dispatch(data.action));
+  usePreventRemove(dirty || saving, ({ repeat }) => {
+    if (!pending.current) setLeaveAction(() => repeat);
   });
   useEffect(() => {
     if (discarding && !dirty && !saving) leaveAction?.();

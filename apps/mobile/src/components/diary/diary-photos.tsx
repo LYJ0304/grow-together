@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import {
   Modal,
@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { ActionButton } from '../action-button';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -32,8 +32,8 @@ export function DiaryPhotos({
 }) {
   const [current, setCurrent] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
-  const opener = useRef<View | null>(null);
-  const thumbnails = useRef<(View | null)[]>([]);
+  const opener = useRef<ComponentRef<typeof View> | null>(null);
+  const thumbnails = useRef<(ComponentRef<typeof View> | null)[]>([]);
   const close = () => {
     setCurrent(null);
     setConfirm(false);

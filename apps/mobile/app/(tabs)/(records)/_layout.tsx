@@ -6,7 +6,6 @@ export default function RecordsLayout() {
   const reduced = useReduceMotion();
   return (
     <Stack
-      initialRouteName="calendar"
       screenOptions={{
         headerShown: false,
         animation: reduced ? 'none' : 'default',

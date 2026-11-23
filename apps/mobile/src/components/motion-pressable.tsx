@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { type ComponentRef, type Ref, useEffect } from 'react';
 import {
   Pressable,
   type PressableProps,
@@ -6,7 +6,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import type { Ref } from 'react';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,7 +17,7 @@ import { motion, useReduceMotion } from '../theme/motion';
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type Props = Omit<PressableProps, 'style'> & {
   style?: StyleProp<ViewStyle>;
-  ref?: Ref<View>;
+  ref?: Ref<ComponentRef<typeof View>>;
 };
 
 // Transform the existing target; keep navigator refs, semantics, and event handlers intact.

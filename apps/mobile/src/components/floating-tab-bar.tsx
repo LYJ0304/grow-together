@@ -1,8 +1,8 @@
 import {
   BottomTabBarHeightCallbackContext,
   type BottomTabBarProps,
-} from '@react-navigation/bottom-tabs';
-import { CommonActions, useLinkBuilder } from '@react-navigation/native';
+} from 'expo-router/js-tabs';
+import { useLinkBuilder } from 'expo-router/react-navigation';
 import { useContext, useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -16,6 +16,7 @@ import { motion } from '../theme/motion';
 import { typography } from '../theme/typography';
 import { selectionFeedback } from '../lib/haptics';
 import { TabButton } from './tab-button';
+import { safeAreaLength } from './safe-area-view';
 
 // Reserve the capsule and safe bottom gap so no screen needs arbitrary overlay padding.
 export const FLOATING_TAB_BAR_SPACE = 80;
@@ -23,7 +24,8 @@ export const FLOATING_TAB_BAR_SPACE = 80;
 export function FloatingTabBar({
   state,
   descriptors,
-  navigation,
+  emitter,
+  navigateToTab,
   insets,
   blocked,
   hidden,
@@ -48,8 +50,8 @@ export function FloatingTabBar({
   }, [state.index, reducedMotion, selected]);
   const height = hidden ? 0 : FLOATING_TAB_BAR_SPACE + insets.bottom;
   useEffect(() => {
-    onHeightChange?.(height);
-  }, [height, onHeightChange]);
+    if (Platform.OS !== 'web' || hidden) onHeightChange?.(height);
+  }, [height, hidden, onHeightChange]);
   const slotWidth = width / state.routes.length;
   const highlightStyle = useAnimatedStyle(() => ({
     opacity: width > 0 ? 1 : 0,
@@ -62,13 +64,22 @@ export function FloatingTabBar({
     <View
       testID="floating-tab-bar-frame"
       pointerEvents="box-none"
+      onLayout={(event) => {
+        if (Platform.OS === 'web') {
+          onHeightChange?.(event.nativeEvent.layout.height);
+        }
+      }}
       style={[
         styles.frame,
         {
-          height,
-          paddingBottom: insets.bottom + 10,
-          paddingLeft: insets.left + 20,
-          paddingRight: insets.right + 20,
+          height: safeAreaLength(
+            'bottom',
+            insets.bottom,
+            FLOATING_TAB_BAR_SPACE,
+          ),
+          paddingBottom: safeAreaLength('bottom', insets.bottom, 10),
+          paddingLeft: safeAreaLength('left', insets.left, 20),
+          paddingRight: safeAreaLength('right', insets.right, 20),
         },
       ]}
     >
@@ -89,7 +100,7 @@ export function FloatingTabBar({
             const label = options.title ?? route.name;
             return (
               <TabButton
-                key={route.key}
+                key={route.name}
                 blocked={blocked}
                 href={buildHref(route.name, route.params)}
                 role={Platform.OS === 'ios' ? 'button' : 'tab'}
@@ -103,33 +114,18 @@ export function FloatingTabBar({
                 onPress={() => {
                   if (blocked) return;
                   // Keep the navigator's repeated-press policy, including scroll/pop-to-top.
-                  const event = navigation.emit({
+                  const event = emitter.emit({
                     type: 'tabPress',
                     target: route.key,
                     canPreventDefault: true,
-                    data: {
-                      behavior: {
-                        scrollToTop:
-                          focused &&
-                          options.tabBarRepeatedPressBehavior?.scrollToTop !==
-                            false,
-                        popToTop:
-                          focused &&
-                          options.tabBarRepeatedPressBehavior?.popToTop !==
-                            false,
-                      },
-                    },
                   });
                   if (!focused && !event.defaultPrevented) {
-                    navigation.dispatch({
-                      ...CommonActions.navigate(route.name, route.params),
-                      target: state.key,
-                    });
+                    navigateToTab(route.key);
                     selectionFeedback();
                   }
                 }}
                 onLongPress={() => {
-                  navigation.emit({ type: 'tabLongPress', target: route.key });
+                  emitter.emit({ type: 'tabLongPress', target: route.key });
                 }}
               >
                 {options.tabBarIcon?.({

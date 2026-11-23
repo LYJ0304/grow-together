@@ -5,7 +5,13 @@ import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { HomeQuickAdd } from '../../src/components/home-quick-add';
 import { editorial } from '../../src/theme/editorial';
 import { HomeQuestionEntry } from '../../src/components/home-question-entry';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   AppState,
   KeyboardAvoidingView,
@@ -16,10 +22,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, safeAreaLength } from '@/components/safe-area-view';
 import { router, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -41,10 +45,10 @@ const localDateKey = diaryDateKey;
 const QUICK_ADD_SIZE = 56;
 const QUICK_ADD_BOTTOM = 16;
 export default function MainScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const quickButton = useRef<View>(null);
+  const quickButton = useRef<ComponentRef<typeof View>>(null);
   const [quickOpen, setQuickOpen] = useState(false);
   useTabScrollToTop(scroll);
   const { client, status, epoch } = useAuth();
@@ -477,7 +481,16 @@ export default function MainScreen() {
         onPress={() => setQuickOpen(true)}
         style={[
           styles.fab,
-          { right: Math.max(insets.right + 20, (width - 600) / 2 + 20) },
+          {
+            right:
+              Platform.OS === 'web'
+                ? safeAreaLength(
+                    'right',
+                    0,
+                    Math.max(20, (width - 600) / 2 + 20),
+                  )
+                : Math.max(insets.right + 20, (width - 600) / 2 + 20),
+          },
         ]}
       >
         <Text accessible={false} style={styles.fabText}>

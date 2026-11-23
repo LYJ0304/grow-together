@@ -2,7 +2,6 @@ import { editorial } from '../../../src/theme/editorial';
 import { colors } from '../../../src/theme/colors';
 import { useChatKeyboard } from '../../../src/lib/use-chat-keyboard';
 import { useTabInteraction } from '../../../src/components/tab-interaction';
-import { usePreventRemove } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -15,8 +14,8 @@ import {
   View,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from '@/components/safe-area-view';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';

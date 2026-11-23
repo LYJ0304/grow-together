@@ -12,7 +12,7 @@ and making room for meaningful moments together.
 같이 키우기 · Built for parents and caregivers.
 
 [![Status: In development](docs/readme/status.svg)](#roadmap)
-[![Expo 55](docs/readme/expo.svg)](apps/mobile/package.json)
+[![Expo 58](docs/readme/expo.svg)](apps/mobile/package.json)
 [![Spring Boot 4](docs/readme/spring.svg)](apps/api/build.gradle)
 [![FastAPI](docs/readme/fastapi.svg)](apps/worker/pyproject.toml)
 
@@ -77,7 +77,7 @@ exist separately; their mobile/API integration remains outstanding.
 
 | Layer                    | Technologies                                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------- |
-| Mobile & web             | Expo SDK 55, React Native 0.83, TypeScript, Expo Router, TanStack Query, Reanimated           |
+| Mobile & web             | Expo SDK 58, React Native 0.88, TypeScript, Expo Router, TanStack Query, Reanimated           |
 | Backend API              | Java 21, Spring Boot 4, Spring Security, JPA, Flyway                                          |
 | AI Worker                | Python 3.12+, FastAPI, Pydantic, uv, OpenRouter                                               |
 | Database                 | PostgreSQL 16; local Compose uses a pgvector-enabled image                                    |
@@ -114,7 +114,7 @@ diary routes are not shown as connected product flows in the diagram.
 
 ### Prerequisites
 
-- Node.js **20.19.4+** and npm for the mobile app; the optional Admin requires **22.18+**.
+- Node.js **22.13+ on the 22.x line**, **24.3+ on the 24.x line**, or **26+** and npm for the mobile app. The optional Admin requires **22.18+**.
 - Docker with Docker Compose for the local database and API.
 - OpenSSL to generate local signing and service keys.
 - Java **21** for API development outside Docker.
@@ -186,7 +186,9 @@ npm start
 ```
 
 For a physical phone, replace `localhost` in `EXPO_PUBLIC_API_URL` with your
-computer's LAN address. Expo normally uses port `8081`; keep browser origins in
+computer's LAN address. For Expo Go, use an SDK 58-compatible version and
+connect the phone to the same Wi-Fi network as the development machine. Expo
+normally uses port `8081`; keep browser origins in
 `CORS_ALLOWED_ORIGINS` consistent with the port you actually use.
 
 Set `EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false` when testing real authentication.

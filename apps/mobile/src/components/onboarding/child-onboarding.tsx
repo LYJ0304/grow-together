@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -9,9 +9,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { useNavigationState, usePreventRemove } from '@react-navigation/native';
+import { SafeAreaView } from '@/components/safe-area-view';
+import { router, usePreventRemove } from 'expo-router';
+import { useNavigationState } from 'expo-router/react-navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth-provider';
 import { useChildProfile } from '../../lib/use-child-profile';
@@ -72,8 +72,8 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
     pending = useRef(false);
   const reduced = useReduceMotion();
   const opacity = useRef(new Animated.Value(1)).current;
-  const scroll = useRef<ScrollView>(null);
-  const heading = useRef<Text>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const heading = useRef<ComponentRef<typeof Text>>(null);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;

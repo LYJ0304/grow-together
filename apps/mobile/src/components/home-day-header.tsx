@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import { AppHeader } from './app-header';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
@@ -24,7 +24,7 @@ export function HomeDayHeader({
 }) {
   const heading = useEntranceOnce();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const pickerButton = useRef<View>(null);
+  const pickerButton = useRef<ComponentRef<typeof View>>(null);
   const day = parseDiaryDate(date)!;
   const change = (offset: number) => {
     if (!blocked) onChangeDate(diaryDateKey(shiftCalendarDate(day, offset)));

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { type ComponentRef, useRef } from 'react';
 import {
   Modal,
   Platform,
@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { colors } from '../theme/colors';
 import { typography } from './typography';
 import { useReduceMotion } from '../theme/motion';
@@ -27,7 +27,7 @@ export function ChildRegistrationModal({
   onClose(): void;
 }) {
   const reduced = useReduceMotion();
-  const heading = useRef<Text>(null);
+  const heading = useRef<ComponentRef<typeof Text>>(null);
   const title = error
     ? '아이 정보를 확인하지 못했어요'
     : '우리 아이를 등록해주세요';

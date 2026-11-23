@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -9,13 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import {
-  useNavigation,
-  usePreventRemove,
-  type NavigationAction,
-} from '@react-navigation/native';
+import { SafeAreaView } from '@/components/safe-area-view';
+import { router, usePreventRemove } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { AccountHeader } from '../src/components/account-header';
 import { ActionButton } from '../src/components/action-button';
@@ -74,7 +69,6 @@ function ProfileForm({
   queryKey: readonly unknown[];
 }) {
   const { client, epoch } = useAuth();
-  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const [name, setName] = useState(profile.name);
   const [initialName] = useState(profile.name);
@@ -82,25 +76,25 @@ function ProfileForm({
   const pending = useRef(false);
   const active = useRef(true);
   const [notice, setNotice] = useState('');
-  const [leave, setLeave] = useState<NavigationAction | null>(null);
+  const [leave, setLeave] = useState<(() => void) | null>(null);
   const [allowed, setAllowed] = useState(false);
   const [saved, setSaved] = useState(false);
   const normalized = normalizeProfileName(name);
   const dirty = normalized !== normalizeProfileName(initialName);
   const invalid = !normalized || normalized.length > 50;
-  const input = useRef<TextInput>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   useEffect(() => {
     active.current = true;
     return () => {
       active.current = false;
     };
   }, []);
-  usePreventRemove(busy || (dirty && !allowed), ({ data }) => {
-    if (!pending.current) setLeave(data.action);
+  usePreventRemove(busy || (dirty && !allowed), ({ repeat }) => {
+    if (!pending.current) setLeave(() => repeat);
   });
   useEffect(() => {
-    if (allowed && leave) navigation.dispatch(leave);
-  }, [allowed, leave, navigation]);
+    if (allowed && leave) leave();
+  }, [allowed, leave]);
   useEffect(() => {
     if (saved && !busy) router.dismissTo('/mypage');
   }, [saved, busy]);

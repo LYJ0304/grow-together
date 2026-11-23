@@ -7,9 +7,9 @@ import {
   StyleSheet,
   Text,
   View,
-  type ViewToken,
+  type ListViewToken,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTabScrollToTop } from '../../../src/lib/use-tab-scroll-to-top';
@@ -106,8 +106,8 @@ export default function CalendarScreen() {
     key.startsWith(monthKey),
   ).length;
   const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken<RecordRow>[] }) => {
-      const dates = new Set(
+    ({ viewableItems }: { viewableItems: ListViewToken[] }) => {
+      const dates = new Set<string>(
         viewableItems
           .filter((item) => item.isViewable)
           .map((item) => item.item.date),

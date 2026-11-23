@@ -1,6 +1,7 @@
 import { colors } from '../theme/colors';
 import { router, usePathname } from 'expo-router';
 import {
+  type ComponentRef,
   createContext,
   useCallback,
   useContext,
@@ -36,14 +37,17 @@ const TransitionContext = createContext<{
   outgoingOpacity: Animated.Value;
   introFinished: boolean;
   finishIntro: () => void;
-  navigate: (destination: LaunchRoute, title: Text | null) => void;
+  navigate: (
+    destination: LaunchRoute,
+    title: ComponentRef<typeof Text> | null,
+  ) => void;
   setDestination: (screen: LaunchRoute, position: Position) => void;
 } | null>(null);
 
 export function LaunchTransitionProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const previousPath = useRef(pathname);
-  const root = useRef<View>(null);
+  const root = useRef<ComponentRef<typeof View>>(null);
   const viewport = useRef<{ width: number; height: number } | null>(null);
   const pending = useRef(false);
   const progress = useRef(new Animated.Value(0)).current;
@@ -104,7 +108,10 @@ export function LaunchTransitionProvider({ children }: PropsWithChildren) {
   }, [transition, pathname, progress, clear]);
 
   const navigate = useCallback(
-    async (destination: LaunchRoute, title: Text | null) => {
+    async (
+      destination: LaunchRoute,
+      title: ComponentRef<typeof Text> | null,
+    ) => {
       if (pending.current) return;
       pending.current = true;
       const reduceMotion =
@@ -234,7 +241,7 @@ export function useLaunchTransition(
 ) {
   const context = useContext(TransitionContext);
   if (!context) throw new Error('LaunchTransitionProvider is required');
-  const titleRef = useRef<Text>(null);
+  const titleRef = useRef<ComponentRef<typeof Text>>(null);
   const advanced = useRef(false);
   const pathname = usePathname();
   const {
