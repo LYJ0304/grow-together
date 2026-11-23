@@ -1,8 +1,6 @@
 import type { TodoResponse } from '../todo/types';
 
-export type DiaryFileRequest = {
-  imageUrl: string;
-};
+export type DiaryFileRequest = { imageUrl: string } | { fileId: string };
 
 export type DiaryRequest = {
   content?: string | null;
@@ -13,6 +11,7 @@ export type DiaryRequest = {
 export type DiaryFileResponse = {
   id: number;
   imageUrl: string;
+  fileId?: string;
 };
 
 export type DiaryCreateRequest = DiaryRequest & { diaryDate: string };

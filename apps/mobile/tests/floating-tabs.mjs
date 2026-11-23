@@ -13,10 +13,15 @@ await page.addInitScript(authenticatedSessionFixture);
 await page.route('**/api/v1/children/me', (r) =>
   r.fulfill({ json: { name: '하늘', birthday: '2025-01-01' } }),
 );
+await page.route('**/api/v1/users/me', (route) =>
+  route.fulfill({
+    json: { id: 1, name: '보호자', email: 'parent@example.com' },
+  }),
+);
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 await page.route('**/api/v1/diary**', (r) => r.fulfill({ json: [] }));
 const base = process.env.MOBILE_URL ?? 'http://localhost:8195';
-const labels = ['오늘', '일정', '기록', '리포트', '질문'];
+const labels = ['홈', '캘린더', '상담', '마이'];
 try {
   await page.goto(base + '/main', { timeout: 120000 });
   await page.getByRole('tablist').waitFor();
@@ -115,20 +120,25 @@ try {
           .getBoundingClientRect().height,
       ) === 114,
   );
-  const keyboardTab = page.getByRole('tab', { name: '리포트', exact: true });
+  const keyboardTab = page.getByRole('tab', { name: '마이', exact: true });
   await keyboardTab.focus();
   await page.keyboard.press('Enter');
-  await page.waitForURL('**/report');
+  await page.waitForURL('**/mypage');
   for (const [name, route] of [
-    ['일정', 'todo'],
-    ['기록', 'calendar'],
-    ['리포트', 'report'],
-    ['질문', 'chat'],
-    ['오늘', 'main'],
+    ['캘린더', 'calendar'],
+    ['마이', 'mypage'],
+    ['상담', 'chat'],
+    ['홈', 'main'],
   ]) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
-    await page.waitForURL('**/' + route);
+    await page
+      .waitForURL((url) => url.pathname === '/' + route, { timeout: 8000 })
+      .catch((error) => {
+        throw new Error(`Tab ${name} stayed at ${page.url()}`, {
+          cause: error,
+        });
+      });
     assert.equal(await tab.getAttribute('aria-selected'), 'true');
     const active = await page
       .getByTestId('floating-tab-highlight')
@@ -174,7 +184,7 @@ try {
       if (element)
         window.highlightFrames.push(element.getBoundingClientRect().x);
       const icon = document.querySelector(
-        '[aria-label="질문"] [data-testid="tab-icon-selected"]',
+        '[aria-label="상담"] [data-testid="tab-icon-selected"]',
       );
       if (icon)
         window.iconOpacityFrames.push(Number(getComputedStyle(icon).opacity));
@@ -183,7 +193,7 @@ try {
     sample();
   });
   const startX = (await highlight.boundingBox()).x;
-  await animated.getByRole('tab', { name: '질문', exact: true }).click();
+  await animated.getByRole('tab', { name: '상담', exact: true }).click();
   await animated.waitForURL('**/chat');
   await animated.waitForFunction(() => {
     const bar = document
@@ -210,7 +220,7 @@ try {
     'Icon tint crossfade renders intermediate states',
   );
   await animated.emulateMedia({ reducedMotion: 'reduce' });
-  await animated.getByRole('tab', { name: '오늘', exact: true }).click();
+  await animated.getByRole('tab', { name: '홈', exact: true }).click();
   await animated.waitForURL('**/main');
   await animated.waitForFunction(
     (start) =>
@@ -224,7 +234,7 @@ try {
   // Modified link clicks retain browser navigation without changing this tab's route.
   const popupPromise = animated.context().waitForEvent('page');
   await animated
-    .getByRole('tab', { name: '질문', exact: true })
+    .getByRole('tab', { name: '상담', exact: true })
     .click({ modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'] });
   const popup = await popupPromise;
   await popup.waitForURL('**/chat');
@@ -232,7 +242,7 @@ try {
   await popup.close();
   await animated.close();
   console.log(
-    'PASS floating pill, visible labels, five links/selected states, keyboard navigation, moving highlight, 44px targets, safe area and responsive gutters',
+    'PASS floating pill, visible labels, four links/selected states, keyboard navigation, moving highlight, 44px targets, safe area and responsive gutters',
   );
 } catch (error) {
   await page.screenshot({ path: '/tmp/soft-glass-tabs-failure.png' });

@@ -78,7 +78,8 @@ function AuthenticatedStack() {
           </Stack.Protected>
           <Stack.Protected guard={hasAccess} redirectTo="/login">
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="mypage" />
+            <Stack.Screen name="todo" />
+            <Stack.Screen name="report" />
             <Stack.Screen name="children" />
             <Stack.Screen name="spouse" />
             <Stack.Screen name="persona" />

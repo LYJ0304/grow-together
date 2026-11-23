@@ -4,6 +4,10 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.growtogether.common.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
@@ -47,5 +51,17 @@ class TodoReactionControllerTest {
                 .andExpect(status().isOk());
         mvc.perform(put("/api/v1/todos/1/reaction").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"childReaction\":null}")).andExpect(status().isUnauthorized());
+    }
+    @Test void monthMarkersUseCallerAndStrictLocalMonth() throws Exception {
+        var month = YearMonth.of(2024, 2);
+        when(service.getScheduledDates(7L, month)).thenReturn(List.of(LocalDate.of(2024, 2, 29)));
+        mvc.perform(get("/api/v1/todos/month").param("month", "2024-02").with(jwt().jwt(j -> j.subject("7"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("2024-02-29"));
+        mvc.perform(get("/api/v1/todos/month").param("month", "2024-13").with(jwt().jwt(j -> j.subject("7"))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/todos/month").param("month", "2024-02"))
+                .andExpect(status().isUnauthorized());
+        verify(service).getScheduledDates(7L, month);
+        verifyNoMoreInteractions(service);
     }
 }

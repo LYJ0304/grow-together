@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import com.growtogether.storage.FileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,8 +42,41 @@ class DiaryServiceTest {
     @Mock
     private TodoRepository todoRepository;
 
+    @Mock
+    private FileService fileService;
+
     @InjectMocks
     private DiaryService diaryService;
+
+    @Test
+    void savesCompletedOwnedImagesAndResolvesTheirDownloadUrls() {
+        var fileId = UUID.randomUUID();
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "기록", List.of(),
+                List.of(new DiaryFileRequest(null, fileId)));
+        given(fileService.diaryImageUrl(userId, fileId)).willReturn(imageUrl);
+        given(diaryRepository.saveAndFlush(any(Diary.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        var response = diaryService.create(userId, request);
+
+        assertThat(response.diaryFiles().getFirst().fileId()).isEqualTo(fileId);
+        assertThat(response.diaryFiles().getFirst().imageUrl()).isEqualTo(imageUrl);
+        var saved = ArgumentCaptor.forClass(Diary.class);
+        then(diaryRepository).should().saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getDiaryFiles().getFirst().getImageUrl()).isNull();
+        assertThat(saved.getValue().getDiaryFiles().getFirst().getStoredFileId()).isEqualTo(fileId);
+    }
+
+    @Test
+    void cannotAttachAnotherOwnersUpload() {
+        var fileId = UUID.randomUUID();
+        var request = new DiaryCreateRequest(LocalDate.of(2026, 11, 10), "기록", List.of(),
+                List.of(new DiaryFileRequest(null, fileId)));
+        given(fileService.diaryImageUrl(userId, fileId)).willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> diaryService.create(userId, request))
+                .isInstanceOf(ResponseStatusException.class);
+        then(diaryRepository).shouldHaveNoInteractions();
+    }
 
     @Test
     void create_할일과이미지가있으면_연결해서저장() {

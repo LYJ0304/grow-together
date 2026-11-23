@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.YearMonth;
 
 @Service 
 @RequiredArgsConstructor 
@@ -28,6 +29,10 @@ public class TodoService {
     public List<TodoResponse> getTodos(Long userId, LocalDate date) {
         return todoRepository.findByUserIdAndScheduledDateOrderByScheduledTimeAsc(userId, date)
                 .stream().map(TodoResponse::from).toList();
+    }
+
+    public List<LocalDate> getScheduledDates(Long userId, YearMonth month) {
+        return todoRepository.findScheduledDates(userId, month.atDay(1), month.plusMonths(1).atDay(1));
     }
 
     public TodoResponse getTodo(Long userId, Long id) {

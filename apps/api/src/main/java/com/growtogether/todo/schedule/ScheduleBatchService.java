@@ -26,6 +26,7 @@ public class ScheduleBatchService {
         ScheduleRules.validate(request.candidates(), List.of(), current, null, 10, HttpStatus.CONFLICT);
         var added = request.candidates().stream().map(c -> {
             var todo = new Todo(userId, c.planName().trim(), c.content(), request.date(), c.scheduledTime());
+            todo.markAiRecommended();
             todo.setDurationMinutes(c.durationMinutes());
             return todo;
         }).toList();

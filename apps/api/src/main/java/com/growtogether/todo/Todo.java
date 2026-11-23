@@ -62,6 +62,13 @@ public class Todo {
     @Column(nullable = false)
     private boolean completed;
 
+    @Column(name = "ai_recommended")
+    private Boolean aiRecommended;
+
+    public void markAiRecommended() {
+        aiRecommended = true;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(name = "child_reaction", length = 16)
     private ChildReaction childReaction;

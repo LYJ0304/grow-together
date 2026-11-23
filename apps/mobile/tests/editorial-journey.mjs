@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
 const browser = await chromium.launch({
-  executablePath: '/usr/bin/chromium',
+  executablePath: process.env.BROWSER_EXECUTABLE_PATH ?? '/usr/bin/chromium',
   args: ['--no-sandbox'],
 });
 const page = await browser.newPage({
@@ -39,10 +39,12 @@ const base = process.env.MOBILE_URL ?? 'http://localhost:8197';
 try {
   await page.goto(base + '/main');
   if (!process.env.RECORDS_ONLY) {
-    await page.getByRole('button', { name: '선택한 날 일기 작성하기' }).click();
+    await page.getByRole('button', { name: '오늘 활동 빠른 추가' }).click();
     assert.equal(
       await page
-        .getByRole('heading', { name: '무엇을 남길까요?', exact: true })
+        .getByRole('heading', {
+          name: /무엇을 남길까요|어떤 활동을 계획할까요/,
+        })
         .count(),
       1,
       'FAB opens a chooser instead of immediately navigating',
@@ -53,9 +55,9 @@ try {
     await page.waitForFunction(
       () =>
         document.activeElement?.getAttribute('aria-label') ===
-        '선택한 날 일기 작성하기',
+        '오늘 활동 빠른 추가',
     );
-    await page.getByRole('button', { name: '선택한 날 일기 작성하기' }).click();
+    await page.getByRole('button', { name: '오늘 활동 빠른 추가' }).click();
     await page
       .getByRole('button', { name: '일정 직접 추가하기', exact: true })
       .click();
@@ -63,39 +65,31 @@ try {
     assert.equal(writes, 0, 'Opening an action does not persist');
     await page.getByRole('button', { name: '취소', exact: true }).click();
   }
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  await page.getByRole('button', { name: '모아보기', exact: true }).click();
-  const entry = page.getByRole('button', {
-    name: '2026년 11월 11일 일기 보기',
-    exact: true,
-  });
+  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
+  await page
+    .getByRole('button', { name: /2026년 11월 11일.*일기 있음/ })
+    .click();
+  const entry = page.getByRole('button', { name: '선택한 날짜의 일기 보기' });
   await entry.waitFor();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole('button', { name: '모아보기', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
+  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
+  await entry.waitFor();
   await entry.click();
   await page.waitForURL('**/diary?**');
   assert.equal(new URL(page.url()).searchParams.get('date'), '2026-11-11');
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
+  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
+  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
   readsFail = true;
   await page.getByRole('button', { name: '이전 달', exact: true }).click();
   await page.getByRole('alert').first().waitFor();
   assert.equal(
-    await page
-      .getByText('이번 달에 저장된 일기가 없어요.', { exact: true })
-      .count(),
+    await page.getByText('이날의 기록이 아직 없어요', { exact: true }).count(),
     0,
     'Read failures are not empty lists',
   );
   assert.equal(writes, 0);
   console.log(
-    'PASS quick actions without writes, real month list/date navigation, view persistence and error distinction',
+    'PASS quick actions without writes, calendar date navigation, date persistence and error distinction',
   );
 } finally {
   await browser.close();

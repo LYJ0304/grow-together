@@ -76,6 +76,8 @@ export type RecordPreview = {
   date: string;
   content: string;
   photo?: string;
+  photoCount: number;
+  activities: string[];
 };
 export function useRecordPreview(date: string, visible: boolean) {
   const { client, status, epoch } = useAuth();
@@ -91,7 +93,7 @@ export function useRecordPreview(date: string, visible: boolean) {
       if (!value) throw new Error('기록을 다시 확인해주세요.');
       if (preview) {
         const local = value as SavedDiary;
-        return { date, content: local.content, photo: local.photoUris[0] };
+        return { date, content: local.content, photo: local.photoUris[0], photoCount: local.photoUris.length, activities: local.sourceRecords?.activities ?? [] };
       }
       const remote = value as DiaryResponse;
       return {
@@ -99,6 +101,8 @@ export function useRecordPreview(date: string, visible: boolean) {
         date,
         content: remote.content ?? '',
         photo: remote.diaryFiles?.[0]?.imageUrl,
+        photoCount: remote.diaryFiles?.length ?? 0,
+        activities: remote.todos?.map((todo) => todo.planName) ?? [],
       };
     },
   });

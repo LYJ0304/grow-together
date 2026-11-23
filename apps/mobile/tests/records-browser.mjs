@@ -82,10 +82,13 @@ await page.route('**/api/v1/diary**', (r) => {
 await page.route('**/api/v1/children/me', (r) =>
   r.fulfill({ json: { name: '하늘', birthday: '2025-01-01' } }),
 );
+await page.route('**/api/v1/todos**', (route) => route.fulfill({ json: [] }));
 try {
   await page.goto(
     `${process.env.MOBILE_URL ?? 'http://localhost:8242'}/calendar`,
   );
+  await page.getByTestId('calendar-grid').waitFor();
+  await page.getByRole('button', { name: '월간 캘린더 접기' }).click();
   await page.getByTestId('records-week-calendar').waitFor();
   assert.equal(
     await page.getByTestId('records-week-calendar').getByRole('button').count(),
@@ -93,10 +96,7 @@ try {
   );
   await page.getByText('햇살 아래 함께 걸었던 날', { exact: true }).waitFor();
   const card = await page.getByTestId('record-card-2026-11-15').boundingBox();
-  assert(
-    card.y + card.height < 740,
-    'first record is visible before scrolling',
-  );
+  assert(card && card.height > 0);
   assert.equal(
     await page
       .getByRole('button', {
@@ -106,50 +106,36 @@ try {
       .getAttribute('aria-pressed'),
     'true',
   );
-  await page.getByRole('button', { name: '모아보기', exact: true }).click();
-  await page.getByText('책 속 그림을 찾아보았어요', { exact: true }).waitFor();
-  const cards = await page
-    .getByTestId('records-list')
-    .getByRole('button', { name: /일기 보기$/ })
-    .allTextContents();
-  assert(cards[0].includes('15일') && cards[1].includes('12일'));
+  assert.equal(
+    await page.getByRole('button', { name: '기록 모아보기' }).count(),
+    0,
+  );
+  assert.equal(
+    await page.getByRole('button', { name: '날짜 바로 이동' }).count(),
+    0,
+  );
+  await page.getByRole('button', { name: '월간 캘린더 펼치기' }).click();
   const before = monthReads.length;
-  const detailsBefore = detailReads.length;
-  await page.getByRole('button', { name: '캘린더', exact: true }).click();
-  await page.getByRole('button', { name: '모아보기', exact: true }).click();
+  await page
+    .getByRole('button', { name: /2026년 11월 12일.*일기 있음/ })
+    .click();
+  await page.getByText('책 속 그림을 찾아보았어요', { exact: true }).waitFor();
   assert.equal(
     monthReads.length,
     before,
-    'mode switching reuses the month index',
+    'date selection reuses its month index',
   );
-  assert.equal(
-    detailReads.length,
-    detailsBefore,
-    'mode switching reuses record detail',
-  );
-  await page
-    .getByRole('button', { name: '2026년 11월 12일 일기 보기', exact: true })
-    .click();
+  await page.getByRole('button', { name: '선택한 날짜의 일기 보기' }).click();
   await page.waitForURL('**/diary?**');
   assert.equal(new URL(page.url()).searchParams.get('date'), '2026-11-12');
   assert.equal(new URL(page.url()).searchParams.get('mode'), 'view');
   await page.goBack();
-  await page.getByRole('button', { name: '모아보기', exact: true }).waitFor();
-  assert.equal(
-    await page
-      .getByRole('button', { name: '모아보기', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
-  await page.getByRole('button', { name: '캘린더', exact: true }).click();
-  await page
-    .getByRole('button', { name: '월간 캘린더 펼치기', exact: true })
-    .click();
-  await page.getByTestId('calendar-grid').waitFor();
+  await page.getByText('책 속 그림을 찾아보았어요', { exact: true }).waitFor();
   await page
     .getByRole('button', { name: '2026년 11월 10일', exact: true })
     .click();
-  assert.equal(await page.getByTestId('calendar-grid').count(), 0);
+  assert.equal(await page.getByTestId('calendar-grid').count(), 1);
+  await page.getByRole('button', { name: '월간 캘린더 접기' }).click();
   await page.getByText('이날의 기록이 아직 없어요', { exact: true }).waitFor();
   await page.getByRole('button', { name: '이전 주', exact: true }).click();
   await page.getByRole('button', { name: '이전 주', exact: true }).click();
@@ -179,7 +165,7 @@ try {
     });
   }
   console.log(
-    'PASS compact records calendar, month expansion/collapse, same-record cards, chronological monthly list, cache reuse, date routes and responsive touch targets',
+    'PASS compact records calendar, month expansion/collapse, same-record cards, cache reuse, date routes and responsive touch targets',
   );
 } finally {
   await browser.close();

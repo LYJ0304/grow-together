@@ -1,22 +1,19 @@
-import { spacing } from '../../src/theme/spacing';
+import { spacing } from '@/theme/spacing';
 import { type ComponentRef, useCallback, useRef, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { PageIntro } from '../../src/components/page-intro';
-import { AppHeader } from '../../src/components/app-header';
-import { MotionPressable } from '../../src/components/motion-pressable';
-import { ReportContent } from '../../src/components/report/report-content';
-import { useAuth } from '../../src/components/auth-provider';
-import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
-import { useSessionValue } from '../../src/lib/session-state';
-import {
-  currentReportWeek,
-  shiftReportDate,
-} from '../../src/lib/features/report/week';
-import { colors } from '../../src/theme/colors';
-import { typography } from '../../src/theme/typography';
+import { PageIntro } from '@/components/page-intro';
+import { AppHeader } from '@/components/app-header';
+import { MotionPressable } from '@/components/motion-pressable';
+import { ReportContent } from '@/components/report/report-content';
+import { useAuth } from '@/components/auth-provider';
+import { useTabScrollToTop } from '@/lib/use-tab-scroll-to-top';
+import { useSessionValue } from '@/lib/session-state';
+import { currentReportWeek, shiftReportDate } from '@/lib/features/report/week';
+import { colors } from '@/theme/colors';
+import { typography } from '@/theme/typography';
 
 export default function ReportScreen() {
   const { status, client } = useAuth();
@@ -49,7 +46,11 @@ export default function ReportScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <AppHeader />
+      <AppHeader
+        onBack={() =>
+          router.canGoBack() ? router.back() : router.replace('/mypage')
+        }
+      />
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
         <PageIntro
           eyebrow="OUR WEEKLY STORY"
