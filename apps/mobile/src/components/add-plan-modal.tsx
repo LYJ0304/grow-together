@@ -1,5 +1,5 @@
 import { buttonSurface, buttonLabel } from '../theme/buttons';
-import { useRef, useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -19,10 +19,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, safeAreaLength } from '@/components/safe-area-view';
 
 type PlanInput = {
   title: string;
@@ -55,7 +53,7 @@ export function AddPlanModal({
   const reduced = useReduceMotion();
   const insets = useSafeAreaInsets();
   const keyboard = useChatKeyboard();
-  const titleInput = useRef<TextInput>(null);
+  const titleInput = useRef<ComponentRef<typeof TextInput>>(null);
   const dirty =
     duration !== initialDuration ||
     title !== (initialValues?.title ?? '') ||
@@ -156,7 +154,11 @@ export function AddPlanModal({
           <View
             style={[
               styles.sheet,
-              { paddingBottom: keyboard.visible ? 0 : insets.bottom },
+              {
+                paddingBottom: keyboard.visible
+                  ? 0
+                  : safeAreaLength('bottom', insets.bottom),
+              },
             ]}
             accessibilityViewIsModal
           >

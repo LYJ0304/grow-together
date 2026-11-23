@@ -1,7 +1,7 @@
 import { colors } from '../theme/colors';
 import { Image } from 'expo-image';
 import { typography } from './typography';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 import {
   AccessibilityInfo,

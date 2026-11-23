@@ -3,7 +3,7 @@ import { typography } from '../src/components/typography';
 import { colors } from '../src/theme/colors';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 
 // shortcut: sample profiles until a member search API is available.
 const sampleProfiles = [
@@ -22,7 +22,7 @@ const sampleProfiles = [
 ];
 
 export default function SpouseScreen() {
-  const input = useRef<TextInput>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [error, setError] = useState('');

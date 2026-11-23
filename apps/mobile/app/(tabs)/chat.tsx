@@ -11,7 +11,13 @@ import { AppHeader } from '../../src/components/app-header';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ComponentRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -23,7 +29,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 
 import { useChatDraft } from '../../src/components/auth-provider';
 import { typography } from '../../src/components/typography';
@@ -48,9 +54,9 @@ let nextMessageId = 0;
 
 export default function CounselorChatScreen() {
   const { compose } = useLocalSearchParams<{ compose?: string }>();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   useTabScrollToTop(scroll);
-  const input = useRef<TextInput>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   const { width, height } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
   const [messages, setMessages] = useSessionValue<ChatMessage[]>(

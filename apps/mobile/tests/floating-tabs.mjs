@@ -103,9 +103,9 @@ try {
     await page.screenshot({ path: `/tmp/soft-glass-tabs-${width}.png` });
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addStyleTag({
-    content:
-      'body > div[style*="safe-area-inset-top"] { padding-top: 47px !important; padding-bottom: 34px !important; }',
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { top: 47, bottom: 34 },
   });
   await page.waitForFunction(
     () =>
@@ -225,7 +225,7 @@ try {
   const popupPromise = animated.context().waitForEvent('page');
   await animated
     .getByRole('tab', { name: '질문', exact: true })
-    .click({ modifiers: ['Control'] });
+    .click({ modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'] });
   const popup = await popupPromise;
   await popup.waitForURL('**/chat');
   assert(animated.url().endsWith('/main'));

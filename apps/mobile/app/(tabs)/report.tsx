@@ -1,7 +1,7 @@
 import { spacing } from '../../src/theme/spacing';
-import { useCallback, useRef, useState } from 'react';
+import { type ComponentRef, useCallback, useRef, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { PageIntro } from '../../src/components/page-intro';
@@ -20,7 +20,7 @@ import { typography } from '../../src/theme/typography';
 
 export default function ReportScreen() {
   const { status, client } = useAuth();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   useTabScrollToTop(scroll);
   const [current, setCurrent] = useState(() => currentReportWeek());
   const [selected, setSelected] = useSessionValue('reportWeek', current);

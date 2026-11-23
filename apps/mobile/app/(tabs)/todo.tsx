@@ -19,7 +19,7 @@ import { editorial } from '../../src/theme/editorial';
 import { AppHeader } from '../../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { parseDiaryDate } from '../../src/lib/diary-storage';
 import {
   Modal,
@@ -29,7 +29,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 
 import { AddPlanModal } from '../../src/components/add-plan-modal';
 import { useAuth } from '../../src/components/auth-provider';
@@ -49,7 +49,7 @@ function localDateKey(date: Date) {
 export default function TodoScreen() {
   const requestChild = useChildRegistration();
   const { client, status, epoch } = useAuth();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   useTabScrollToTop(scroll);
   const [selectedDate, setSelectedDate] = useSessionValue('todoDate', () => {
     const now = new Date();

@@ -20,7 +20,7 @@ for (const reduced of [false, true]) {
     require: (name) =>
       name === 'react'
         ? { useMemo: (fn) => fn() }
-        : name === '@react-navigation/native'
+        : name === 'expo-router/react-navigation'
           ? {
               useScrollToTop: (value) => {
                 adapter = value;

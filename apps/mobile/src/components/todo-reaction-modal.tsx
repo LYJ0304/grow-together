@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './auth-provider';
 import { ActionButton } from './action-button';

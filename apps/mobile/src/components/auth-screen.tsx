@@ -17,7 +17,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 
 type AuthScreenProps = { mode: 'login' | 'signup' };
 

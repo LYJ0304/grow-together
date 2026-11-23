@@ -1,4 +1,4 @@
-import { useScrollToTop } from '@react-navigation/native';
+import { useScrollToTop } from 'expo-router/react-navigation';
 import { useMemo, type RefObject } from 'react';
 import { useReduceMotion } from '../theme/motion';
 

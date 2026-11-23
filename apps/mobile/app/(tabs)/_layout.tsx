@@ -67,7 +67,6 @@ export default function TabLayout() {
   return (
     <TabInteractionContext.Provider value={setInteraction}>
       <Tabs
-        initialRouteName="main"
         backBehavior="history"
         screenListeners={{
           tabPress: (event) => {

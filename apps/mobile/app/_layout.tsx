@@ -69,21 +69,24 @@ function AuthenticatedStack() {
             contentStyle: { backgroundColor: colors.background },
           }}
         >
-          <Stack.Protected guard={!hasAccess}>
+          <Stack.Protected guard={!hasAccess} redirectTo="/main">
             <Stack.Screen name="login" />
             <Stack.Screen name="signup" />
             <Stack.Screen name="index" />
             <Stack.Screen name="app-name" />
             <Stack.Screen name="welcome" />
           </Stack.Protected>
-          <Stack.Protected guard={hasAccess}>
+          <Stack.Protected guard={hasAccess} redirectTo="/login">
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="mypage" />
             <Stack.Screen name="children" />
             <Stack.Screen name="spouse" />
             <Stack.Screen name="persona" />
           </Stack.Protected>
-          <Stack.Protected guard={status === 'authenticated'}>
+          <Stack.Protected
+            guard={status === 'authenticated'}
+            redirectTo={hasAccess ? '/main' : '/login'}
+          >
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="profile" />
           </Stack.Protected>

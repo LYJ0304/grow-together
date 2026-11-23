@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { calendarDays, getWeek } from '../../lib/calendar';
@@ -34,7 +34,7 @@ export function RecordCalendar({
   onStep(offset: number): void;
 }) {
   const [jump, setJump] = useState(false);
-  const jumpButton = useRef<View>(null);
+  const jumpButton = useRef<ComponentRef<typeof View>>(null);
   const days = expanded ? calendarDays(month, 1) : getWeek(selected, 1);
   const key = diaryDateKey(selected);
   const close = () => {

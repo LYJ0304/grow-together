@@ -1,6 +1,6 @@
+import type { ComponentRef, Ref } from 'react';
 import { MotionPressable } from './motion-pressable';
-import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import type { Ref } from 'react';
+import type { BottomTabBarButtonProps } from 'expo-router/js-tabs';
 import { Platform, type View } from 'react-native';
 
 // Keep the navigator's semantics and href, while making submission guards
@@ -12,7 +12,7 @@ export function TabButton({
   return (
     <MotionPressable
       {...props}
-      ref={props.ref as Ref<View>}
+      ref={props.ref as Ref<ComponentRef<typeof View>>}
       {...{ href: blocked ? undefined : props.href }}
       disabled={blocked}
       accessibilityState={{ ...props.accessibilityState, disabled: blocked }}

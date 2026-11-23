@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '@/components/safe-area-view';
 import { useCallback, useState } from 'react';
 import LaunchLogo from '../src/components/launch-logo';
 import {
