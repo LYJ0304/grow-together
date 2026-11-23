@@ -57,8 +57,9 @@ try {
   const signup = await buttonColors(
     page.getByRole('button', { name: '가입하기', exact: true }),
   );
-  assert.equal(signup.bg, rgb(colors.tint));
-  assert(ratio(signup.bg, signup.fg) >= 4.5);
+  assert.equal(signup.bg, 'rgba(0, 0, 0, 0)');
+  assert.equal(signup.fg, rgb(colors.onTint));
+  assert(ratio(rgb(colors.background), signup.fg) >= 4.5);
   await page.screenshot({ path: `${artifacts}/welcome.png` });
   await welcomeLogin.click();
   const login = page.getByRole('button', { name: '로그인', exact: true });
