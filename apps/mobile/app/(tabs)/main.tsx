@@ -54,9 +54,7 @@ export default function MainScreen() {
   const { client, status, epoch } = useAuth();
   const profile = useChildProfile();
   const queryClient = useQueryClient();
-  const [today, setToday] = useState(() => localDateKey(new Date()));
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const date = selectedDate ?? today;
+  const [date, setDate] = useState(() => localDateKey(new Date()));
   const diary = useQuery({
     queryKey: ['diaryByDate', epoch, date],
     enabled: status === 'authenticated',
@@ -83,14 +81,14 @@ export default function MainScreen() {
       const refresh = () => {
         const now = new Date();
         const date = localDateKey(now);
-        setToday(date);
+        setDate(date);
         if (status === 'authenticated')
           void queryClient.invalidateQueries({
-            queryKey: ['todos', selectedDate ?? date],
+            queryKey: ['todos', date],
           });
         if (status === 'authenticated')
           void queryClient.invalidateQueries({
-            queryKey: ['diaryByDate', epoch, selectedDate ?? date],
+            queryKey: ['diaryByDate', epoch, date],
           });
         clearTimeout(timer);
         const midnight = new Date(
@@ -110,7 +108,7 @@ export default function MainScreen() {
         subscription.remove();
         if (Platform.OS === 'web') window.removeEventListener('focus', refresh);
       };
-    }, [queryClient, status, epoch, selectedDate]),
+    }, [queryClient, status, epoch]),
   );
 
   const schedules = [...(todos.data ?? [])].sort(
@@ -181,7 +179,6 @@ export default function MainScreen() {
   const viewAll = () =>
     router.navigate({ pathname: '/todo', params: { date } });
   const hasDiary = diary.data?.id != null;
-  const future = date > today;
   const addSchedule = () =>
     router.navigate({ pathname: '/todo', params: { date, add: 'true' } });
   const diaryLabel =
@@ -193,10 +190,6 @@ export default function MainScreen() {
           ? '일기 확인 중'
           : `일기 ${hasDiary ? 1 : 0}개`;
   const openDiary = () => {
-    if (future) {
-      addSchedule();
-      return;
-    }
     router.navigate({
       pathname: '/diary',
       params: {
@@ -205,18 +198,15 @@ export default function MainScreen() {
       },
     });
   };
-  const diaryBusy = !future && status === 'authenticated' && diary.isPending;
-  const diaryCta = future
-    ? '이날의 활동 계획하기'
-    : status === 'authenticated' && diary.isError
+  const diaryBusy = status === 'authenticated' && diary.isPending;
+  const diaryCta =
+    status === 'authenticated' && diary.isError
       ? '일기를 다시 불러오기'
-      : status === 'authenticated' && diary.isPending
+      : diaryBusy
         ? '일기를 확인하고 있어요.'
         : hasDiary
-          ? '이날의 기록 보기'
-          : date === today
-            ? '오늘의 순간 기록하기'
-            : '이날의 추억 기록하기';
+          ? '오늘의 기록 보기'
+          : '오늘의 순간 기록하기';
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
@@ -236,15 +226,7 @@ export default function MainScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <HomeDayHeader
-            date={date}
-            today={today}
-            blocked={pendingId !== null}
-            onChangeDate={(next) => {
-              setSelectedDate(next === today ? null : next);
-              setCompletionError('');
-            }}
-          />
+          <HomeDayHeader date={date} blocked={pendingId !== null} />
           <View>
             {profile.isPending ? (
               <Text style={styles.meta}>아이 정보를 불러오고 있어요.</Text>
@@ -339,7 +321,7 @@ export default function MainScreen() {
           <View style={styles.schedule}>
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.title}>
-                {date === today ? '오늘의 활동' : '이날의 활동'}
+                오늘의 활동
               </Text>
               <MotionPressable
                 accessibilityRole="button"
@@ -373,11 +355,7 @@ export default function MainScreen() {
               <>
                 <ScheduleProgress
                   progress={progress}
-                  accessibilityLabel={
-                    date === today
-                      ? '오늘 일정 완료율'
-                      : '선택한 날 일정 완료율'
-                  }
+                  accessibilityLabel="오늘 일정 완료율"
                 />
                 {schedules.length === 0 ? (
                   <View style={styles.empty}>
@@ -389,21 +367,14 @@ export default function MainScreen() {
                       motionEnabled
                       label="+ 활동 추가하기"
                       variant="primary"
-                      onPress={() =>
-                        router.navigate({
-                          pathname: '/todo',
-                          params: { date, add: 'true' },
-                        })
-                      }
+                      onPress={addSchedule}
                     />
                   </View>
                 ) : (
                   <>
                     {completed === schedules.length ? (
                       <Text style={styles.meta}>
-                        {date === today
-                          ? '오늘 일정을 모두 마쳤어요.'
-                          : '이날 일정을 모두 마쳤어요.'}
+                        오늘 일정을 모두 마쳤어요.
                       </Text>
                     ) : null}
                     {schedules.slice(0, 3).map((todo, index) => (
@@ -412,9 +383,7 @@ export default function MainScreen() {
                         todo={todo}
                         index={index}
                         entrance={!hasShownSchedules}
-                        now={
-                          date < today ? '23:59:59' : future ? '00:00:00' : now
-                        }
+                        now={now}
                         pendingId={pendingId}
                         onToggle={() => void toggle(todo)}
                         onReaction={() => setReactionTodo(todo)}
@@ -448,9 +417,7 @@ export default function MainScreen() {
             accessibilityState={{
               disabled: diaryBusy,
             }}
-            onPress={() =>
-              !future && diary.isError ? void diary.refetch() : openDiary()
-            }
+            onPress={() => (diary.isError ? void diary.refetch() : openDiary())}
             style={[styles.diaryCta, diaryBusy && styles.disabledSurface]}
           >
             <Text
@@ -465,18 +432,12 @@ export default function MainScreen() {
               ›
             </Text>
           </MotionPressable>
-          <HomeQuestionEntry currentDay={date === today} />
+          <HomeQuestionEntry />
         </ScrollView>
       </KeyboardAvoidingView>
       <MotionPressable
         accessibilityRole="button"
-        accessibilityLabel={
-          future
-            ? '선택한 날 활동 추가하기'
-            : hasDiary
-              ? '선택한 날 일기 열기'
-              : '선택한 날 일기 작성하기'
-        }
+        accessibilityLabel="오늘 활동 빠른 추가"
         ref={quickButton}
         onPress={() => setQuickOpen(true)}
         style={[
@@ -500,7 +461,6 @@ export default function MainScreen() {
       {quickOpen ? (
         <HomeQuickAdd
           authenticated={status === 'authenticated'}
-          allowDiary={!future}
           onClose={() => {
             setQuickOpen(false);
             requestAnimationFrame(() => quickButton.current?.focus());

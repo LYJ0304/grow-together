@@ -14,13 +14,6 @@ export const styles = StyleSheet.create({
     paddingBottom: 44,
     gap: 20,
   },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  brand: { ...typography.button, color: colors.primary },
-  exit: { minHeight: 44, justifyContent: 'center' },
   progress: { flexDirection: 'row', gap: 6 },
   progressPart: {
     flex: 1,

@@ -1,3 +1,4 @@
+import { ChildGenderField } from '../src/components/child-gender-field';
 import { AppHeader } from '../src/components/app-header';
 import {
   DateField,
@@ -26,7 +27,9 @@ import {
 import { SafeAreaView } from '@/components/safe-area-view';
 import { useAuth } from '../src/components/auth-provider';
 import {
+  childGenderLabels,
   saveChildProfile,
+  type ChildGender,
   validateChildProfile,
   type ChildProfileErrors,
 } from '../src/lib/child-profile';
@@ -46,6 +49,7 @@ function ChildrenEditor() {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [birthday, setBirthday] = useState('');
+  const [gender, setGender] = useState<ChildGender>();
   const [errors, setErrors] = useState<ChildProfileErrors>({});
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -60,7 +64,8 @@ function ChildrenEditor() {
   const dirty =
     editing &&
     (name !== (profile.data?.name ?? '') ||
-      birthday !== (profile.data?.birthday ?? ''));
+      birthday !== (profile.data?.birthday ?? '') ||
+      gender !== profile.data?.gender);
   const current = () =>
     client.getSnapshot().epoch === epoch &&
     client.getSnapshot().accountKey === profile.accountKey;
@@ -84,6 +89,7 @@ function ChildrenEditor() {
     setConflict(false);
     setName(profile.data?.name ?? '');
     setBirthday(profile.data?.birthday ?? '');
+    setGender(profile.data?.gender);
     setErrors({});
     setNotice('');
     setEditing(true);
@@ -116,7 +122,7 @@ function ChildrenEditor() {
     setSaving(true);
     setNotice('');
     try {
-      const input = { name: name.trim(), birthday: birthday.trim() };
+      const input = { name: name.trim(), birthday: birthday.trim(), gender };
       const value =
         status === 'preview'
           ? await saveChildProfile(profile.accountKey, input)
@@ -124,6 +130,9 @@ function ChildrenEditor() {
             ? await api.createProfile(input)
             : await api.saveProfile(input);
       if (!current()) return;
+      if (gender && value.gender !== gender) {
+        throw new Error('성별 저장을 확인하지 못했어요. 다시 시도해주세요.');
+      }
       // Prevent an older in-flight GET from replacing the saved response.
       await queryClient.cancelQueries({
         queryKey: profile.queryKey,
@@ -232,24 +241,16 @@ function ChildrenEditor() {
                 <>
                   {profile.data ? (
                     <>
-                      {status === 'authenticated' ? (
-                        <View style={styles.actions}>
-                          <ActionButton
-                            label="개인화 설정 수정"
-                            variant="secondary"
-                            onPress={() =>
-                              router.push({
-                                pathname: '/onboarding',
-                                params: { edit: 'true' },
-                              })
-                            }
-                          />
-                        </View>
-                      ) : null}
                       <Text style={styles.label}>아이 이름</Text>
                       <Text style={styles.value}>{profile.data.name}</Text>
                       <Text style={styles.label}>생년월일</Text>
                       <Text style={styles.value}>{profile.data.birthday}</Text>
+                      <Text style={styles.label}>성별</Text>
+                      <Text style={styles.value}>
+                        {profile.data.gender
+                          ? childGenderLabels[profile.data.gender]
+                          : '미입력'}
+                      </Text>
                     </>
                   ) : (
                     <Text style={styles.value}>등록된 아이가 없어요.</Text>
@@ -328,6 +329,13 @@ function ChildrenEditor() {
                       {errors.birthday}
                     </Text>
                   ) : null}
+                  <View style={styles.actions}>
+                    <ChildGenderField
+                      value={gender}
+                      disabled={saving}
+                      onChange={setGender}
+                    />
+                  </View>
                   <View style={styles.actions}>
                     <ActionButton
                       label={saving ? '저장 중...' : '저장'}

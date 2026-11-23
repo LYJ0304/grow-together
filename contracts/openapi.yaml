@@ -744,6 +744,10 @@ components:
           pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
           description: A real calendar date from 0001-01-01 through today (server date).
           example: '2024-03-15'
+        gender:
+          type: [string, 'null']
+          enum: [MALE, FEMALE, null]
+          description: Optional. Omission or null preserves an existing value on PUT.
         personalization:
           description: Optional. Omission/null preserves existing values on PUT; an explicit object replaces all choices.
           anyOf:
@@ -756,6 +760,7 @@ components:
         personalization: { $ref: '#/components/schemas/ChildPersonalizationResponse' }
         name: { type: string, minLength: 1, maxLength: 50 }
         birthday: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE], description: Omitted when no value is recorded. }
     ChildPersonalizationRequest:
       type: object
       additionalProperties: false

@@ -10,6 +10,7 @@ import {
 } from '../../lib/onboarding';
 import { colors } from '../../theme/colors';
 import { styles } from './onboarding-styles';
+import { ChildGenderField } from '../child-gender-field';
 import { DateField } from './date-field';
 export const titles = [
   '아이를 소개해 주세요',
@@ -129,6 +130,10 @@ export function OnboardingStep({
               현재 {months}개월 · 아이마다 자라는 속도는 달라요.
             </Text>
           ) : null}
+          <ChildGenderField
+            value={value.gender}
+            onChange={(gender) => update({ ...value, gender })}
+          />
           <Text style={styles.label}>조산 여부 · 선택</Text>
           {(
             [

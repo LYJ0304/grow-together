@@ -4,7 +4,6 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   View,
@@ -31,6 +30,7 @@ import {
 } from '../../lib/onboarding';
 import { useReduceMotion } from '../../theme/motion';
 import { ActionButton } from '../action-button';
+import { AccountHeader } from '../account-header';
 import { OnboardingStep, titles, descriptions } from './onboarding-steps';
 import { styles } from './onboarding-styles';
 import { editorial } from '../../theme/editorial';
@@ -49,6 +49,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
   const initialValue: OnboardingProfile = {
     name: initial?.name ?? '',
     birthday: initial?.birthday ?? '',
+    gender: initial?.gender,
     personalization: validPersonalization(initial?.personalization)
       ? initial!.personalization!
       : emptyPersonalization(),
@@ -225,7 +226,7 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
       const api = createChildApi(client);
       const payload = supportsChoices
         ? input
-        : { name: input.name, birthday: input.birthday };
+        : { name: input.name, birthday: input.birthday, gender: input.gender };
       const result = editing
         ? await api.saveProfile(payload)
         : await api.createProfile(payload);
@@ -233,7 +234,8 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
       if (
         !result ||
         result.name !== input.name ||
-        result.birthday !== input.birthday
+        result.birthday !== input.birthday ||
+        (input.gender !== undefined && result.gender !== input.gender)
       ) {
         throw new ApiError(
           502,
@@ -309,6 +311,11 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
     );
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <AccountHeader
+        title="같이 키우기"
+        disabled={busy}
+        onBack={() => router.dismissTo(editing ? '/children' : '/main')}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -318,32 +325,6 @@ export function ChildOnboarding({ initial }: { initial: ChildProfile | null }) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <View style={styles.top}>
-            <Text style={styles.brand}>같이 키우기</Text>
-            {!editing ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="메인으로 돌아가기"
-                disabled={busy}
-                style={styles.exit}
-                onPress={() => router.dismissTo('/main')}
-              >
-                <Text style={styles.hint}>뒤로</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() =>
-                editing ? router.replace('/children') : void client.logout()
-              }
-              style={styles.exit}
-            >
-              <Text style={styles.hint}>
-                {editing ? '프로필로 돌아가기' : '로그아웃'}
-              </Text>
-            </Pressable>
-          </View>
           {resume ? (
             <View style={styles.card}>
               <Text accessibilityRole="header" style={styles.subtitle}>

@@ -10,15 +10,15 @@ import {
 import { SafeAreaView } from '@/components/safe-area-view';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './auth-provider';
-import { ActionButton } from './action-button';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
-import { editorial } from '../theme/editorial';
+import { radius } from '../theme/radius';
+import { spacing } from '../theme/spacing';
 import { useReduceMotion } from '../theme/motion';
 import { createTodoApi } from '../lib/features/todo/todoApi';
 import type { ChildReaction, TodoResponse } from '../lib/features/todo/types';
 import { ApiError } from '../lib/api/errors';
-import { successFeedback } from '../lib/haptics';
+import { selectionFeedback, successFeedback } from '../lib/haptics';
 
 export const childReactionLabels: Record<ChildReaction, string> = {
   ENJOYED: '좋아했어요',
@@ -102,84 +102,143 @@ export function TodoReactionModal({
       animationType={reduced ? 'none' : 'slide'}
       onRequestClose={close}
     >
-      <SafeAreaView style={styles.overlay}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.sheet}
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.overlay}>
+        <SafeAreaView
+          edges={['bottom']}
+          style={styles.sheet}
           accessibilityViewIsModal
         >
-          <Text accessibilityRole="header" style={styles.title}>
-            아이의 반응은 어땠나요?
-          </Text>
-          <Text style={styles.name}>{todo.planName}</Text>
-          <Text style={styles.caption}>
-            일정 완료는 저장됐어요. 반응은 나중에 남겨도 괜찮아요.
-          </Text>
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="활동에 대한 아이의 반응"
-            style={styles.choices}
-          >
-            {(
-              Object.entries(childReactionLabels) as [ChildReaction, string][]
-            ).map(([value, label]) => (
-              <Pressable
-                key={value}
-                accessibilityRole="radio"
-                aria-checked={selected === value}
-                accessibilityLabel={label}
-                accessibilityState={{
-                  checked: selected === value,
-                  disabled: busy,
-                }}
-                disabled={busy}
-                onPress={() => setSelected(value)}
-                style={({ pressed }) => [
-                  styles.choice,
-                  selected === value && styles.selected,
-                  pressed && styles.pressed,
+          <View style={styles.toolbar}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={close}
+              style={({ pressed }) => [
+                styles.toolbarButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.later, busy && styles.disabledText]}>
+                나중에
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={busy ? '저장 중…' : '반응 저장하기'}
+              accessibilityState={{ disabled: busy || !selected, busy }}
+              disabled={busy || !selected}
+              onPress={() => void save(selected)}
+              style={({ pressed }) => [
+                styles.toolbarButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.save,
+                  (busy || !selected) && styles.disabledText,
                 ]}
               >
-                <Text style={styles.choiceText}>
-                  {selected === value ? '✓ ' : ''}
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
+                {busy ? '저장 중…' : '저장'}
+              </Text>
+            </Pressable>
           </View>
-          {error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {error}
-            </Text>
-          ) : null}
-          <ActionButton
-            label={busy ? '저장 중…' : '반응 저장하기'}
-            variant="primary"
-            disabled={busy || !selected}
-            onPress={() => void save(selected)}
-          />
-          {todo.childReaction ? (
-            <ActionButton
-              label="반응 지우기"
-              variant="tertiary"
-              disabled={busy}
-              onPress={() => void save(null)}
-            />
-          ) : null}
-          {onMemo ? (
-            <ActionButton
-              label="일정 메모에 한 줄 남기기"
-              disabled={busy}
-              onPress={onMemo}
-            />
-          ) : null}
-          <ActionButton
-            label="나중에"
-            variant="tertiary"
-            disabled={busy}
-            onPress={close}
-          />
-        </ScrollView>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+          >
+            <View style={styles.heading}>
+              <Text accessibilityRole="header" style={styles.title}>
+                아이의 반응은 어땠나요?
+              </Text>
+              <Text style={styles.name}>{todo.planName}</Text>
+            </View>
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="활동에 대한 아이의 반응"
+              style={styles.choices}
+            >
+              {(
+                Object.entries(childReactionLabels) as [ChildReaction, string][]
+              ).map(([value, label], index) => {
+                const checked = selected === value;
+                return (
+                  <View key={value}>
+                    {index > 0 ? <View style={styles.divider} /> : null}
+                    <Pressable
+                      accessibilityRole="radio"
+                      aria-checked={checked}
+                      accessibilityLabel={label}
+                      accessibilityState={{ checked, disabled: busy }}
+                      disabled={busy}
+                      onPress={() => {
+                        if (checked) return;
+                        selectionFeedback();
+                        setSelected(value);
+                      }}
+                      style={({ pressed }) => [
+                        styles.choice,
+                        pressed && styles.pressed,
+                        checked && styles.selected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.choiceText,
+                          checked && styles.selectedText,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                      {checked ? (
+                        <Text
+                          accessible={false}
+                          aria-hidden
+                          style={styles.check}
+                        >
+                          ✓
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+            {error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            ) : null}
+            {onMemo || todo.childReaction ? (
+              <View style={styles.secondaryActions}>
+                {onMemo ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={onMemo}
+                    style={styles.secondaryAction}
+                  >
+                    <Text style={[styles.memo, busy && styles.disabledText]}>
+                      일정 메모에 한 줄 남기기
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {todo.childReaction ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() => void save(null)}
+                    style={styles.secondaryAction}
+                  >
+                    <Text style={[styles.remove, busy && styles.disabledText]}>
+                      반응 지우기
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+          </ScrollView>
+        </SafeAreaView>
       </SafeAreaView>
     </Modal>
   );
@@ -190,32 +249,68 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: colors.overlay,
   },
-  scroll: {
+  sheet: {
     maxHeight: '90%',
+    flexShrink: 1,
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    overflow: 'hidden',
   },
-  sheet: {
-    ...editorial.card,
-    gap: 14,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  title: { ...typography.section, color: colors.heading },
-  name: { ...typography.body, color: colors.text },
-  caption: { ...typography.caption, color: colors.muted },
-  choices: { gap: 10 },
-  choice: {
-    minHeight: 48,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    borderRadius: 14,
+  toolbarButton: {
+    minHeight: 44,
     justifyContent: 'center',
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
   },
-  selected: { backgroundColor: colors.tint, borderColor: colors.primary },
-  pressed: { backgroundColor: colors.tint },
-  choiceText: { ...typography.button, color: colors.onTint },
+  later: { ...typography.label, color: colors.text },
+  save: { ...typography.label, fontWeight: '700', color: colors.primary },
+  disabledText: { color: colors.muted },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  content: { padding: spacing.xl, gap: spacing.lg },
+  heading: { gap: spacing.xs },
+  title: { ...typography.section, color: colors.heading },
+  name: { ...typography.label, color: colors.muted },
+  choices: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  choice: {
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  pressed: { backgroundColor: colors.background },
+  selected: { backgroundColor: colors.tint },
+  choiceText: { ...typography.button, color: colors.heading, flexShrink: 1 },
+  selectedText: { color: colors.onTint },
+  check: { ...typography.button, color: colors.primary },
+  secondaryActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.lg,
+  },
+  secondaryAction: { minHeight: 44, justifyContent: 'center' },
+  memo: { ...typography.label, color: colors.onTint },
+  remove: { ...typography.label, color: colors.danger },
   error: { ...typography.caption, color: colors.danger },
 });

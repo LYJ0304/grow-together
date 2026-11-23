@@ -34,6 +34,9 @@ public class ChildProfile {
     @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     private LocalDate birthday;
 
+    @Column(length = 6)
+    private String gender;
+
     @Column(name = "prematurity_status", length = 7)
     private String prematurityStatus;
 
@@ -59,6 +62,10 @@ public class ChildProfile {
         this.name = name;
         this.birthday = birthday;
     }
+    public void updateGender(String gender) {
+        if (gender != null) this.gender = gender;
+    }
+
     public void replacePersonalization(String status, LocalDate dueDate, List<String> selectedConcerns,
             String activityTime) {
         prematurityStatus = status;

@@ -22,6 +22,7 @@ public class ChildProfileService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Child profile already exists");
         }
         ChildProfile profile = new ChildProfile(userId, request.name(), request.birthday());
+        profile.updateGender(request.gender());
         applyPersonalization(profile, request.personalization());
         return ChildProfileResponse.from(profiles.saveAndFlush(profile));
     }
@@ -45,6 +46,7 @@ public class ChildProfileService {
                     "Birthday must precede the expected due date; update personalization explicitly");
         }
         profile.update(request.name(), request.birthday());
+        profile.updateGender(request.gender());
         applyPersonalization(profile, request.personalization());
         return ChildProfileResponse.from(profiles.saveAndFlush(profile));
     }
