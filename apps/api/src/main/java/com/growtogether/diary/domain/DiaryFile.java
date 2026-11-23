@@ -1,6 +1,7 @@
 package com.growtogether.diary.domain;
 
 
+import java.util.UUID;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
@@ -24,8 +25,11 @@ public class DiaryFile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "image_url", nullable = false, length = 2048)
+    @Column(name = "image_url", length = 2048)
     private String imageUrl;
+
+    @Column(name = "stored_file_id")
+    private UUID storedFileId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diary_id", nullable = false)
@@ -33,6 +37,10 @@ public class DiaryFile {
 
     public DiaryFile(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public DiaryFile(UUID storedFileId) {
+        this.storedFileId = storedFileId;
     }
 
     public void setDiary(Diary diary) {

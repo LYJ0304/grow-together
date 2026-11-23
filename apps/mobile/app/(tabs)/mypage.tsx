@@ -4,14 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
-import { useAuth } from '../src/components/auth-provider';
-import { AccountHeader } from '../src/components/account-header';
-import { ActionButton } from '../src/components/action-button';
-import { useChildProfile } from '../src/lib/use-child-profile';
-import { useUserProfile } from '../src/lib/use-user-profile';
-import { dateLabel } from '../src/lib/onboarding';
-import { colors } from '../src/theme/colors';
-import { typography } from '../src/theme/typography';
+import { useAuth } from '@/components/auth-provider';
+import { AccountHeader } from '@/components/account-header';
+import { ActionButton } from '@/components/action-button';
+import { useChildProfile } from '@/lib/use-child-profile';
+import { useUserProfile } from '@/lib/use-user-profile';
+import { dateLabel } from '@/lib/onboarding';
+import { colors } from '@/theme/colors';
+import { typography } from '@/theme/typography';
 
 export default function MyPageScreen() {
   const { client, status } = useAuth();
@@ -115,6 +115,7 @@ export default function MyPageScreen() {
           </View>
         </View>
         <View style={styles.section}>
+          <MenuRow label="성장 리포트" onPress={() => router.push('/report')} />
           <Text accessibilityRole="header" style={styles.heading}>
             계정 및 설정
           </Text>
@@ -162,7 +163,7 @@ function Avatar() {
   return (
     <View style={styles.avatar}>
       <Image
-        source={require('../assets/images/main/user.svg')}
+        source={require('../../assets/images/main/user.svg')}
         tintColor={colors.brand}
         style={{ width: 28, height: 28 }}
         accessible={false}
@@ -176,7 +177,7 @@ function MenuRow({
   onPress,
 }: {
   label: string;
-  detail: string;
+  detail?: string;
   onPress(): void;
 }) {
   return (
@@ -188,7 +189,7 @@ function MenuRow({
     >
       <View style={styles.copy}>
         <Text style={styles.body}>{label}</Text>
-        <Text style={styles.caption}>{detail}</Text>
+        {detail ? <Text style={styles.caption}>{detail}</Text> : null}
       </View>
       <Text accessible={false} style={styles.chevron}>
         ›

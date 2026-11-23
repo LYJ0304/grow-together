@@ -13,31 +13,10 @@ import { TabInteractionContext } from '../../src/components/tab-interaction';
 
 export const unstable_settings = { initialRouteName: 'main' };
 const tabs = [
-  {
-    name: 'main',
-    title: '오늘',
-    icon: require('../../assets/images/calendar/home.svg'),
-  },
-  {
-    name: 'todo',
-    title: '일정',
-    icon: require('../../assets/images/main/todo.svg'),
-  },
-  {
-    name: '(records)',
-    title: '기록',
-    icon: require('../../assets/images/main/calendar.svg'),
-  },
-  {
-    name: 'report',
-    title: '리포트',
-    icon: require('../../assets/images/main/report.svg'),
-  },
-  {
-    name: 'chat',
-    title: '질문',
-    icon: require('../../assets/images/main/chat.svg'),
-  },
+  { name: 'main', title: '홈', icon: require('../../assets/images/calendar/home.svg') },
+  { name: '(records)', title: '캘린더', icon: require('../../assets/images/main/calendar.svg') },
+  { name: 'chat', title: '상담', icon: require('../../assets/images/main/chat.svg') },
+  { name: 'mypage', title: '마이', icon: require('../../assets/images/main/user.svg') },
 ];
 export default function TabLayout() {
   const insets = useSafeAreaInsets();

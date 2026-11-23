@@ -13,10 +13,11 @@ public record TodoResponse(
     LocalTime scheduledTime,
     boolean completed,
     Integer durationMinutes,
-    ChildReaction childReaction
+    ChildReaction childReaction,
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) Boolean aiRecommended
 ) {
     public static TodoResponse from(Todo todo) {
         return new TodoResponse(todo.getId(), todo.getPlanName(), todo.getContent(),
-                todo.getScheduledDate(), todo.getScheduledTime(), todo.isCompleted(), todo.getDurationMinutes(), todo.getChildReaction());
+                todo.getScheduledDate(), todo.getScheduledTime(), todo.isCompleted(), todo.getDurationMinutes(), todo.getChildReaction(), todo.getAiRecommended());
     }
 }

@@ -34,6 +34,15 @@ public class FileService {
         return new PresignedUrlResponse(file.getId(), uploadUrl, objectKey, expiresAt);
     }
 
+    @Transactional(readOnly = true)
+    public String diaryImageUrl(Long userId, UUID fileId) {
+        StoredFile file = files.findByIdAndOwnerId(fileId, userId)
+                .filter(value -> value.getStatus() == FileStatus.COMPLETED
+                        && value.getContentType().startsWith("image/"))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Diary image not found"));
+        return storageService.createDownloadUrl(file.getObjectKey());
+    }
+
     @Transactional
     public FileResponse completeUpload(Long userId, UUID fileId) {
         StoredFile file = files.findByIdAndOwnerId(fileId, userId)

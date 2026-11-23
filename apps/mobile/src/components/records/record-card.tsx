@@ -60,6 +60,11 @@ export const RecordCard = memo(function RecordCard({
                   ? '기록을 불러오는 중이에요.'
                   : '이날 남긴 일기를 다시 읽어보세요.')}
           </Text>
+          {query.data && (query.data.photoCount > 0 || query.data.activities.length > 0) ? (
+            <Text numberOfLines={1} style={styles.preview}>
+              {[query.data.photoCount > 0 ? `사진 ${query.data.photoCount}장` : '', ...query.data.activities].filter(Boolean).join(' · ')}
+            </Text>
+          ) : null}
         </View>
         <Text accessible={false} style={styles.chevron}>
           ›

@@ -15,6 +15,7 @@ export type TodoRequest = {
 export type TodoResponse = {
   id: number;
   completed: boolean;
+  aiRecommended?: boolean;
   childReaction?: ChildReaction | null;
   planName: string;
   content?: string | null;

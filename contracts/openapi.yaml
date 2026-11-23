@@ -421,6 +421,33 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/todos/month:
+    get:
+      operationId: getScheduledTodoDates
+      summary: List dates with scheduled activities in a month
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+            example: '2026-11'
+      responses:
+        '200':
+          description: Distinct local dates with activities owned by the caller
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: date
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/todos/{id}:
     parameters:
       - name: id
@@ -531,7 +558,8 @@ paths:
       summary: Create a diary for the authenticated user
       description: >-
         Requires an explicit local diaryDate and allows one diary per user/date.
-        Links existing todos owned by the authenticated user and stores image URLs.
+        Links existing todos and accepts either legacy image URLs or completed
+        image uploads owned by the authenticated user. Unavailable uploads return 404.
         Duplicate todo IDs are linked once. Todos owned by another user or without
         a known owner are treated as missing, even if not linked to a diary.
         Todos linked to another diary of this user must be detached first.
@@ -608,10 +636,12 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
     put:
       operationId: updateDiary
-      summary: Replace diary content, todo links, and image URLs, preserving diaryDate
+      summary: Replace diary content, todo links, and images, preserving diaryDate
       description: >-
         Only the owner can update a diary. Both lists are required; an empty list
         clears the corresponding links or images. Removed todos are preserved.
+        Legacy image URLs and completed image uploads owned by the caller are accepted.
+        Unavailable uploads return 404.
         The entire request is atomic. A todo linked to another diary of this
         user returns 409; a todo owned by another user or without a known owner
         returns 404, even if not linked to a diary.
@@ -891,9 +921,12 @@ components:
           items: { $ref: '#/components/schemas/DiaryFileRequest' }
     DiaryFileRequest:
       type: object
-      required: [imageUrl]
+      oneOf:
+        - required: [imageUrl]
+        - required: [fileId]
       properties:
         imageUrl: { type: string, minLength: 1, maxLength: 2048, pattern: '\S' }
+        fileId: { type: string, format: uuid, description: Completed image upload owned by the caller }
     DiaryResponse:
       type: object
       required: [id, diaryDate, todos, diaryFiles]
@@ -912,6 +945,7 @@ components:
             properties:
               id: { type: integer, format: int64 }
               imageUrl: { type: string, maxLength: 2048 }
+              fileId: { type: string, format: uuid }
     ScheduleWindow:
       type: object
       required: [start, end]
@@ -987,6 +1021,7 @@ components:
       properties:
         childReaction: { $ref: '#/components/schemas/ChildReaction' }
         durationMinutes: { type: [integer, 'null'], minimum: 1, maximum: 1440, description: Optional for legacy compatibility. Must end within the same day. Omission/null on PUT preserves the stored value. Unknown durations must be supplied before AI generation for that date. }
+        aiRecommended: { type: boolean, description: Confirmed through AI schedule recommendation when known }
         completed: { type: boolean }
         id: { type: integer, format: int64 }
         planName: { type: string, maxLength: 80 }

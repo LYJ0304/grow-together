@@ -33,7 +33,18 @@ vm.runInNewContext(clientSource, {
 vm.runInNewContext(outputText, {
   module,
   exports: module.exports,
+  AbortController,
+  setTimeout,
+  clearTimeout,
+  fetch: async (url, options) => {
+    assert.equal(url, 'https://example.com/upload');
+    assert.equal(options.method, 'PUT');
+    assert.equal(options.headers['Content-Type'], 'image/jpeg');
+    assert.deepEqual([...options.body], [1, 2, 3]);
+    return { ok: !failUpload };
+  },
   require: (name) => {
+    if (name === 'base64-js') return require('base64-js');
     assert.equal(name, '../../api/client');
     return clientModule.exports;
   },
@@ -133,3 +144,35 @@ assert.deepEqual(dateRequests, [
   '/api/v1/diary?month=2026-11',
   '/api/v1/diary/by-date?date=2026-11-10',
 ]);
+
+const fileId = '6e2fa5ee-db2c-4de4-b068-404c1c65ebac';
+const uploadRequests = [];
+let failUpload = true;
+const uploadApi = createDiaryApi({
+  async request(path, options) {
+    uploadRequests.push(path);
+    assert.equal(options.method, 'POST');
+    if (path === '/api/files/presigned-url') {
+      assert.equal(JSON.parse(options.body).fileSize, 3);
+      return { fileId, uploadUrl: 'https://example.com/upload' };
+    }
+    return { id: fileId };
+  },
+});
+await assert.rejects(
+  uploadApi.uploadPhoto('data:image/jpeg;base64,AQID'),
+  /업로드/,
+);
+assert.deepEqual(uploadRequests, ['/api/files/presigned-url']);
+failUpload = false;
+assert.equal(
+  await uploadApi.uploadPhoto('data:image/jpeg;base64,AQID'),
+  fileId,
+);
+assert.deepEqual(uploadRequests.slice(1), [
+  '/api/files/presigned-url',
+  `/api/files/${fileId}/complete`,
+]);
+console.log(
+  'Diary photo upload uses binary PUT and only confirms successful uploads',
+);

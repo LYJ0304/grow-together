@@ -34,6 +34,9 @@ export function createTodoApi(session: Pick<AuthSession, 'request'>) {
     async createTodo(input: TodoRequest): Promise<CreateTodoResponse> {
       return client.post<CreateTodoResponse>('/api/v1/todos', input);
     },
+    getScheduledDates(month: string): Promise<string[]> {
+      return client.get<string[]>(`/api/v1/todos/month?month=${encodeURIComponent(month)}`);
+    },
     async getTodos(date: string): Promise<TodoResponse[]> {
       return client.get<TodoResponse[]>(
         `/api/v1/todos?date=${encodeURIComponent(date)}`,

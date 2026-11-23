@@ -23,6 +23,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,6 +47,13 @@ public class TodoController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(todoService.getTodos(Long.valueOf(jwt.getSubject()), date));
+    }
+
+    @GetMapping("/month")
+    public List<LocalDate> getMonth(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(pattern = "uuuu-MM") YearMonth month) {
+        return todoService.getScheduledDates(Long.valueOf(jwt.getSubject()), month);
     }
 
     @GetMapping("/{id}")

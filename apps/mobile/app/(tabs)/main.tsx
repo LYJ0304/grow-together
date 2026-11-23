@@ -177,10 +177,10 @@ export default function MainScreen() {
     }
   };
   const viewAll = () =>
-    router.navigate({ pathname: '/todo', params: { date } });
+    router.navigate({ pathname: '/calendar', params: { date } });
   const hasDiary = diary.data?.id != null;
   const addSchedule = () =>
-    router.navigate({ pathname: '/todo', params: { date, add: 'true' } });
+    router.navigate({ pathname: '/calendar', params: { date, add: 'true' } });
   const diaryLabel =
     status === 'preview'
       ? '일기 미리보기'
@@ -472,14 +472,14 @@ export default function MainScreen() {
           onSchedule={() => {
             setQuickOpen(false);
             router.navigate({
-              pathname: '/todo',
+              pathname: '/calendar',
               params: { date, add: 'true' },
             });
           }}
           onRecommend={() => {
             setQuickOpen(false);
             router.navigate({
-              pathname: '/todo',
+              pathname: '/calendar',
               params: { date, recommend: 'true' },
             });
           }}

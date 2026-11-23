@@ -22,6 +22,12 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useAuth } from '../../../src/components/auth-provider';
 import { AppHeader, HeaderTools } from '../../../src/components/app-header';
 import { DiaryPhotos } from '../../../src/components/diary/diary-photos';
+import type {
+  DiaryFileRequest,
+  DiaryFileResponse,
+} from '@/lib/features/diary/types';
+import { DateSelection } from '@/components/onboarding/date-field';
+import { childReactionLabels } from '@/components/todo-reaction-modal';
 import { ActionButton } from '../../../src/components/action-button';
 import {
   DiaryResultView,
@@ -31,6 +37,7 @@ import { typography } from '../../../src/components/typography';
 import {
   clearSessionValues,
   useSessionValue,
+  useSessionStore,
 } from '../../../src/lib/session-state';
 import {
   generateDiary,
@@ -51,12 +58,13 @@ import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
 import { ApiError } from '../../../src/lib/api/errors';
 
 export default function DiaryScreen() {
-  const { date, mode, id } = useLocalSearchParams<{
+  const { date, mode, id, todoId } = useLocalSearchParams<{
     date?: string;
     mode?: string;
     id?: string;
+    todoId?: string;
   }>();
-  return <DiaryEditor key={`${date}:${mode}:${id}`} />;
+  return <DiaryEditor key={`${date}:${mode}:${id}:${todoId}`} />;
 }
 
 function DiaryEditor() {
@@ -64,11 +72,18 @@ function DiaryEditor() {
     date?: string;
     mode?: string;
     id?: string;
+    todoId?: string;
   }>();
   const { client, status, epoch } = useAuth();
   const preview = status === 'preview';
   const queryClient = useQueryClient();
-  const [date] = useState(() => parseDiaryDate(params.date) ?? new Date());
+  const [date, setDate] = useState(
+    () => parseDiaryDate(params.date) ?? new Date(),
+  );
+  const [linkedActivities, setLinkedActivities] = useState<number[] | null>(
+    null,
+  );
+  const [showDate, setShowDate] = useState(false);
   const dateKey = diaryDateKey(date);
   const [, setCalendarDate] = useSessionValue('calendarDate', date);
   const [, setCalendarMonth] = useSessionValue(
@@ -101,14 +116,22 @@ function DiaryEditor() {
   const viewing = params.mode === 'view' || !!params.id || !!id;
   const prefix = `diary:${dateKey}:${viewing ? (id ?? 'preview') : 'new'}:`;
   const [bodyHeight, setBodyHeight] = useState(190);
-  const [activitiesOpen, setActivitiesOpen] = useState(false);
+  const entryTodoId = Number(params.todoId);
+  const hasEntryTodo =
+    Number.isSafeInteger(entryTodoId) &&
+    entryTodoId > 0 &&
+    diaryDateKey(parseDiaryDate(params.date) ?? date) === dateKey;
+  const [activitiesOpen, setActivitiesOpen] = useState(hasEntryTodo);
   const [helpOpen, setHelpOpen] = useState(false);
   const [selected, setSelected] = useSessionValue<number[]>(
     prefix + 'selected',
-    [],
+    hasEntryTodo ? [entryTodoId] : [],
   );
   const [note] = useSessionValue(prefix + 'note', '');
   const [photos, setPhotos] = useSessionValue<string[]>(prefix + 'photos', []);
+  const [uploadedPhotos, setUploadedPhotos] = useSessionValue<
+    Record<string, string>
+  >(prefix + 'uploaded', {});
   const [draft, setDraft] = useSessionValue(prefix + 'body', note);
   const [editing, setEditing] = useSessionValue<string | null>(
     prefix + 'editing',
@@ -167,7 +190,10 @@ function DiaryEditor() {
     preview ? 'preview' : epoch,
     preview ? dateKey : id,
   ];
-  const savedQuery = useQuery({
+  const savedQuery = useQuery<
+    | (SavedDiary & { files?: DiaryFileResponse[]; activityIds?: number[] })
+    | null
+  >({
     queryKey: savedKey,
     enabled: viewing && (preview || !!id),
     retry: false,
@@ -178,6 +204,8 @@ function DiaryEditor() {
         date: dateKey,
         content: diary.content ?? '',
         photoUris: diary.diaryFiles.map((file) => file.imageUrl),
+        files: diary.diaryFiles,
+        activityIds: diary.todos.map((todo) => todo.id),
         emotions: [],
         growthPoints: [],
         sourceRecords: {
@@ -185,23 +213,57 @@ function DiaryEditor() {
           note: '',
           tags: [],
         },
-      } satisfies SavedDiary;
+      };
     },
   });
   const todos = useQuery({
     queryKey: ['todos', dateKey],
     queryFn: () => createTodoApi(client).getTodos(dateKey),
-    enabled: !viewing && status === 'authenticated',
+    enabled: (!viewing || editing !== null) && status === 'authenticated',
     retry: false,
   });
   const completed = (todos.data ?? []).filter((todo) => todo.completed);
-  const materials = completed.filter((todo) => selected.includes(todo.id));
+  const activityIds = viewing
+    ? (linkedActivities ?? savedQuery.data?.activityIds ?? [])
+    : selected;
+  const materials = completed.filter((todo) => activityIds.includes(todo.id));
+  const changeDate = (next: string) => {
+    const day = parseDiaryDate(next);
+    if (!day || next === dateKey) {
+      setShowDate(false);
+      return;
+    }
+    const destination = `diary:${next}:new:`;
+    const store = useSessionStore.getState();
+    if (store.values[destination + 'dirty']) {
+      setShowDate(false);
+      setNotice(
+        '선택한 날짜에 작성 중인 일기가 있어요. 캘린더에서 이어 쓸 수 있어요.',
+      );
+      return;
+    }
+    useSessionStore.setState({
+      values: {
+        ...store.values,
+        [destination + 'body']: draft,
+        [destination + 'photos']: photos,
+        [destination + 'uploaded']: uploadedPhotos,
+        [destination + 'selected']: [],
+      },
+    });
+    clearSessionValues(prefix);
+    setDate(day);
+    setShowDate(false);
+    setNotice('');
+  };
   const dirty =
     !saved &&
     (viewing
       ? editing !== null &&
         (editing !== savedQuery.data?.content ||
-          JSON.stringify(photos) !== JSON.stringify(savedQuery.data?.photoUris))
+          JSON.stringify(photos) !==
+            JSON.stringify(savedQuery.data?.photoUris) ||
+          linkedActivities !== null)
       : !!draft || !!editing || selected.length > 0 || photos.length > 0);
   useEffect(() => setDirty(dirty), [dirty, setDirty]);
   useEffect(() => {
@@ -219,7 +281,11 @@ function DiaryEditor() {
       params: { date: dateKey, saved: '', deleted: '' },
     });
   const makeSource = (): DiarySourceRecords => ({
-    activities: materials.map((todo) => todo.planName),
+    activities: materials.map((todo) =>
+      todo.childReaction
+        ? `${todo.planName} (보호자가 기록한 반응: ${childReactionLabels[todo.childReaction]})`
+        : todo.planName,
+    ),
     note: (viewing ? (editing ?? '') : draft).trim(),
     tags: [],
   });
@@ -265,7 +331,28 @@ function DiaryEditor() {
     pending.current = true;
     setBusy(true);
     setNotice('');
+    let createStarted = false;
     try {
+      const diaryFiles: DiaryFileRequest[] = [];
+      if (!preview) {
+        for (const uri of photos) {
+          const existing = savedQuery.data?.files?.find(
+            (file) => file.imageUrl === uri,
+          );
+          if (existing) {
+            diaryFiles.push(
+              existing.fileId
+                ? { fileId: existing.fileId }
+                : { imageUrl: existing.imageUrl },
+            );
+            continue;
+          }
+          const fileId = uploadedPhotos[uri] ?? (await api.uploadPhoto(uri));
+          if (!stillActive()) return;
+          setUploadedPhotos((current) => ({ ...current, [uri]: fileId }));
+          diaryFiles.push({ fileId });
+        }
+      }
       if (preview) {
         if (viewing) await updateDiary(dateKey, content, photos);
         else
@@ -281,22 +368,18 @@ function DiaryEditor() {
         // Keep image URLs and todo associations supplied by the server when editing the body.
         const original = await api.getDiary(id!);
         if (!stillActive()) return;
-        const existingUrls = new Set(
-          original.diaryFiles.map((file) => file.imageUrl),
-        );
         await api.updateDiary(id!, {
           content: content.trim(),
-          todoIds: original.todos.map((todo) => todo.id),
-          diaryFiles: photos
-            .filter((uri) => existingUrls.has(uri))
-            .map((imageUrl) => ({ imageUrl })),
+          todoIds: linkedActivities ?? original.todos.map((todo) => todo.id),
+          diaryFiles,
         });
       } else {
+        createStarted = true;
         await api.createDiary({
           diaryDate: dateKey,
           content: content.trim(),
           todoIds: materials.map((todo) => todo.id),
-          diaryFiles: [],
+          diaryFiles,
         });
       }
       if (!stillActive()) return;
@@ -312,8 +395,7 @@ function DiaryEditor() {
     } catch (error) {
       if (!stillActive()) return;
       const unknown =
-        !preview &&
-        !viewing &&
+        createStarted &&
         error instanceof ApiError &&
         (error.status === 0 || error.status >= 500);
       setUncertain(unknown);
@@ -365,7 +447,7 @@ function DiaryEditor() {
     }
   };
   const pickPhotos = async () => {
-    if (preparing || pending.current || !preview || photos.length >= 3) return;
+    if (preparing || pending.current || photos.length >= 3) return;
     pending.current = true;
     setPreparing(true);
     setNotice('');
@@ -471,6 +553,22 @@ function DiaryEditor() {
               weekday: 'long',
             })}
           </Text>
+          {!viewing && !busy && !generating && !preparing ? (
+            <ActionButton
+              label="일기 날짜 변경"
+              variant="secondary"
+              onPress={() => setShowDate(true)}
+            />
+          ) : null}
+          {showDate ? (
+            <DateSelection
+              label="일기 날짜"
+              value={dateKey}
+              onCancel={() => setShowDate(false)}
+              onConfirm={changeDate}
+              onDismiss={() => setShowDate(false)}
+            />
+          ) : null}
           <Text accessibilityRole="header" style={styles.title}>
             {viewing ? '하루의 일기' : '오늘의 일기'}
           </Text>
@@ -534,6 +632,7 @@ function DiaryEditor() {
                   source={savedQuery.data?.sourceRecords}
                   busy={busy}
                   onEdit={() => {
+                    setLinkedActivities(null);
                     setPhotos(savedQuery.data?.photoUris ?? []);
                     setEditing(display);
                   }}
@@ -573,14 +672,14 @@ function DiaryEditor() {
                     : photos
                 }
                 editable={!viewing || editing !== null}
-                canAdd={preview}
+                canAdd={preview || status === 'authenticated'}
                 busy={busy || preparing || generating}
                 onAdd={() => void pickPhotos()}
                 onRemove={(index) =>
                   setPhotos((current) => current.filter((_, i) => i !== index))
                 }
               />
-              {!viewing ? (
+              {!viewing || editing !== null ? (
                 <>
                   <Pressable
                     accessibilityRole="button"
@@ -591,7 +690,7 @@ function DiaryEditor() {
                   >
                     <Text style={styles.section}>함께한 활동</Text>
                     <Text style={styles.meta}>
-                      {selected.length}개 선택 ·{' '}
+                      {activityIds.length}개 선택 ·{' '}
                       {activitiesOpen ? '접기' : '펼치기'}
                     </Text>
                   </Pressable>
@@ -627,25 +726,45 @@ function DiaryEditor() {
                             accessibilityRole="checkbox"
                             accessibilityLabel={`${todo.scheduledTime.slice(0, 5)} ${todo.planName}`}
                             accessibilityState={{
-                              checked: selected.includes(todo.id),
+                              checked: activityIds.includes(todo.id),
                             }}
-                            disabled={busy || generating}
+                            disabled={
+                              busy ||
+                              generating ||
+                              (viewing && !savedQuery.isSuccess)
+                            }
                             onPress={() =>
-                              setSelected((current) =>
-                                current.includes(todo.id)
-                                  ? current.filter((value) => value !== todo.id)
-                                  : [...current, todo.id],
-                              )
+                              viewing
+                                ? setLinkedActivities(
+                                    activityIds.includes(todo.id)
+                                      ? activityIds.filter(
+                                          (value) => value !== todo.id,
+                                        )
+                                      : [...activityIds, todo.id],
+                                  )
+                                : setSelected((current) =>
+                                    current.includes(todo.id)
+                                      ? current.filter(
+                                          (value) => value !== todo.id,
+                                        )
+                                      : [...current, todo.id],
+                                  )
                             }
                             style={styles.record}
                           >
                             <Text style={styles.body}>
-                              {selected.includes(todo.id) ? '☑' : '☐'}{' '}
+                              {activityIds.includes(todo.id) ? '☑' : '☐'}{' '}
                               {todo.scheduledTime.slice(0, 5)} · {todo.planName}
                             </Text>
                             {todo.content ? (
                               <Text style={styles.meta}>
                                 일정 메모: {todo.content}
+                              </Text>
+                            ) : null}
+                            {todo.childReaction ? (
+                              <Text style={styles.meta}>
+                                기록한 반응:{' '}
+                                {childReactionLabels[todo.childReaction]}
                               </Text>
                             ) : null}
                           </Pressable>

@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class DiaryService {
     private final DiaryRepository diaryRepository;
     private final TodoRepository todoRepository;
+    private final com.growtogether.storage.FileService fileService;
 
     @Transactional
     public DiaryResponse create(Long userId, DiaryCreateRequest request) {
@@ -33,7 +34,7 @@ public class DiaryService {
         Diary diary = new Diary(userId, request.diaryDate(), request.content());
         replaceFields(diary, request.fields(), todos);
         try {
-            return DiaryResponse.from(diaryRepository.saveAndFlush(diary));
+            return response(diaryRepository.saveAndFlush(diary));
         } catch (DataIntegrityViolationException exception) {
             // Only this named constraint means a same-day conflict; do not mask other failures.
             for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
@@ -54,12 +55,12 @@ public class DiaryService {
     }
 
     public DiaryResponse getByDate(Long userId, LocalDate date) {
-        return DiaryResponse.from(diaryRepository.findByUserIdAndDiaryDate(userId, date)
+        return response(diaryRepository.findByUserIdAndDiaryDate(userId, date)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Diary not found")));
     }
 
     public DiaryResponse getDiary(Long userId, Long id) {
-        return DiaryResponse.from(findDiary(userId, id));
+        return response(findDiary(userId, id));
     }
 
     @Transactional
@@ -68,7 +69,7 @@ public class DiaryService {
         List<Todo> todos = findTodos(userId, id, request.todoIds());
         replaceFields(diary, request, todos);
         diaryRepository.flush();
-        return DiaryResponse.from(diary);
+        return response(diary);
     }
 
     @Transactional
@@ -100,10 +101,22 @@ public class DiaryService {
         }).toList();
     }
 
+    private DiaryResponse response(Diary diary) {
+        return DiaryResponse.from(diary, file -> file.getStoredFileId() == null
+                ? file.getImageUrl() : fileService.diaryImageUrl(diary.getUserId(), file.getStoredFileId()));
+    }
+
     private void replaceFields(Diary diary, DiaryRequest request, List<Todo> todos) {
         diary.updateContent(request.content());
         diary.replaceTodos(todos);
         diary.getDiaryFiles().clear();
-        request.diaryFiles().forEach(file -> diary.addDiaryFile(new DiaryFile(file.imageUrl())));
+        request.diaryFiles().forEach(file -> {
+            if (file.fileId() == null) {
+                diary.addDiaryFile(new DiaryFile(file.imageUrl()));
+            } else {
+                fileService.diaryImageUrl(diary.getUserId(), file.fileId());
+                diary.addDiaryFile(new DiaryFile(file.fileId()));
+            }
+        });
     }
 }

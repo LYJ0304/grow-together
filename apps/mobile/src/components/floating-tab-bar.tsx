@@ -98,11 +98,15 @@ export function FloatingTabBar({
             const focused = state.index === index;
             const { options } = descriptors[route.key];
             const label = options.title ?? route.name;
+            const href =
+              route.name === '(records)'
+                ? '/calendar'
+                : buildHref(route.name, route.params);
             return (
               <TabButton
                 key={route.name}
                 blocked={blocked}
-                href={buildHref(route.name, route.params)}
+                href={href}
                 role={Platform.OS === 'ios' ? 'button' : 'tab'}
                 aria-selected={focused}
                 accessibilityLargeContentTitle={label}

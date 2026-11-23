@@ -2,7 +2,6 @@ import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
-import { editDateParts } from './date-field-fixture.mjs';
 const browser = await chromium.launch({
   executablePath: process.env.BROWSER_EXECUTABLE_PATH ?? '/usr/bin/chromium',
   args: ['--no-sandbox'],
@@ -83,94 +82,31 @@ try {
   const photo = page.getByTestId('record-card-2026-11-15').locator('img');
   await photo.waitFor();
   assert.equal((await photo.boundingBox()).width, 72);
-  await click('모아보기');
+  assert.deepEqual([...new Set(details)], ['2026-11-15']);
+  await page
+    .getByRole('button', { name: /2026년 11월 30일.*일기 있음/ })
+    .click();
   await page.getByText('기록-30 함께 걸었던 하루', { exact: true }).waitFor();
-  assert(
-    details.length < 15,
-    'only viewport records should fetch content, not the whole month',
-  );
-  const list = page.getByTestId('records-list');
-  // An end jump is repeated as the virtual list measures its remaining rows.
-  for (let step = 0; step < 30; step++) {
-    const target = page.getByTestId('record-card-2026-11-01');
-    const card = (await target.count()) ? await target.boundingBox() : null;
-    const navigation = await page.getByRole('tablist').boundingBox();
-    if (card && card.y >= 0 && card.y + card.height <= navigation.y) break;
-    await list.evaluate((node) => {
-      node.scrollTop = node.scrollHeight;
-    });
-    await page.waitForTimeout(80);
-  }
-  await page.getByText('기록-01 함께 걸었던 하루', { exact: true }).waitFor();
-  const last = await page.getByTestId('record-card-2026-11-01').boundingBox(),
-    tabs = await page.getByRole('tablist').boundingBox();
-  assert(
-    last.y + last.height <= tabs.y,
-    'last record remains above navigation',
-  );
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid=records-list]').scrollTop === 0,
-  );
+  assert(details.length < 6, 'only selected dates fetch details');
   failMonth = true;
+  await click('다음 달');
   await click('다음 달');
   await page
     .getByRole('alert')
     .filter({ hasText: '일기 목록을 불러오지 못했어요.' })
     .waitFor();
   assert.equal(
-    await page
-      .getByText('이번 달에 저장된 일기가 없어요.', { exact: true })
-      .count(),
+    await page.getByText('이날의 기록이 아직 없어요', { exact: true }).count(),
     0,
   );
   failMonth = false;
   await click('일기 목록 다시 불러오기');
-  await page
-    .getByText('이번 달에 저장된 일기가 없어요.', { exact: true })
-    .waitFor();
-  await click('캘린더');
-  await click('월간 캘린더 펼치기');
-  await click('날짜 바로 이동');
-  let modal = page.getByRole('dialog', {
-    name: '날짜 바로 이동 선택',
-    exact: true,
-  });
-  await editDateParts(modal, '2028-02-29');
-  await modal.getByRole('button', { name: '완료', exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole('button', { name: '2028년 2월 29일', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
-  await click('다음 주');
-  assert.equal(
-    await page
-      .getByRole('button', { name: '2028년 3월 7일', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
-  await click('월간 캘린더 펼치기');
-  await click('날짜 바로 이동');
-  modal = page.getByRole('dialog', {
-    name: '날짜 바로 이동 선택',
-    exact: true,
-  });
-  await editDateParts(modal, '2026-12-31');
-  await modal.getByRole('button', { name: '완료', exact: true }).click();
-  await click('다음 주');
-  assert.equal(
-    await page
-      .getByRole('button', { name: '2027년 1월 7일', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
-  await click('오늘로 이동');
+  await page.getByText('이날의 기록이 아직 없어요', { exact: true }).waitFor();
   failDetail = true;
+  await click('오늘로 이동');
   // Returning to the tab refreshes visible detail without presenting an empty record.
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
+  await page.getByRole('tab', { name: '캘린더', exact: true }).click();
   await page
     .getByRole('alert')
     .filter({ hasText: '기록 내용을 불러오지 못했어요.' })
@@ -194,7 +130,7 @@ try {
   );
   await page.screenshot({ path: '/tmp/records-browser/large-text.png' });
   console.log(
-    'PASS record loading/empty/error separation, real photo/no-photo, viewport fetching/virtualization, last-card/tab reselect, quick leap/year jumps, content failure/retry and large text',
+    'PASS record loading/empty/error separation, real photo/no-photo, selected-date fetching, content failure/retry and large text',
   );
 } catch (error) {
   console.log('details', details);

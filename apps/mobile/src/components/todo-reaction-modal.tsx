@@ -30,10 +30,12 @@ export function TodoReactionModal({
   todo,
   onClose,
   onMemo,
+  onDiary,
 }: {
   todo: TodoResponse;
   onClose(): void;
   onMemo?: () => void;
+  onDiary?: () => void;
 }) {
   const { client, status, epoch } = useAuth();
   const [openedEpoch] = useState(epoch);
@@ -41,6 +43,7 @@ export function TodoReactionModal({
     todo.childReaction ?? null,
   );
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false),
     alive = useRef(true);
@@ -82,7 +85,8 @@ export function TodoReactionModal({
         queryKey: ['todos', todo.scheduledDate],
       });
       successFeedback();
-      onClose();
+      if (onDiary && reaction !== null) setSaved(true);
+      else onClose();
     } catch (e) {
       if (current())
         setError(
@@ -108,136 +112,180 @@ export function TodoReactionModal({
           style={styles.sheet}
           accessibilityViewIsModal
         >
-          <View style={styles.toolbar}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={close}
-              style={({ pressed }) => [
-                styles.toolbarButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.later, busy && styles.disabledText]}>
-                나중에
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={busy ? '저장 중…' : '반응 저장하기'}
-              accessibilityState={{ disabled: busy || !selected, busy }}
-              disabled={busy || !selected}
-              onPress={() => void save(selected)}
-              style={({ pressed }) => [
-                styles.toolbarButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.save,
-                  (busy || !selected) && styles.disabledText,
-                ]}
-              >
-                {busy ? '저장 중…' : '저장'}
-              </Text>
-            </Pressable>
-          </View>
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.content}
-          >
-            <View style={styles.heading}>
+          {saved ? (
+            <View style={styles.content}>
               <Text accessibilityRole="header" style={styles.title}>
-                아이의 반응은 어땠나요?
+                활동을 일기로 남겨볼까요?
               </Text>
-              <Text style={styles.name}>{todo.planName}</Text>
-            </View>
-            <View
-              accessibilityRole="radiogroup"
-              accessibilityLabel="활동에 대한 아이의 반응"
-              style={styles.choices}
-            >
-              {(
-                Object.entries(childReactionLabels) as [ChildReaction, string][]
-              ).map(([value, label], index) => {
-                const checked = selected === value;
-                return (
-                  <View key={value}>
-                    {index > 0 ? <View style={styles.divider} /> : null}
-                    <Pressable
-                      accessibilityRole="radio"
-                      aria-checked={checked}
-                      accessibilityLabel={label}
-                      accessibilityState={{ checked, disabled: busy }}
-                      disabled={busy}
-                      onPress={() => {
-                        if (checked) return;
-                        selectionFeedback();
-                        setSelected(value);
-                      }}
-                      style={({ pressed }) => [
-                        styles.choice,
-                        pressed && styles.pressed,
-                        checked && styles.selected,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.choiceText,
-                          checked && styles.selectedText,
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                      {checked ? (
-                        <Text
-                          accessible={false}
-                          aria-hidden
-                          style={styles.check}
-                        >
-                          ✓
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
-            {error ? (
-              <Text accessibilityRole="alert" style={styles.error}>
-                {error}
+              <Text style={styles.name}>
+                {todo.planName}에 대한 반응을 저장했어요.
               </Text>
-            ) : null}
-            {onMemo || todo.childReaction ? (
-              <View style={styles.secondaryActions}>
-                {onMemo ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={busy}
-                    onPress={onMemo}
-                    style={styles.secondaryAction}
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDiary}
+                style={styles.secondaryAction}
+              >
+                <Text style={styles.save}>일기 쓰기</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={close}
+                style={styles.secondaryAction}
+              >
+                <Text style={styles.later}>나중에</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <View style={styles.toolbar}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={close}
+                  style={({ pressed }) => [
+                    styles.toolbarButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.later, busy && styles.disabledText]}>
+                    나중에
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={busy ? '저장 중…' : '반응 저장하기'}
+                  accessibilityState={{ disabled: busy || !selected, busy }}
+                  disabled={busy || !selected}
+                  onPress={() => void save(selected)}
+                  style={({ pressed }) => [
+                    styles.toolbarButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.save,
+                      (busy || !selected) && styles.disabledText,
+                    ]}
                   >
-                    <Text style={[styles.memo, busy && styles.disabledText]}>
-                      일정 메모에 한 줄 남기기
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {todo.childReaction ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={busy}
-                    onPress={() => void save(null)}
-                    style={styles.secondaryAction}
-                  >
-                    <Text style={[styles.remove, busy && styles.disabledText]}>
-                      반응 지우기
-                    </Text>
-                  </Pressable>
-                ) : null}
+                    {busy ? '저장 중…' : '저장'}
+                  </Text>
+                </Pressable>
               </View>
-            ) : null}
-          </ScrollView>
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.content}
+              >
+                <View style={styles.heading}>
+                  <Text accessibilityRole="header" style={styles.title}>
+                    아이의 반응은 어땠나요?
+                  </Text>
+                  <Text style={styles.name}>{todo.planName}</Text>
+                </View>
+                <View
+                  accessibilityRole="radiogroup"
+                  accessibilityLabel="활동에 대한 아이의 반응"
+                  style={styles.choices}
+                >
+                  {(
+                    Object.entries(childReactionLabels) as [
+                      ChildReaction,
+                      string,
+                    ][]
+                  ).map(([value, label], index) => {
+                    const checked = selected === value;
+                    return (
+                      <View key={value}>
+                        {index > 0 ? <View style={styles.divider} /> : null}
+                        <Pressable
+                          accessibilityRole="radio"
+                          aria-checked={checked}
+                          accessibilityLabel={label}
+                          accessibilityState={{ checked, disabled: busy }}
+                          disabled={busy}
+                          onPress={() => {
+                            if (checked) return;
+                            selectionFeedback();
+                            setSelected(value);
+                          }}
+                          style={({ pressed }) => [
+                            styles.choice,
+                            pressed && styles.pressed,
+                            checked && styles.selected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.choiceText,
+                              checked && styles.selectedText,
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                          {checked ? (
+                            <Text
+                              accessible={false}
+                              aria-hidden
+                              style={styles.check}
+                            >
+                              ✓
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+                {error ? (
+                  <Text accessibilityRole="alert" style={styles.error}>
+                    {error}
+                  </Text>
+                ) : null}
+                {onMemo || onDiary || todo.childReaction ? (
+                  <View style={styles.secondaryActions}>
+                    {onDiary ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={onDiary}
+                        style={styles.secondaryAction}
+                      >
+                        <Text style={styles.memo}>이 활동을 일기로 남기기</Text>
+                      </Pressable>
+                    ) : null}
+                    {onMemo ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={onMemo}
+                        style={styles.secondaryAction}
+                      >
+                        <Text
+                          style={[styles.memo, busy && styles.disabledText]}
+                        >
+                          일정 메모에 한 줄 남기기
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    {todo.childReaction ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => void save(null)}
+                        style={styles.secondaryAction}
+                      >
+                        <Text
+                          style={[styles.remove, busy && styles.disabledText]}
+                        >
+                          반응 지우기
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
+              </ScrollView>
+            </>
+          )}
         </SafeAreaView>
       </SafeAreaView>
     </Modal>
