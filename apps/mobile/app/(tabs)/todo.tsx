@@ -11,18 +11,21 @@ import { successFeedback } from '../../src/lib/haptics';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScheduleGenerationModal } from '../../src/components/schedule-generation-modal';
-import { ActionButton } from '../../src/components/action-button';
+import { SymbolView } from 'expo-symbols';
+import { ScheduleAddMenu } from '../../src/components/schedule-add-menu';
 import { typography } from '../../src/components/typography';
 import { useSessionValue } from '../../src/lib/session-state';
 import { PageIntro } from '../../src/components/page-intro';
-import { editorial } from '../../src/theme/editorial';
 import { AppHeader } from '../../src/components/app-header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { parseDiaryDate } from '../../src/lib/diary-storage';
 import {
+  BackHandler,
+  type LayoutRectangle,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -88,7 +91,54 @@ export default function TodoScreen() {
     setSelectedDate,
     requestChild,
   ]);
-  const [view, setView] = useState<'시간' | '할 일'>('시간');
+  const contentLayout = useRef<LayoutRectangle | null>(null);
+  const dateLayout = useRef<LayoutRectangle | null>(null);
+  const buttonLayout = useRef<LayoutRectangle | null>(null);
+  const scrollOffset = useRef(0);
+  const addButton = useRef<ComponentRef<typeof View>>(null);
+  const [addMenu, setAddMenu] = useState<{
+    right: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
+  const openAddMenu = () => {
+    if (addMenu) {
+      setAddMenu(null);
+      return;
+    }
+    const content = contentLayout.current;
+    const date = dateLayout.current;
+    const button = buttonLayout.current;
+    if (!content || !date || !button) return;
+    const anchorTop = date.y + button.y - scrollOffset.current;
+    const below = anchorTop + button.height + spacing.sm;
+    setAddMenu({
+      width: Math.min(232, content.width - spacing.lg * 2),
+      right: Math.max(spacing.lg, content.width - button.x - button.width),
+      ...(content.height - below >= 128
+        ? { top: below }
+        : { bottom: content.height - anchorTop + spacing.sm }),
+    });
+  };
+  useEffect(() => {
+    if (!addMenu) return;
+    if (Platform.OS === 'web') {
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        setAddMenu(null);
+        addButton.current?.focus();
+      };
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      setAddMenu(null);
+      return true;
+    });
+    return () => back.remove();
+  }, [addMenu]);
   const [notice, setNotice] = useState('');
   const [form, setForm] = useState<{ date: Date; todo?: TodoResponse } | null>(
     null,
@@ -207,14 +257,33 @@ export default function TodoScreen() {
     }))
     .sort((a, b) => a.time.localeCompare(b.time));
 
+  const addSchedule = () => {
+    setAddMenu(null);
+    setNotice('');
+    setForm({ date: selectedDate });
+  };
+  const recommendActivities = () => {
+    setAddMenu(null);
+    void requestChild(() => setRecommendations(dateKey));
+  };
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar style="dark" />
       <AppHeader />
-      <View style={styles.scheduleContent}>
+      <View
+        onLayout={(event) => {
+          contentLayout.current = event.nativeEvent.layout;
+        }}
+        style={styles.scheduleContent}
+      >
         <ScrollView
           ref={scroll}
           stickyHeaderIndices={[2]}
+          scrollEventThrottle={16}
+          onScroll={(event) => {
+            scrollOffset.current = event.nativeEvent.contentOffset.y;
+          }}
           contentContainerStyle={styles.content}
         >
           <View style={{ paddingHorizontal: 22, paddingTop: spacing.sm }}>
@@ -224,7 +293,12 @@ export default function TodoScreen() {
               description="부담 없는 하루 계획을 만들고, 하나씩 실행해요."
             />
           </View>
-          <View style={styles.dateHeader}>
+          <View
+            style={styles.dateHeader}
+            onLayout={(event) => {
+              dateLayout.current = event.nativeEvent.layout;
+            }}
+          >
             <View style={styles.dateSummary}>
               <Text accessibilityRole="header" style={styles.dateNumber}>
                 {selectedDate.getDate()}
@@ -238,20 +312,41 @@ export default function TodoScreen() {
                 </Text>
               </View>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              disabled={status !== 'authenticated'}
-              onPress={() => {
-                setNotice('');
-                setForm({ date: selectedDate });
-              }}
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.addLabel}>＋ 직접 추가</Text>
-            </Pressable>
+            <ScheduleAddMenu
+              canAdd={status === 'authenticated'}
+              onAdd={addSchedule}
+              onRecommend={recommendActivities}
+              fallback={
+                <Pressable
+                  ref={addButton}
+                  onLayout={(event) => {
+                    buttonLayout.current = event.nativeEvent.layout;
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="일정 추가 메뉴"
+                  aria-expanded={Boolean(addMenu)}
+                  accessibilityState={{ expanded: Boolean(addMenu) }}
+                  onPress={openAddMenu}
+                  style={({ pressed }) => [
+                    styles.addToggle,
+                    (pressed || addMenu) && styles.addToggleActive,
+                  ]}
+                >
+                  <SymbolView
+                    name="plus"
+                    size={20}
+                    weight="semibold"
+                    tintColor={colors.onTint}
+                    accessible={false}
+                    fallback={
+                      <Text accessible={false} style={styles.addSymbol}>
+                        +
+                      </Text>
+                    }
+                  />
+                </Pressable>
+              }
+            />
           </View>
 
           <View style={styles.scheduleToolbar}>
@@ -265,6 +360,7 @@ export default function TodoScreen() {
                     accessibilityLabel={`${date.getMonth() + 1}월 ${date.getDate()}일 ${weekDays[date.getDay()]}요일`}
                     aria-pressed={selected}
                     onPress={() => {
+                      setAddMenu(null);
                       setSelectedDate(date);
                       setNotice('');
                     }}
@@ -294,153 +390,130 @@ export default function TodoScreen() {
                 );
               })}
             </View>
-            <View style={styles.viewTabs}>
-              <View style={styles.tabLabels}>
-                {(['시간', '할 일'] as const).map((label) => (
-                  <Pressable
-                    key={label}
-                    accessibilityRole="tab"
-                    aria-selected={view === label}
-                    onPress={() => setView(label)}
-                    style={[
-                      styles.tabButton,
-                      view === label && editorial.segmentActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.tabLabel,
-                        view === label && styles.activeTabLabel,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
           </View>
 
-          <View style={{ margin: 18 }}>
-            <ActionButton
-              label="활동 추천받기"
-              variant="secondary"
-              onPress={() =>
-                void requestChild(() =>
-                  setRecommendations(localDateKey(selectedDate)),
-                )
-              }
-            />
-          </View>
-          <View style={styles.timeline}>
-            {status === 'preview' ? (
-              <Text>미리보기에서는 서버 일정을 이용할 수 없어요.</Text>
-            ) : (
-              <>
-                {todos.isPending ? <Text>일정을 불러오고 있어요.</Text> : null}
-                {todos.isError ? (
-                  <>
-                    <Text accessibilityRole="alert">
-                      일정을 불러오지 못했어요.
-                    </Text>
-                    <Pressable
-                      accessibilityRole="button"
-                      style={styles.listAction}
-                      onPress={() => void todos.refetch()}
-                    >
-                      <Text>다시 시도</Text>
-                    </Pressable>
-                  </>
-                ) : null}
-                {!todos.isPending &&
-                !todos.isError &&
-                visibleTasks.length === 0 ? (
-                  <Text>등록된 일정이 없어요.</Text>
-                ) : null}
+          <View style={styles.scheduleList}>
+            <View style={styles.listHeader}>
+              <Text accessibilityRole="header" style={styles.listTitle}>
+                일정
+              </Text>
+              {status === 'authenticated' ? (
                 <Pressable
                   accessibilityRole="button"
-                  style={styles.listAction}
+                  accessibilityLabel="목록 새로고침"
+                  style={({ pressed }) => [
+                    styles.listAction,
+                    pressed && styles.pressed,
+                  ]}
                   onPress={() => void todos.refetch()}
                 >
-                  <Text>목록 새로고침</Text>
+                  <Text style={styles.listActionLabel}>새로고침</Text>
                 </Pressable>
-              </>
-            )}
+              ) : null}
+            </View>
             {completionError ? (
-              <Text accessibilityRole="alert" style={styles.notice}>
+              <Text accessibilityRole="alert" style={styles.listError}>
                 {completionError}
               </Text>
             ) : null}
-            {visibleTasks.map((task) => (
-              <View key={task.id} style={styles.taskRow}>
-                {view === '시간' ? (
-                  <Text style={styles.time}>{task.time}</Text>
-                ) : (
-                  <View style={styles.timeSpacer} />
-                )}
-                <View style={[styles.taskCard, styles.future]}>
+            <View style={styles.listSurface}>
+              {status === 'preview' ? (
+                <Text style={styles.listMessage}>
+                  미리보기에서는 서버 일정을 이용할 수 없어요.
+                </Text>
+              ) : todos.isPending ? (
+                <Text style={styles.listMessage}>일정을 불러오고 있어요.</Text>
+              ) : todos.isError ? (
+                <View style={styles.listState}>
+                  <Text accessibilityRole="alert" style={styles.listError}>
+                    일정을 불러오지 못했어요.
+                  </Text>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${task.title} 메뉴`}
-                    onPress={() => setManagedTodo(task.todo)}
-                    style={({ pressed }) => [pressed && styles.pressed]}
+                    style={styles.listAction}
+                    onPress={() => void todos.refetch()}
                   >
-                    <View style={styles.taskCopy}>
-                      <Text style={styles.taskTitle}>{task.title}</Text>
-                      {task.description ? (
-                        <Text style={styles.taskDescription}>
-                          {task.description}
-                        </Text>
-                      ) : null}
-                      <Text
-                        style={[typography.caption, { color: colors.muted }]}
-                      >
-                        {task.todo.completed ? '완료' : '예정'}
-                      </Text>
-                      <Text
-                        style={[typography.caption, { color: colors.primary }]}
-                      >
-                        수정 · 삭제
-                      </Text>
-                    </View>
+                    <Text style={styles.listActionLabel}>다시 시도</Text>
                   </Pressable>
-                  {task.todo.completed ? (
+                </View>
+              ) : visibleTasks.length === 0 ? (
+                <Text style={styles.listMessage}>등록된 일정이 없어요.</Text>
+              ) : null}
+              {visibleTasks.map((task, index) => (
+                <View
+                  key={task.id}
+                  style={[styles.taskRow, index > 0 && styles.taskDivider]}
+                >
+                  <Text style={styles.time}>{task.time}</Text>
+                  <View style={styles.taskCopy}>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`${task.title} 반응 ${task.todo.childReaction ? '수정' : '기록'}`}
-                      disabled={completion.isPending}
-                      accessibilityState={{ disabled: completion.isPending }}
-                      onPress={() => setReactionTodo(task.todo)}
-                      style={{ minHeight: 44, justifyContent: 'center' }}
+                      accessibilityLabel={`${task.title} 메뉴`}
+                      onPress={() => setManagedTodo(task.todo)}
+                      style={({ pressed }) => [
+                        styles.taskDetails,
+                        pressed && styles.taskPressed,
+                      ]}
                     >
-                      <Text
-                        style={[typography.caption, { color: colors.onTint }]}
-                      >
-                        {task.todo.childReaction
-                          ? `${childReactionLabels[task.todo.childReaction]} · 수정`
-                          : '반응 남기기'}
-                      </Text>
+                      <View style={styles.taskText}>
+                        <Text style={styles.taskTitle}>{task.title}</Text>
+                        {task.description ? (
+                          <Text style={styles.taskDescription}>
+                            {task.description}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <SymbolView
+                        name="ellipsis"
+                        size={16}
+                        tintColor={colors.muted}
+                        accessible={false}
+                        fallback={
+                          <Text accessible={false} style={styles.taskMore}>
+                            ⋯
+                          </Text>
+                        }
+                      />
                     </Pressable>
-                  ) : null}
+                    {task.todo.completed ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${task.title} 반응 ${task.todo.childReaction ? '수정' : '기록'}`}
+                        disabled={completion.isPending}
+                        accessibilityState={{ disabled: completion.isPending }}
+                        onPress={() => setReactionTodo(task.todo)}
+                        style={({ pressed }) => [
+                          styles.taskReaction,
+                          pressed && styles.taskPressed,
+                        ]}
+                      >
+                        <Text style={styles.taskReactionLabel}>
+                          {task.todo.childReaction
+                            ? `${childReactionLabels[task.todo.childReaction]} · 수정`
+                            : '반응 남기기'}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    aria-checked={task.todo.completed}
+                    aria-busy={completion.isPending}
+                    accessibilityLabel={`${task.title} ${task.todo.completed ? '완료 취소' : '완료'}`}
+                    accessibilityState={{
+                      checked: task.todo.completed,
+                      disabled: completion.isPending,
+                      busy: completion.isPending,
+                    }}
+                    disabled={completion.isPending}
+                    onPress={() => void toggleCompletion(task.todo)}
+                    style={styles.completionButton}
+                  >
+                    <ScheduleCheck completed={task.todo.completed} />
+                  </Pressable>
                 </View>
-                <Pressable
-                  accessibilityRole="checkbox"
-                  aria-checked={task.todo.completed}
-                  aria-busy={completion.isPending}
-                  accessibilityLabel={`${task.title} ${task.todo.completed ? '완료 취소' : '완료'}`}
-                  accessibilityState={{
-                    checked: task.todo.completed,
-                    disabled: completion.isPending,
-                    busy: completion.isPending,
-                  }}
-                  disabled={completion.isPending}
-                  onPress={() => void toggleCompletion(task.todo)}
-                  style={styles.completionButton}
-                >
-                  <ScheduleCheck completed={task.todo.completed} />
-                </Pressable>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
           {notice ? (
             <Text
@@ -452,6 +525,77 @@ export default function TodoScreen() {
             </Text>
           ) : null}
         </ScrollView>
+        {addMenu ? (
+          <View
+            style={styles.addMenuLayer}
+            accessibilityViewIsModal
+            onAccessibilityEscape={() => setAddMenu(null)}
+          >
+            <Pressable
+              accessible={false}
+              style={StyleSheet.absoluteFill}
+              onPress={() => setAddMenu(null)}
+            />
+            <View style={[styles.addMenu, addMenu]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="직접 추가"
+                disabled={status !== 'authenticated'}
+                accessibilityState={{ disabled: status !== 'authenticated' }}
+                onPress={addSchedule}
+                style={({ pressed }) => [
+                  styles.addMenuItem,
+                  pressed && styles.addMenuItemPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.addMenuLabel,
+                    status !== 'authenticated' && styles.addMenuDisabled,
+                  ]}
+                >
+                  직접 추가
+                </Text>
+                <SymbolView
+                  name="calendar.badge.plus"
+                  size={18}
+                  tintColor={
+                    status !== 'authenticated' ? colors.muted : colors.onTint
+                  }
+                  accessible={false}
+                  fallback={
+                    <Text accessible={false} style={styles.addMenuSymbol}>
+                      +
+                    </Text>
+                  }
+                />
+              </Pressable>
+              <View style={styles.addMenuDivider} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="AI 활동 추천"
+                onPress={recommendActivities}
+                style={({ pressed }) => [
+                  styles.addMenuItem,
+                  pressed && styles.addMenuItemPressed,
+                ]}
+              >
+                <Text style={styles.addMenuLabel}>AI 활동 추천</Text>
+                <SymbolView
+                  name="sparkles"
+                  size={18}
+                  tintColor={colors.onTint}
+                  accessible={false}
+                  fallback={
+                    <Text accessible={false} style={styles.addMenuSymbol}>
+                      ✦
+                    </Text>
+                  }
+                />
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       {reactionTodo ? (
@@ -644,14 +788,51 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.muted,
   },
-  addButton: {
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    borderRadius: 14,
-    minHeight: 48,
+  addToggle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.tint,
   },
-  addLabel: { ...typography.button, fontSize: 16, color: colors.onTint },
+  addToggleActive: { backgroundColor: colors.secondaryPressed },
+  addSymbol: { fontSize: 24, color: colors.onTint },
+  addMenuLayer: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
+  addMenu: {
+    position: 'absolute',
+    borderRadius: 20,
+    padding: spacing.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    boxShadow: '0px 8px 26px rgba(41, 41, 41, 0.15)',
+    elevation: 8,
+  },
+  addMenuItem: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 14,
+  },
+  addMenuItemPressed: { backgroundColor: colors.tint },
+  addMenuLabel: {
+    ...typography.label,
+    flexShrink: 1,
+    fontWeight: '600',
+    color: colors.heading,
+  },
+  addMenuDisabled: { color: colors.muted },
+  addMenuSymbol: { ...typography.button, color: colors.onTint },
+  addMenuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+  },
   scheduleToolbar: {
     backgroundColor: colors.background,
     zIndex: 1,
@@ -685,69 +866,87 @@ const styles = StyleSheet.create({
   },
   selectedDay: { backgroundColor: colors.primary },
   selectedDayText: { color: colors.surface },
-  viewTabs: {
-    minHeight: 56,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.field,
+  scheduleList: { paddingHorizontal: 24, gap: spacing.sm },
+  listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 44,
+    gap: spacing.sm,
   },
-  tabLabels: { ...editorial.segment, flex: 1 },
-  tabButton: { ...editorial.segmentButton },
-  tabLabel: { ...typography.label, fontSize: 14, color: colors.muted },
-  activeTabLabel: { color: colors.primary, fontWeight: '700' },
-  timeline: {
-    paddingTop: 18,
-    paddingHorizontal: 22,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.background,
-    marginLeft: 82,
+  listTitle: { ...typography.section, color: colors.heading },
+  listAction: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 10,
+    paddingHorizontal: spacing.sm,
   },
+  listActionLabel: { ...typography.label, color: colors.primary },
+  listSurface: {
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  listState: { padding: spacing.lg, gap: spacing.xs },
+  listMessage: { ...typography.body, color: colors.muted, padding: spacing.lg },
+  listError: { ...typography.label, color: colors.danger },
+  taskRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  taskDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  time: {
+    ...typography.label,
+    minWidth: 48,
+    paddingTop: 11,
+    fontVariant: ['tabular-nums'],
+    color: colors.muted,
+  },
+  taskCopy: { flex: 1, minWidth: 0 },
+  taskDetails: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 10,
+    gap: spacing.sm,
+    borderRadius: 10,
+  },
+  taskText: { flex: 1, minWidth: 0, gap: spacing.xs },
+  taskTitle: { ...typography.button, color: colors.heading },
+  taskDescription: { ...typography.label, color: colors.muted },
+  taskMore: { ...typography.button, color: colors.muted },
+  taskPressed: { backgroundColor: colors.background },
+  taskReaction: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+    borderRadius: 10,
+  },
+  taskReactionLabel: { ...typography.caption, color: colors.onTint },
   completionButton: {
     minWidth: 44,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  taskRow: {
-    minHeight: 112,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginLeft: -60,
-    gap: 13,
-  },
-  time: {
-    width: 47,
-    paddingTop: 17,
-    textAlign: 'center',
-    ...typography.label,
-    color: colors.text,
-  },
-  timeSpacer: { width: 47 },
-  taskCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    minHeight: 64,
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 8,
-  },
-  future: { backgroundColor: colors.surface },
-  taskCopy: { flex: 1, minWidth: 0, gap: 5 },
-  taskTitle: { ...typography.button, color: colors.text },
-  taskDescription: { ...typography.label, color: colors.muted },
   notice: {
     margin: 18,
     textAlign: 'center',
     ...typography.caption,
     color: colors.primary,
   },
-  listAction: { minHeight: 44, justifyContent: 'center' },
   pressed: { backgroundColor: colors.surface },
 });

@@ -1,9 +1,13 @@
 import type { Personalization } from './onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export const childGenderLabels = { MALE: '남', FEMALE: '여' } as const;
+export type ChildGender = keyof typeof childGenderLabels;
+
 export type ChildProfile = {
   name: string;
   birthday: string;
+  gender?: ChildGender;
   personalization?: Personalization;
 };
 export type ChildProfileErrors = { name?: string; birthday?: string };
@@ -58,7 +62,13 @@ export async function readChildProfile(
       Object.keys(validateChildProfile(value)).length > 0
     )
       throw new Error('Invalid profile');
-    return { name: value.name, birthday: value.birthday };
+    return {
+      name: value.name,
+      birthday: value.birthday,
+      ...(value.gender === 'MALE' || value.gender === 'FEMALE'
+        ? { gender: value.gender }
+        : {}),
+    };
   } catch {
     throw new Error('아이 정보를 불러오지 못했어요. 다시 시도해주세요.');
   }
@@ -75,6 +85,7 @@ export async function saveChildProfile(
   const value = {
     name: profile.name.trim(),
     birthday: profile.birthday.trim(),
+    ...(profile.gender ? { gender: profile.gender } : {}),
   };
   try {
     await AsyncStorage.setItem(key, JSON.stringify(value));

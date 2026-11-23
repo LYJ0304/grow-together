@@ -73,6 +73,7 @@ export function HomeQuickAdd({
             },
             {
               label: 'AI 활동 추천받기',
+              detail: '가능한 시간에 맞는 활동을 찾아요.',
               action: onRecommend,
               disabled: !authenticated,
             },
@@ -81,16 +82,26 @@ export function HomeQuickAdd({
               key={item.label}
               accessibilityRole="button"
               accessibilityLabel={item.label}
+              accessibilityHint={item.detail}
               disabled={item.disabled}
               accessibilityState={{ disabled: item.disabled }}
               onPress={item.action}
-              style={[styles.choice, item.disabled && styles.disabled]}
+              style={[
+                styles.choice,
+                item.detail && !item.disabled && styles.recommendation,
+                item.disabled && styles.disabled,
+              ]}
             >
-              <Text
-                style={[styles.label, item.disabled && { color: colors.muted }]}
-              >
-                {item.label}
-              </Text>
+              <View style={styles.choiceCopy}>
+                <Text
+                  style={[styles.label, item.disabled && styles.disabledText]}
+                >
+                  {item.label}
+                </Text>
+                {item.detail && !item.disabled ? (
+                  <Text style={styles.detail}>{item.detail}</Text>
+                ) : null}
+              </View>
               <Text accessible={false} style={styles.chevron}>
                 ›
               </Text>
@@ -145,7 +156,11 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingVertical: 12,
   },
-  label: { ...typography.label, color: colors.text, flex: 1 },
+  choiceCopy: { flex: 1, gap: 2 },
+  label: { ...typography.label, color: colors.text },
+  detail: { ...typography.caption, color: colors.muted },
+  recommendation: { backgroundColor: colors.tint, borderColor: colors.tint },
+  disabledText: { color: colors.muted },
   chevron: { fontSize: 24, color: colors.muted },
   disabled: { backgroundColor: colors.disabled, borderColor: colors.disabled },
 });

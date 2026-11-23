@@ -119,12 +119,12 @@ export default function MyPageScreen() {
             계정 및 설정
           </Text>
           <View style={styles.group}>
-            <Text style={styles.body}>
-              {status === 'preview'
-                ? '미리보기로 이용하고 있어요.'
-                : '로그인한 계정의 이름과 이메일은 내 프로필에서 확인할 수 있어요.'}
-            </Text>
-            <View style={styles.divider} />
+            {status === 'preview' ? (
+              <>
+                <Text style={styles.body}>미리보기로 이용하고 있어요.</Text>
+                <View style={styles.divider} />
+              </>
+            ) : null}
             <Text style={styles.body}>알림</Text>
             <Text style={styles.caption}>알림 기능은 준비 중이에요.</Text>
           </View>

@@ -10,20 +10,28 @@ export async function selectDate(page, label, value) {
 }
 export async function editDateParts(modal, value) {
   const [year, month, day] = value.split('-').map(Number);
-  await modal
-    .getByRole('textbox', { name: '연도 바로 입력', exact: true })
-    .fill(String(year));
   for (const [part, number, suffix] of [
+    ['year', year, '년'],
     ['month', month, '월'],
     ['day', day, '일'],
   ]) {
-    await modal
-      .getByTestId(`date-${part}-options`)
-      .evaluate((element, number) => {
-        element.scrollTop = (number - 1) * 48;
-      }, number);
-    await modal
-      .getByRole('radio', { name: `${number}${suffix}`, exact: true })
-      .click();
+    const wheel = modal.getByTestId(`date-${part}-options`);
+    const selected = wheel.locator('[role="radio"][aria-checked="true"]');
+    const previous = Number(
+      (await selected.getAttribute('aria-label')).slice(0, -1),
+    );
+    if (previous === number) continue;
+    const row = await selected.boundingBox();
+    await wheel.evaluate(
+      (element, delta) => {
+        element.scrollTop += delta;
+      },
+      (part === 'year' ? previous - number : number - previous) * row.height,
+    );
+    const option = wheel.getByRole('radio', {
+      name: `${number}${suffix}`,
+      exact: true,
+    });
+    await option.and(wheel.locator('[aria-checked="true"]')).waitFor();
   }
 }

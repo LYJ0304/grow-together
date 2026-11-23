@@ -11,25 +11,27 @@ import {
 import {
   FlatList,
   type KeyDownEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from '@/components/safe-area-view';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { radius } from '../../theme/radius';
 import { typography } from '../typography';
-import { dateLabel } from '../../lib/onboarding';
+import { dateLabel, parseDate } from '../../lib/onboarding';
+import { selectionFeedback } from '../../lib/haptics';
 import {
   clampSelection,
   initialSelection,
@@ -134,17 +136,12 @@ export function DateSelection({
   onDismiss(): void;
 }) {
   const [draft, setDraft] = useState(() => initialSelection(value, maximum));
-  const [year, setYear] = useState(String(draft.year));
-  const maxYear = partMaximum(draft, 'year', maximum);
-  const validYear =
-    /^\d{1,4}$/.test(year) &&
-    Number(year) >= minimumYear &&
-    Number(year) <= maxYear;
   const pick = (part: DatePart, next: number) => {
     setDraft((current) =>
-      clampSelection({ ...current, [part]: next }, maximum),
+      current[part] === next
+        ? current
+        : clampSelection({ ...current, [part]: next }, maximum),
     );
-    if (part === 'year') setYear(String(next));
   };
   return (
     <Modal
@@ -154,21 +151,18 @@ export function DateSelection({
       onDismiss={onDismiss}
     >
       <SafeAreaView style={styles.overlay}>
-        <KeyboardAvoidingView
-          style={styles.modalArea}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
+        <View style={styles.modalArea}>
+          <View
+            role="dialog"
+            accessibilityLabel={`${label} 선택`}
+            accessibilityViewIsModal
+            aria-modal
             style={styles.panel}
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
           >
-            <View
-              role="dialog"
-              accessibilityLabel={`${label} 선택`}
-              accessibilityViewIsModal
-              aria-modal
-              style={styles.dialog}
+            <ScrollView
+              style={styles.body}
+              contentContainerStyle={styles.content}
+              keyboardShouldPersistTaps="handled"
             >
               <Text accessibilityRole="header" style={styles.title}>
                 {label} 선택
@@ -176,71 +170,76 @@ export function DateSelection({
               <Text accessibilityLiveRegion="polite" style={styles.preview}>
                 {dateLabel(selectionValue(draft))}
               </Text>
-              <View style={styles.field}>
-                <Text style={styles.label}>연도 바로 입력</Text>
-                <TextInput
-                  accessibilityLabel="연도 바로 입력"
-                  accessibilityHint={`${minimumYear}년부터 ${maxYear}년까지 입력할 수 있어요.`}
-                  aria-invalid={!validYear}
-                  value={year}
-                  onChangeText={(text) => {
-                    const digits = text.replace(/\D/g, '').slice(0, 4);
-                    setYear(digits);
-                    if (
-                      Number(digits) >= minimumYear &&
-                      Number(digits) <= maxYear
-                    )
-                      pick('year', Number(digits));
-                  }}
-                  selectTextOnFocus
-                  keyboardType="number-pad"
-                  inputMode="numeric"
-                  maxLength={4}
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
-                  style={[styles.yearInput, !validYear && styles.invalid]}
-                />
-                {!validYear ? (
-                  <Text accessibilityRole="alert" style={styles.error}>
-                    {minimumYear}~{maxYear}년 사이의 연도를 입력해주세요.
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.columns}>
-                {(['year', 'month', 'day'] as const).map((part) => (
-                  <DateColumn
-                    key={part}
-                    part={part}
-                    selected={draft[part]}
-                    minimum={part === 'year' ? minimumYear : 1}
-                    maximum={partMaximum(draft, part, maximum)}
-                    onChange={(next) => pick(part, next)}
-                  />
-                ))}
-              </View>
-              <View style={styles.actions}>
-                <ActionButton
-                  label="완료"
-                  variant="primary"
-                  disabled={!validYear}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    onConfirm(selectionValue(clampSelection(draft, maximum)));
+              {Platform.OS === 'ios' ? (
+                <DateTimePicker
+                  accessibilityLabel={label}
+                  mode="date"
+                  display="spinner"
+                  locale="ko-KR"
+                  themeVariant="light"
+                  style={styles.iosPicker}
+                  value={parseDate(selectionValue(draft)) ?? new Date()}
+                  minimumDate={
+                    parseDate(
+                      selectionValue({ year: minimumYear, month: 1, day: 1 }),
+                    ) ?? undefined
+                  }
+                  maximumDate={parseDate(maximum ?? '9999-12-31') ?? undefined}
+                  onValueChange={(_, date) => {
+                    const next = clampSelection(
+                      {
+                        year: date.getFullYear(),
+                        month: date.getMonth() + 1,
+                        day: date.getDate(),
+                      },
+                      maximum,
+                    );
+                    if (selectionValue(next) === selectionValue(draft)) return;
+                    selectionFeedback();
+                    setDraft(next);
                   }}
                 />
+              ) : (
+                <View style={styles.columns}>
+                  {(['year', 'month', 'day'] as const).map((part) => (
+                    <DateColumn
+                      key={part}
+                      part={part}
+                      selected={draft[part]}
+                      minimum={part === 'year' ? minimumYear : 1}
+                      maximum={partMaximum(draft, part, maximum)}
+                      onChange={(next) => pick(part, next)}
+                    />
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+            <View style={styles.actions}>
+              <View style={styles.action}>
                 <ActionButton
                   label="취소"
                   variant="tertiary"
                   onPress={onCancel}
                 />
               </View>
+              <View style={styles.action}>
+                <ActionButton
+                  label="완료"
+                  variant="primary"
+                  onPress={() =>
+                    onConfirm(selectionValue(clampSelection(draft, maximum)))
+                  }
+                />
+              </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
+        </View>
       </SafeAreaView>
     </Modal>
   );
 }
+const visibleRows = 5;
+const settleDelay = 120;
 const partLabels = { year: '연도', month: '월', day: '일' };
 const suffix = { year: '년', month: '월', day: '일' };
 function DateColumn({
@@ -272,13 +271,44 @@ function DateColumn({
       ),
     [maximum, minimum, part],
   );
-  const index = values.indexOf(selected);
+  const index = Math.max(0, values.indexOf(selected));
+  const offset = useRef(-1);
+  const dragging = useRef(false);
+  const coasting = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelSettle = () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const centerRow = (nextIndex: number) => {
+    const y = nextIndex * rowHeight;
+    if (Math.abs(offset.current - y) < 1) return;
+    offset.current = y;
+    list.current?.scrollToOffset({ offset: y, animated: false });
+    scroll.current?.scrollTo({ y, animated: false });
+  };
+  const settle = () => {
+    cancelSettle();
+    if (dragging.current) return;
+    const nextIndex = Math.max(
+      0,
+      Math.min(values.length - 1, Math.round(offset.current / rowHeight)),
+    );
+    centerRow(nextIndex);
+    if (values[nextIndex] !== selected) onChange(values[nextIndex]);
+  };
+  const scheduleSettle = () => {
+    cancelSettle();
+    if (!dragging.current && !coasting.current)
+      timer.current = setTimeout(settle, settleDelay);
+  };
+  const trackScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+    scheduleSettle();
+  };
   useEffect(() => {
-    list.current?.scrollToIndex({ index, animated: false, viewPosition: 0.5 });
-    scroll.current?.scrollTo({
-      y: Math.max(0, index - 1) * rowHeight,
-      animated: false,
-    });
+    cancelSettle();
+    centerRow(index);
     if (focusNext.current === selected) {
       const option = options.current.get(selected);
       if (option) {
@@ -286,7 +316,56 @@ function DateColumn({
         focusNext.current = null;
       }
     }
-  }, [index, selected, rowHeight]);
+    return cancelSettle;
+    // Only re-center when the selected row or its geometry changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, selected, rowHeight, values]);
+  const wheelProps = {
+    style: { height: rowHeight * visibleRows },
+    contentContainerStyle: { paddingVertical: rowHeight * 2 },
+    scrollEventThrottle: 16,
+    nestedScrollEnabled: true,
+    showsVerticalScrollIndicator: true,
+    indicatorStyle: 'black' as const,
+    persistentScrollbar: true,
+    automaticallyAdjustContentInsets: false,
+    contentInsetAdjustmentBehavior: 'never' as const,
+    keyboardShouldPersistTaps: 'handled' as const,
+    onLayout: () => {
+      offset.current = -1;
+      centerRow(index);
+    },
+    onScroll: trackScroll,
+    ...(Platform.OS === 'web'
+      ? {}
+      : {
+          bounces: false,
+          snapToInterval: rowHeight,
+          snapToAlignment: 'start' as const,
+          disableIntervalMomentum: true,
+          decelerationRate: 'fast' as const,
+          onScrollBeginDrag: () => {
+            coasting.current = false;
+            dragging.current = true;
+            cancelSettle();
+          },
+          onScrollEndDrag: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+            dragging.current = false;
+            trackScroll(event);
+          },
+          onMomentumScrollBegin: () => {
+            coasting.current = true;
+            cancelSettle();
+          },
+          onMomentumScrollEnd: (
+            event: NativeSyntheticEvent<NativeScrollEvent>,
+          ) => {
+            coasting.current = false;
+            offset.current = event.nativeEvent.contentOffset.y;
+            settle();
+          },
+        }),
+  };
   const keyboardProps =
     Platform.OS === 'web'
       ? {
@@ -326,7 +405,11 @@ function DateColumn({
       accessibilityState={{ checked: item === selected }}
       aria-checked={item === selected}
       tabIndex={item === selected ? 0 : -1}
-      onPress={() => onChange(item)}
+      onPress={() => {
+        cancelSettle();
+        centerRow(values.indexOf(item));
+        onChange(item);
+      }}
       style={({ pressed }) => [
         styles.option,
         { height: rowHeight },
@@ -354,12 +437,9 @@ function DateColumn({
             ref={list}
             testID={`date-${part}-options`}
             data={values}
-            style={{ height: rowHeight * 4 }}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-            initialScrollIndex={index}
+            {...wheelProps}
             initialNumToRender={8}
-            windowSize={3}
+            windowSize={5}
             getItemLayout={(_, itemIndex) => ({
               length: rowHeight,
               offset: rowHeight * itemIndex,
@@ -373,9 +453,7 @@ function DateColumn({
           <ScrollView
             ref={scroll}
             testID={`date-${part}-options`}
-            style={{ height: rowHeight * 4 }}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
+            {...wheelProps}
           >
             {values.map(option)}
           </ScrollView>
@@ -412,26 +490,22 @@ const styles = StyleSheet.create({
   },
   modalArea: {
     maxHeight: '100%',
+    flexShrink: 1,
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
   },
-  panel: { borderRadius: radius.sheet, backgroundColor: colors.surface },
-  content: { padding: spacing.lg },
-  dialog: { gap: spacing.lg },
+  panel: {
+    flexShrink: 1,
+    borderRadius: radius.sheet,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  body: { flexGrow: 0, flexShrink: 1 },
+  content: { padding: spacing.lg, gap: spacing.md },
   title: { ...typography.section, color: colors.heading },
   preview: { ...typography.body, color: colors.text },
-  yearInput: {
-    ...typography.body,
-    color: colors.text,
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    outlineColor: colors.primary,
-  },
+  iosPicker: { height: 216, width: '100%' },
   columns: { flexDirection: 'row', gap: spacing.sm },
   column: { flex: 1, minWidth: 0 },
   columnLabel: {
@@ -454,6 +528,12 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   selectedText: { color: colors.onTint, fontWeight: '700' },
-  actions: { gap: spacing.sm },
-  error: { ...typography.caption, color: colors.danger },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  action: { flex: 1 },
 });

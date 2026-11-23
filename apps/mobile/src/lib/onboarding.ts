@@ -104,6 +104,7 @@ export function personalizationSaved(
   return (
     result.name === input.name.trim() &&
     result.birthday === input.birthday &&
+    (input.gender === undefined || result.gender === input.gender) &&
     validPersonalization(p) &&
     p.prematurityStatus === input.personalization.prematurityStatus &&
     p.expectedDueDate === input.personalization.expectedDueDate &&

@@ -48,10 +48,35 @@ try {
     exact: true,
   });
   await modal.waitFor();
-  assert.deepEqual(
-    await paint(modal.getByRole('button', { name: '완료', exact: true })),
-    savePaint,
+  for (const [part, label] of [
+    ['year', '2024년'],
+    ['month', '2월'],
+    ['day', '29일'],
+  ]) {
+    const wheel = await modal.getByTestId(`date-${part}-options`).boundingBox();
+    const row = await modal
+      .getByRole('radio', { name: label, exact: true })
+      .boundingBox();
+    assert(
+      Math.abs(wheel.y + wheel.height / 2 - row.y - row.height / 2) < 2,
+      `${part} should open centered`,
+    );
+  }
+  assert.equal(
+    await modal.getByRole('textbox').count(),
+    0,
+    'date selection only uses the wheels',
   );
+  const months = modal.getByTestId('date-month-options');
+  await months.evaluate((node) => {
+    node.scrollTop += 48;
+  });
+  await modal.getByText('2024년 3월 29일', { exact: true }).waitFor();
+  const donePaint = await paint(
+    modal.getByRole('button', { name: '완료', exact: true }),
+  );
+  assert.equal(donePaint.minHeight, savePaint.minHeight);
+  assert.notEqual(donePaint.background, cancelPaint.background);
   assert.deepEqual(
     await paint(modal.getByRole('button', { name: '취소', exact: true })),
     cancelPaint,
@@ -66,28 +91,14 @@ try {
   await modal.getByRole('button', { name: '취소', exact: true }).click();
   await page.getByRole('button', { name: '생년월일', exact: true }).click();
   await modal.getByRole('radio', { name: '2024년', exact: true }).waitFor();
+  await modal.getByRole('radio', { name: '2023년', exact: true }).click();
+  await modal.getByText('2023년 2월 28일', { exact: true }).waitFor();
   await editDateParts(modal, '2024-03-04');
   await modal.getByRole('button', { name: '완료', exact: true }).click();
   await page.getByText('2024년 3월 4일', { exact: true }).waitFor();
   assert.deepEqual(writes, [], 'selection must not save to the server');
   await page.getByRole('button', { name: '생년월일', exact: true }).click();
-  const yearInput = modal.getByRole('textbox', {
-    name: '연도 바로 입력',
-    exact: true,
-  });
-  await yearInput.fill('9999');
-  assert.equal(
-    await modal.getByRole('button', { name: '완료', exact: true }).isDisabled(),
-    true,
-  );
-  await yearInput.fill('1900');
-  await modal.getByRole('radio', { name: '1900년', exact: true }).waitFor();
-  assert.equal(
-    await modal
-      .getByRole('radio', { name: '1900년', exact: true })
-      .getAttribute('aria-checked'),
-    'true',
-  );
+  await editDateParts(modal, '1900-03-04');
   await modal.getByRole('radio', { name: '1900년', exact: true }).focus();
   await page.keyboard.press('End');
   await modal.getByRole('radio', { name: '1년', exact: true }).waitFor();
@@ -131,6 +142,7 @@ try {
   for (const width of [320, 390, 430, 1024]) {
     await page.setViewportSize({ width, height: 740 });
     await page.getByRole('button', { name: '생년월일', exact: true }).click();
+    await modal.waitFor();
     const bounds = await modal.boundingBox();
     assert(bounds.x >= 0 && bounds.x + bounds.width <= width);
     await page.screenshot({ path: `/tmp/shared-date-ui/modal-${width}.png` });
@@ -142,11 +154,22 @@ try {
     content:
       '[dir="auto"], input { font-size:24px !important; line-height:32px !important; }',
   });
-  await modal
-    .getByRole('button', { name: '완료', exact: true })
-    .scrollIntoViewIfNeeded();
+  for (const name of ['완료', '취소']) {
+    const button = await modal
+      .getByRole('button', { name, exact: true })
+      .boundingBox();
+    assert(button.y >= 0 && button.y + button.height <= 580);
+  }
   await page.screenshot({ path: '/tmp/shared-date-ui/large-text.png' });
+  await page.setViewportSize({ width: 320, height: 320 });
+  for (const name of ['완료', '취소']) {
+    const button = await modal
+      .getByRole('button', { name, exact: true })
+      .boundingBox();
+    assert(button.y >= 0 && button.y + button.height <= 320);
+  }
   await modal.getByRole('button', { name: '취소', exact: true }).click();
+  await page.setViewportSize({ width: 320, height: 580 });
   empty = true;
   await page.reload();
   await page.getByRole('button', { name: '아이 추가', exact: true }).click();

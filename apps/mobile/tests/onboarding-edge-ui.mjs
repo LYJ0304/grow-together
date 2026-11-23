@@ -167,7 +167,7 @@ try {
     waitUntil: 'commit',
     timeout: 120000,
   });
-  await edit.click('개인화 설정 수정');
+  await edit.click('수정');
   assert.equal(
     await edit.page
       .getByRole('textbox', { name: '아이 이름 또는 애칭', exact: true })
@@ -205,6 +205,8 @@ try {
       k.startsWith('growtogether.onboarding'),
     ),
   );
+  await logout.click('이전 화면으로');
+  await logout.click('내 프로필 열기');
   await logout.click('로그아웃');
   await logout.page
     .getByRole('heading', { name: '다시 만났네요!', exact: true })

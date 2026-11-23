@@ -1,14 +1,16 @@
-import { buttonSurface, buttonLabel } from '../theme/buttons';
-import { type ComponentRef, useRef, useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { ActionButton } from './action-button';
+import { useRef, useState } from 'react';
 import { typography } from './typography';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
 import { useReduceMotion } from '../theme/motion';
-import { successFeedback } from '../lib/haptics';
+import { selectionFeedback, successFeedback } from '../lib/haptics';
 import { useChatKeyboard } from '../lib/use-chat-keyboard';
 import { ApiError } from '../lib/api/errors';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -21,6 +23,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView, safeAreaLength } from '@/components/safe-area-view';
+
+const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function formatTime(value: Date) {
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function pickerTime(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  return new Date(2000, 0, 1, hours, minutes);
+}
 
 type PlanInput = {
   title: string;
@@ -42,6 +57,7 @@ export function AddPlanModal({
 }) {
   const [title, setTitle] = useState(initialValues?.title ?? '');
   const [time, setTime] = useState(initialValues?.time ?? '');
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [description, setDescription] = useState(
     initialValues?.description ?? '',
   );
@@ -53,7 +69,6 @@ export function AddPlanModal({
   const reduced = useReduceMotion();
   const insets = useSafeAreaInsets();
   const keyboard = useChatKeyboard();
-  const titleInput = useRef<ComponentRef<typeof TextInput>>(null);
   const dirty =
     duration !== initialDuration ||
     title !== (initialValues?.title ?? '') ||
@@ -61,6 +76,7 @@ export function AddPlanModal({
     description !== (initialValues?.description ?? '');
   const requestClose = () => {
     if (submitting.current) return;
+    Keyboard.dismiss();
     if (dirty) setConfirmClose(true);
     else onClose();
   };
@@ -74,8 +90,12 @@ export function AddPlanModal({
       setError('계획명을 입력해 주세요.');
       return;
     }
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim())) {
-      setError('시간을 09:30처럼 입력해 주세요. (00:00~23:59)');
+    if (!timePattern.test(time.trim())) {
+      setError(
+        Platform.OS === 'ios'
+          ? '시작 시간을 선택해 주세요.'
+          : '시간을 09:30처럼 입력해 주세요. (00:00~23:59)',
+      );
       return;
     }
     if (title.trim().length > 80 || description.trim().length > 255) {
@@ -125,7 +145,6 @@ export function AddPlanModal({
       animationType={
         reduced ? 'none' : Platform.OS === 'web' ? 'fade' : 'slide'
       }
-      onShow={() => titleInput.current?.focus()}
       onRequestClose={requestClose}
     >
       <SafeAreaView
@@ -162,164 +181,207 @@ export function AddPlanModal({
             ]}
             accessibilityViewIsModal
           >
+            <View style={styles.header}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={pending}
+                onPress={requestClose}
+                style={({ pressed }) => [
+                  styles.headerAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[styles.cancelText, pending && styles.disabledText]}
+                >
+                  취소
+                </Text>
+              </Pressable>
+              <Text accessibilityRole="header" style={styles.heading}>
+                {initialValues ? '계획 수정' : '계획 추가'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={pending || confirmClose}
+                accessibilityState={{
+                  disabled: pending || confirmClose,
+                  busy: pending,
+                }}
+                onPress={() => void submit()}
+                style={({ pressed }) => [
+                  styles.headerAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.submitText,
+                    (pending || confirmClose) && styles.disabledText,
+                  ]}
+                >
+                  {pending
+                    ? '저장 중…'
+                    : initialValues
+                      ? '수정하기'
+                      : '추가하기'}
+                </Text>
+              </Pressable>
+            </View>
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              style={{ flexShrink: 1 }}
+              style={styles.form}
               contentContainerStyle={styles.content}
             >
-              <View style={styles.header}>
-                <Text accessibilityRole="header" style={styles.heading}>
-                  {initialValues ? '계획 수정' : '계획 추가'}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    initialValues ? '계획 수정 닫기' : '계획 추가 닫기'
-                  }
-                  hitSlop={8}
-                  disabled={pending}
-                  onPress={requestClose}
-                  style={styles.close}
-                >
-                  <Text style={styles.closeText}>×</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.date}>
-                {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}
-                일
-              </Text>
-              <Text style={styles.label}>계획명</Text>
-              <TextInput
-                selectionColor={colors.primary}
-                ref={titleInput}
-                accessibilityLabel="계획명"
-                placeholder="예: 아이와 공원 산책"
-                placeholderTextColor={colors.muted}
-                value={title}
-                editable={!pending}
-                onChangeText={setTitle}
-                maxLength={80}
-                style={styles.input}
-              />
-              <Text style={styles.label}>시간</Text>
-              <TextInput
-                selectionColor={colors.primary}
-                accessibilityLabel="계획 시간"
-                placeholder="09:30"
-                placeholderTextColor={colors.muted}
-                value={time}
-                editable={!pending}
-                onChangeText={setTime}
-                maxLength={5}
-                autoCapitalize="none"
-                style={styles.input}
-              />
-              <Text style={styles.hint}>
-                24시간 형식으로 입력해 주세요. 예: 14:30
-              </Text>
-              <Text style={styles.label}>소요 시간 (분 · AI 추천 시 필요)</Text>
-              <TextInput
-                placeholderTextColor={colors.muted}
-                accessibilityLabel="계획 소요 시간"
-                value={duration}
-                onChangeText={setDuration}
-                editable={!pending}
-                keyboardType="number-pad"
-                maxLength={4}
-                style={styles.input}
-              />
-              <Text style={styles.label}>메모 (선택)</Text>
-              <TextInput
-                selectionColor={colors.primary}
-                accessibilityLabel="계획 메모"
-                placeholder="기억하고 싶은 내용을 적어 주세요"
-                placeholderTextColor={colors.muted}
-                value={description}
-                editable={!pending}
-                onChangeText={setDescription}
-                multiline
-                maxLength={255}
-                textAlignVertical="top"
-                style={[styles.input, styles.memo]}
-              />
-            </ScrollView>
-            <View style={styles.footer}>
               {confirmClose ? (
-                <View accessibilityRole="alert" style={styles.confirm}>
+                <View accessibilityRole="alert" style={styles.field}>
                   <Text style={styles.label}>작성 중인 내용을 버릴까요?</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setConfirmClose(false);
-                      titleInput.current?.focus();
-                    }}
-                    style={styles.button}
-                  >
-                    <Text style={styles.cancelText}>계속 작성</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  <ActionButton
+                    label="계속 작성"
+                    variant="tertiary"
+                    onPress={() => setConfirmClose(false)}
+                  />
+                  <ActionButton
+                    label="내용 버리기"
+                    variant="destructive-confirm"
                     onPress={() => {
                       if (!submitting.current) onClose();
                     }}
-                    style={styles.button}
-                  >
-                    <Text style={styles.cancelText}>내용 버리기</Text>
-                  </Pressable>
+                  />
                 </View>
-              ) : null}
-              {error ? (
-                <Text
-                  accessibilityRole="alert"
-                  accessibilityLiveRegion="polite"
-                  style={styles.error}
-                >
-                  {error}
-                </Text>
-              ) : null}
-              <View style={styles.actions}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={pending}
-                  onPress={requestClose}
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.cancel,
-                    buttonSurface('tertiary', pending, pressed),
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.cancelText,
-                      buttonLabel('tertiary', pending),
-                    ]}
-                  >
-                    취소
+              ) : (
+                <>
+                  <Text style={styles.date}>
+                    {date.getFullYear()}년 {date.getMonth() + 1}월{' '}
+                    {date.getDate()}일
                   </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={pending}
-                  accessibilityState={{ disabled: pending, busy: pending }}
-                  onPress={() => void submit()}
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.submit,
-                    buttonSurface('primary', pending, pressed),
-                  ]}
-                >
-                  <Text
-                    style={[styles.submitText, buttonLabel('primary', pending)]}
-                  >
-                    {pending
-                      ? '저장 중…'
-                      : initialValues
-                        ? '수정하기'
-                        : '추가하기'}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+                  {error ? (
+                    <Text
+                      accessibilityRole="alert"
+                      accessibilityLiveRegion="polite"
+                      style={styles.error}
+                    >
+                      {error}
+                    </Text>
+                  ) : null}
+                  <View style={styles.field}>
+                    <Text style={styles.label}>계획명</Text>
+                    <TextInput
+                      selectionColor={colors.primary}
+                      accessibilityLabel="계획명"
+                      placeholder="예: 아이와 공원 산책"
+                      placeholderTextColor={colors.muted}
+                      value={title}
+                      editable={!pending}
+                      onChangeText={setTitle}
+                      maxLength={80}
+                      style={styles.input}
+                    />
+                  </View>
+                  <View style={styles.timing}>
+                    <View style={styles.timingField}>
+                      <Text style={styles.label}>시작 시간</Text>
+                      {Platform.OS === 'ios' ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="계획 시간"
+                          accessibilityValue={{ text: time || '선택 안 됨' }}
+                          accessibilityState={{
+                            expanded: timePickerOpen,
+                            disabled: pending,
+                          }}
+                          disabled={pending}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            if (!timePattern.test(time))
+                              setTime(formatTime(new Date()));
+                            setTimePickerOpen(!timePickerOpen);
+                          }}
+                          style={({ pressed }) => [
+                            styles.input,
+                            styles.timeButton,
+                            timePickerOpen && styles.timeSelected,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.inputText,
+                              !time && styles.disabledText,
+                            ]}
+                          >
+                            {time || '시간 선택'}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <TextInput
+                          selectionColor={colors.primary}
+                          accessibilityLabel="계획 시간"
+                          placeholder="예: 09:30"
+                          placeholderTextColor={colors.muted}
+                          value={time}
+                          editable={!pending}
+                          onChangeText={setTime}
+                          maxLength={5}
+                          autoCapitalize="none"
+                          style={styles.input}
+                        />
+                      )}
+                    </View>
+                    <View style={styles.timingField}>
+                      <Text style={styles.label}>소요 시간 (분)</Text>
+                      <TextInput
+                        placeholderTextColor={colors.muted}
+                        accessibilityLabel="계획 소요 시간"
+                        accessibilityHint="AI 추천을 받으려면 소요 시간을 입력하세요."
+                        value={duration}
+                        onChangeText={setDuration}
+                        editable={!pending}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        style={styles.input}
+                      />
+                    </View>
+                  </View>
+                  {Platform.OS === 'ios' &&
+                  timePickerOpen &&
+                  timePattern.test(time) ? (
+                    <DateTimePicker
+                      accessibilityLabel="시작 시간 선택"
+                      disabled={pending}
+                      mode="time"
+                      display="spinner"
+                      locale="ko-KR"
+                      themeVariant="light"
+                      style={styles.timePicker}
+                      value={pickerTime(time)}
+                      onValueChange={(_, next) => {
+                        if (submitting.current) return;
+                        const value = formatTime(next);
+                        if (value === time) return;
+                        setTime(value);
+                        selectionFeedback();
+                      }}
+                    />
+                  ) : null}
+                  <View style={styles.field}>
+                    <Text style={styles.label}>메모 (선택)</Text>
+                    <TextInput
+                      selectionColor={colors.primary}
+                      accessibilityLabel="계획 메모"
+                      placeholder="기억하고 싶은 내용을 적어 주세요"
+                      placeholderTextColor={colors.muted}
+                      value={description}
+                      editable={!pending}
+                      onChangeText={setDescription}
+                      multiline
+                      maxLength={255}
+                      textAlignVertical="top"
+                      style={[styles.input, styles.memo]}
+                    />
+                  </View>
+                </>
+              )}
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -335,7 +397,8 @@ const styles = StyleSheet.create({
     padding: Platform.OS === 'web' ? 20 : 0,
   },
   sheet: {
-    maxHeight: '100%',
+    maxHeight: '94%',
+    flexShrink: 1,
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
@@ -346,64 +409,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  content: { padding: spacing.xl },
+  form: { flexGrow: 0, flexShrink: 1 },
+  content: { padding: spacing.xl, gap: spacing.lg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    columnGap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   heading: {
     ...typography.section,
-    fontSize: 22,
-    lineHeight: 32,
-    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
+    color: colors.heading,
   },
-  close: {
-    width: 44,
-    height: 44,
+  headerAction: {
+    minWidth: 76,
+    maxWidth: '30%',
+    minHeight: 44,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radius.sm,
   },
-  closeText: { fontSize: 28, color: colors.muted },
-  date: { ...typography.label, color: colors.primary, marginBottom: 8 },
-  label: {
+  cancelText: { ...typography.label, color: colors.text, textAlign: 'center' },
+  submitText: {
     ...typography.label,
-    color: colors.text,
-    fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 8,
+    color: colors.primary,
+    textAlign: 'center',
+    fontWeight: '700',
   },
+  date: { ...typography.label, color: colors.muted },
+  label: { ...typography.label, color: colors.text, fontWeight: '600' },
+  field: { gap: spacing.sm },
+  timing: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  timingField: { flex: 1, minWidth: 116, gap: spacing.sm },
+  inputText: { ...typography.body, color: colors.text },
   input: {
+    ...typography.body,
+    minHeight: 50,
     outlineColor: colors.primary,
     borderWidth: 1,
     borderColor: colors.controlBorder,
-    borderRadius: 12,
-    padding: 14,
-    ...typography.body,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     color: colors.text,
     backgroundColor: colors.field,
   },
-  memo: { minHeight: 100 },
-  hint: { marginTop: 8, ...typography.caption, color: colors.muted },
-  error: { marginTop: 16, ...typography.caption, color: colors.danger },
-  footer: { paddingHorizontal: 24, paddingBottom: 20 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  button: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancel: { ...buttonSurface('tertiary'), borderWidth: 1 },
-  submit: { ...buttonSurface('primary') },
-  cancelText: { ...typography.button, ...buttonLabel('tertiary') },
-  submitText: { ...typography.button, ...buttonLabel('primary') },
+  timeButton: { justifyContent: 'center' },
+  timeSelected: { borderColor: colors.primary, backgroundColor: colors.tint },
+  timePicker: { height: 216, width: '100%' },
+  memo: { minHeight: 88, paddingTop: spacing.md },
+  error: { ...typography.caption, color: colors.danger },
+  disabledText: { color: colors.muted },
   pressed: { backgroundColor: colors.background },
-  confirm: {
-    gap: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    paddingBottom: 12,
-  },
 });

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
@@ -15,10 +16,11 @@ public record ChildProfileRequest(
         @NotBlank @Size(max = 50) String name,
         @NotNull @PastOrPresent
         @JsonFormat(pattern = "uuuu-MM-dd", lenient = OptBoolean.FALSE) LocalDate birthday,
+        @Pattern(regexp = "MALE|FEMALE") String gender,
         @Valid ChildPersonalization personalization
 ) {
     public ChildProfileRequest(String name, LocalDate birthday) {
-        this(name, birthday, null);
+        this(name, birthday, null, null);
     }
 
     public ChildProfileRequest {
