@@ -86,7 +86,7 @@ try {
 
   // Direct links must redirect before protected content is shown.
   await page.goto(`${siteUrl}/mypage`);
-  await heading('다시 만났네요!').waitFor();
+  await heading('로그인').waitFor();
   assert.equal(
     await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).count(),
     previewEnabled ? 1 : 0,
@@ -122,11 +122,11 @@ try {
     await page
       .getByRole('button', { name: '미리보기 종료', exact: true })
       .click();
-    await heading('다시 만났네요!').waitFor();
+    await heading('로그인').waitFor();
   }
 
   await page.getByRole('link', { name: '회원가입', exact: true }).click();
-  await heading('함께 키워가요').waitFor();
+  await heading('계정 만들기').waitFor();
   const signup = async () => {
     await page
       .getByRole('textbox', { name: '이름', exact: true })
@@ -139,7 +139,7 @@ try {
     await page.getByRole('button', { name: '가입하기', exact: true }).click();
   };
   await signup();
-  await heading('다시 만났네요!').waitFor();
+  await heading('로그인').waitFor();
   await page
     .getByText('가입이 완료되었어요. 로그인해 주세요.', { exact: true })
     .waitFor();
@@ -147,6 +147,7 @@ try {
   await signup();
   await page.getByText('이미 가입된 이메일이에요.', { exact: true }).waitFor();
   await page.getByRole('link', { name: '로그인', exact: true }).click();
+  await heading('로그인').waitFor();
   await fillLogin('wrong-password');
   await page
     .getByText('이메일 또는 비밀번호를 확인해 주세요.', { exact: true })
@@ -179,13 +180,13 @@ try {
   await page.goto(`${siteUrl}/mypage`);
   await heading('마이페이지').waitFor();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
-  await heading('다시 만났네요!').waitFor();
+  await heading('로그인').waitFor();
   assert.equal(
     await page.evaluate((key) => sessionStorage.getItem(key), sessionKey),
     null,
   );
   await page.goBack();
-  await heading('다시 만났네요!').waitFor();
+  await heading('로그인').waitFor();
   assert.equal(await heading('마이페이지').count(), 0);
 
   // Startup network failure must preserve credentials and offer retry/logout.
@@ -205,7 +206,7 @@ try {
   await heading('마이페이지').waitFor();
   await page.route('**/api/v1/auth/logout', offline);
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
-  await heading('다시 만났네요!').waitFor();
+  await heading('로그인').waitFor();
   await page.getByText(/기기에서 로그아웃했어요/).waitFor();
   assert.equal(
     await page.evaluate((key) => sessionStorage.getItem(key), sessionKey),
