@@ -1,18 +1,130 @@
-# GrowTogether
+<div align="center">
 
-일정과 일기를 관리하는 모바일 앱과 독립적인 API·worker로 구성된 모노레포입니다.
+<img src="apps/mobile/assets/images/brand/emblem.svg" width="120" alt="Grow Together heart and sprout logo" />
 
-| 앱 | 기술 | 로컬 포트 | 역할 |
-| --- | --- | --- | --- |
-| `apps/mobile` | Expo 55 · React Native · TypeScript | `8081` (Expo 기본값) | 모바일·웹 클라이언트 |
-| `apps/api` | Spring Boot 4 · Java 21 | `8080` | 인증, 도메인 API, 데이터 저장 |
-| `apps/worker` | Python 3.12 · uv | — | 독립적인 AI 작업 실행; 현재는 예제 작업만 제공 |
+# Grow Together
 
-## Getting started
+**Every little moment, growing together.**
 
-저장소 루트에서 환경 파일을 준비합니다.
+A parenting companion for planning small activities, keeping everyday memories,<br />
+and making room for meaningful moments together.
+
+같이 키우기 · Built for parents and caregivers.
+
+[![Status: In development](docs/readme/status.svg)](#roadmap)
+[![Expo 55](docs/readme/expo.svg)](apps/mobile/package.json)
+[![Spring Boot 4](docs/readme/spring.svg)](apps/api/build.gradle)
+[![FastAPI](docs/readme/fastapi.svg)](apps/worker/pyproject.toml)
+
+[Overview](#overview) · [Features](#key-features) · [Architecture](#architecture) · [Getting Started](#getting-started) · [Roadmap](#roadmap)
+
+</div>
+
+## Overview
+
+Grow Together brings the small, easily forgotten parts of parenting into one place:
+an activity to try, a reaction worth remembering, and a few words about the day.
+The mobile-first app supports iOS, Android, and the web with a shared React Native
+interface and a warm, restrained visual style.
+
+AI-assisted schedule generation helps turn available time into activities to
+review and choose from. Caregivers stay in control of what gets saved. The backend
+also implements weekly summaries and AI reflections; the mobile report screen is
+still awaiting integration. Suggestions are not medical or developmental advice.
+
+This repository is under development. A screen or Worker endpoint does not imply
+that its entire product flow is connected; the boundaries below describe the
+current implementation.
+
+## Key Features
+
+**Daily planning**
+
+Browse a week, add or edit activities, switch between time and task views, and
+mark activities complete. Record a child's reaction to a completed activity.
+
+**Parenting diary**
+
+Write, edit, and revisit dated entries linked to activities. Explore records by
+date or in a collected view, with separate handling for loading, empty, and error states.
+
+**Child and caregiver profiles**
+
+Manage one child profile per account, including birthday and personalization
+inputs. View and edit the caregiver's name through the existing account flow.
+Shared-family accounts and multiple child profiles are not implemented.
+
+**AI schedule generation**
+
+Generate activity candidates through the API and Worker, inspect the proposed
+times, and save a selected set. Recorded activity reactions can inform later suggestions.
+
+**Local photo preview**
+
+In the labeled preview mode, attach up to three photos and open them in a viewer.
+Authenticated diary editing can retain or remove existing server image references;
+adding new photos through the mobile upload flow is not connected yet.
+
+**Foundations for reflection and conversation**
+
+Weekly report aggregation and AI generation exist in the API and Worker. The mobile
+report view is a presentation foundation, not a connected report experience.
+The chat UI keeps local session messages without producing AI replies, and diary
+writing assistance currently composes text locally. Worker chat and diary generators
+exist separately; their mobile/API integration remains outstanding.
+
+## Tech Stack
+
+| Layer                    | Technologies                                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| Mobile & web             | Expo SDK 55, React Native 0.83, TypeScript, Expo Router, TanStack Query, Reanimated           |
+| Backend API              | Java 21, Spring Boot 4, Spring Security, JPA, Flyway                                          |
+| AI Worker                | Python 3.12+, FastAPI, Pydantic, uv, OpenRouter                                               |
+| Database                 | PostgreSQL 16; local Compose uses a pgvector-enabled image                                    |
+| File storage             | AWS S3 with API-issued signed URLs and upload-completion checks                               |
+| Admin prototype          | Next.js App Router, React, Tailwind CSS, shadcn/ui, Recharts; mock data only                  |
+| Development & deployment | Docker Compose, Gradle, npm; Vercel static-web configuration and Render staging documentation |
+
+The storage API exists independently of the unfinished mobile photo-upload flow.
+The Admin console has no real authentication or production API connection.
+Provider deployment settings and live service availability are not established by
+this README.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    Mobile["Expo · Mobile / Web"] --> API["Spring Boot API"]
+    API --> DB[("PostgreSQL")]
+    API --> Worker["FastAPI Worker"]
+    API --> S3["AWS S3"]
+    Worker --> LLM["OpenRouter / LLM"]
+```
+
+The API owns authentication, account scoping, persistence, and the external
+[OpenAPI contract](contracts/openapi.yaml). The Worker accepts authenticated
+internal generation requests and does not query the application database directly.
+The mobile app never receives the Worker service key or the LLM provider key.
+
+The default Compose stack runs PostgreSQL and the API. Enable the optional
+`worker` profile for connected schedule and report generation. Internal chat and
+diary routes are not shown as connected product flows in the diagram.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js **20.19.4+** and npm for the mobile app; the optional Admin requires **22.18+**.
+- Docker with Docker Compose for the local database and API.
+- OpenSSL to generate local signing and service keys.
+- Java **21** for API development outside Docker.
+- Python **3.12+** and [uv](https://docs.astral.sh/uv/) for Worker development outside Docker.
+
+### Clone and configure
 
 ```bash
+git clone https://github.com/LYJ0304/grow-together.git
+cd grow-together
 cp infra/.env.example infra/.env
 cp apps/api/.env.example apps/api/.env
 cp apps/mobile/.env.example apps/mobile/.env
@@ -20,89 +132,129 @@ cp apps/worker/.env.example apps/worker/.env
 openssl rand -base64 32
 ```
 
-생성한 값을 `apps/api/.env`의 `JWT_SECRET`에 입력한 뒤 PostgreSQL과 API를 실행합니다.
+Put the generated value in `JWT_SECRET` in `apps/api/.env`. Keep every `.env`
+local. Use the templates as the configuration reference, not as production credentials.
+
+For AI generation, set the same nonempty `AI_WORKER_API_KEY` in the API and Worker
+files. Configure `OPENROUTER_API_KEY`, `LLM_DIARY_MODEL`, and `LLM_CHAT_MODEL` only in
+the Worker. Optional schedule/report model settings fall back to the diary model.
+The service key and provider key are different credentials; neither belongs in
+`EXPO_PUBLIC_*` variables. S3 file operations require a configured bucket and AWS credentials.
+
+### Backend API and database
+
+From the repository root:
 
 ```bash
 docker compose --env-file infra/.env -f infra/compose.yaml up --build
 ```
 
-다른 터미널에서 Expo를 실행합니다.
+The API listens at `http://localhost:8080`; explore its contract at
+`http://localhost:8080/swagger-ui.html`. Flyway runs migrations on API startup.
+The default stack supports core account, diary, and activity APIs without starting
+the Worker. AI generation needs the additional service below.
+
+### AI Worker
+
+To start the API, database, and Worker together, use this command instead:
+
+```bash
+docker compose --env-file infra/.env -f infra/compose.yaml --profile worker up --build
+```
+
+Compose exposes Worker port `8000` only to its internal network. For a standalone
+host process, configure its `.env`, then run:
+
+```bash
+cd apps/worker
+uv sync --locked
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+A host API must load its environment explicitly and use a reachable database and
+`WORKER_BASE_URL`; see the [development guide](docs/development.md).
+
+### Mobile application
+
+In another terminal:
 
 ```bash
 cd apps/mobile
 npm ci
 npm start
+# Or: npm run web
 ```
 
-API는 `http://localhost:8080`, Swagger UI는 `http://localhost:8080/swagger-ui.html`에서 확인합니다. 실제 기기에서는 `EXPO_PUBLIC_API_URL`의 `localhost`를 개발 PC의 LAN 주소로 바꿉니다. 인증 API를 검증할 때는 `EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false`로 설정합니다.
+For a physical phone, replace `localhost` in `EXPO_PUBLIC_API_URL` with your
+computer's LAN address. Expo normally uses port `8081`; keep browser origins in
+`CORS_ALLOWED_ORIGINS` consistent with the port you actually use.
 
-## Prerequisites
+Set `EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false` when testing real authentication.
+Labeled UI preview is available in development/staging and never grants protected
+API access. Production always disables that bypass.
 
-| 도구 | 용도 |
-| --- | --- |
-| Node.js · npm | Expo 실행 및 모바일 의존성 설치 |
-| Docker · Docker Compose | PostgreSQL과 API 실행 |
-| OpenSSL | JWT 서명 키 생성 |
-| Java 21 | Docker 밖에서 API를 실행하거나 테스트할 때 필요 |
-| Python 3.12 · uv | Docker 밖에서 worker를 실행하거나 검사할 때 필요 |
+### Optional Admin demo
 
-## Service dependencies
-
-```text
-Mobile / Web → API → PostgreSQL
-worker    (독립 실행, 선택 사항)
+```bash
+cd apps/admin
+npm ci
+npm run dev
 ```
 
-기본 Compose는 PostgreSQL과 API를 실행합니다. DB 마이그레이션은 API 시작 시 Flyway가 처리합니다. worker는 별도 `worker` 프로필로 실행하며 현재 API와 직접 연결되어 있지 않습니다. 자세한 실행 방법은 [로컬 개발 가이드](infra/docs/local-development.md)를 참고합니다.
+Open `http://localhost:3001`. This is a frontend-only demo: Mock login, metrics,
+account actions, and settings do not authenticate administrators or change real data.
 
-## Environment variables
+Environment-variable tables, test commands, host-process setup, and release notes
+are in the [development reference](docs/development.md).
 
-환경 파일은 모듈별로 관리하며 실제 값은 커밋하지 않습니다. 전체 항목과 기본값은 각 `.env.example`을 기준으로 합니다.
-
-| 환경 파일 | 주요 변수 | 용도 |
-| --- | --- | --- |
-| [infra/.env.example](infra/.env.example) | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose의 PostgreSQL 설정 |
-| [apps/mobile/.env.example](apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS` | API 주소와 UI 미리보기 설정; 공개 값만 사용 |
-| [apps/api/.env.example](apps/api/.env.example) | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` | DB 연결, JWT 서명, 브라우저 접근 설정 |
-| [apps/worker/.env.example](apps/worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL` | 작업 실행 로그 설정 |
-
-Compose는 `infra/.env`의 DB 설정을 API에 전달합니다. API를 호스트에서 직접 실행할 때는 환경변수를 별도로 로드해야 합니다. 절차는 [API 개발 가이드](apps/api/docs/development.md)에 있습니다.
-
-## Common commands
-
-| 실행 위치 | 명령어 | 용도 |
-| --- | --- | --- |
-| 저장소 루트 | `docker compose --env-file infra/.env -f infra/compose.yaml up --build` | DB·API 실행 |
-| 저장소 루트 | `docker compose --env-file infra/.env -f infra/compose.yaml --profile worker run --rm worker` | AI 예제 작업 실행 |
-| `apps/mobile` | `npm start` / `npm run web` | Expo / 웹 클라이언트 실행 |
-| `apps/mobile` | `npm run typecheck` / `npm run lint` | 타입·린트 검사 |
-| `apps/mobile` | `npm run test:auth` | 인증 세션 테스트 |
-| `apps/api` | `./gradlew test` | API 테스트; PostgreSQL 통합 테스트에 Docker 필요 |
-| `apps/worker` | `uv sync --locked` | 의존성 설치 |
-| `apps/worker` | `uv run ruff check .` / `uv run pytest` | 린트·테스트 |
-
-## Repository layout
+## Project Structure
 
 ```text
 apps/
-  mobile/       # Expo 앱과 모바일 개발 문서
-  api/          # Spring Boot API와 배포 문서
-  worker/    # 독립적인 AI 작업 실행기
-contracts/      # OpenAPI 계약
-infra/          # 로컬 Compose, PostgreSQL, 실행 가이드
-.harness/       # 개발 규칙, 스킬, 워크플로
-.agents/skills/ # Codex용 저장소 스킬 링크
+  mobile/          Expo client, shared native/web UI, tests, and mobile docs
+  api/             Spring Boot domain API, persistence, and API docs
+  worker/          FastAPI generation services and independent Worker tests
+  admin/           Standalone Next.js admin demo
+contracts/         External OpenAPI contract
+infra/             Local Compose, PostgreSQL initialization, and setup docs
+docs/              Cross-project documentation
+.harness/          Development conventions and repository skills
+.agents/skills/    Codex links to the repository skills
 ```
 
-## Deployment and operations
+## Roadmap
 
-장기 브랜치는 `main` 하나이며 staging·production은 배포 환경입니다. 작업 PR은 `main`에 통합하고, staging에서 검증한 릴리스 커밋에 앱별 태그(`mobile/v*`, `api/v*`, `worker/v*`)를 발행합니다. 태그 발행과 실제 배포는 별도 단계이며 CI/CD·provider 연결 설정을 대신하지 않습니다.
+Status describes code in this repository, not deployment or release certification.
 
-Render staging 설정과 배포 검증은 [API staging 배포 가이드](apps/api/docs/staging/Development.md)를 따릅니다. 이 문서는 개발 검증용 staging 범위를 다룹니다.
+### Completed
 
-## Learn more
+- [x] Account authentication and caregiver profile editing.
+- [x] Single-child profile registration and personalization inputs.
+- [x] Dated diary CRUD and activity management with recorded reactions.
+- [x] Review-and-save AI schedule generation through the API and Worker.
+- [x] Weekly report API aggregation and internal AI generation.
+- [x] Local photo-preview UI and a standalone mock Admin console.
 
-- [모바일 개발](apps/mobile/docs/development.md) · [인증과 세션](apps/mobile/docs/authentication.md)
-- [API 개발](apps/api/docs/development.md) · [OpenAPI 계약](contracts/openapi.yaml)
-- [worker 개발](apps/worker/docs/development.md)
-- [기여 규칙](AGENTS.md) · [개발 워크플로](.harness/conventions.md)
+### In Progress
+
+Partial implementations with integration still outstanding:
+
+- [ ] Connect the mobile report presentation to the weekly report API.
+- [ ] Connect local chat and diary-assistance UIs to the existing Worker generators
+      through an authenticated API flow.
+- [ ] Connect mobile photo selection to signed uploads and diary attachment persistence.
+- [ ] Add real Admin authentication, authorization, and operational API integration.
+
+### Planned
+
+Follow-up candidates, not available product features:
+
+- [ ] Notifications and shared-family workflows, including multiple child profiles.
+- [ ] A consistent Home / Diary / Schedule / Chat screenshot gallery from the app.
+
+## License
+
+No repository-wide `LICENSE` file is currently provided. Do not assume an MIT or
+other open-source license applies to this project. Third-party notices, including
+the [shadcn/ui MIT notice](apps/admin/SHADCN-LICENSE.md), apply to their respective
+components and do not license the repository as a whole.
