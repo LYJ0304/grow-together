@@ -54,6 +54,10 @@ const suggestions = [
   },
 ];
 
+const INPUT_LINE_HEIGHT = 24;
+const INPUT_VERTICAL_PADDING = 12;
+const INPUT_MIN_HEIGHT = INPUT_LINE_HEIGHT + 2 * INPUT_VERTICAL_PADDING;
+
 let nextMessageId = 0;
 
 export default function CounselorChatScreen() {
@@ -77,13 +81,19 @@ export default function CounselorChatScreen() {
   const keyboard = useChatKeyboard();
   useTabInteraction(false, keyboard.visible);
   const [notice, setNotice] = useState('');
-  const [inputHeight, setInputHeight] = useState(48);
+  const [contentHeight, setContentHeight] = useState(INPUT_MIN_HEIGHT);
   const [inputFocused, setInputFocused] = useState(false);
-  // Leave room for the header and notices when the viewport is short.
+  // Leave room for the conversation when the keyboard covers part of the screen.
+  const availableHeight =
+    keyboard.viewport?.height ??
+    Math.min(height, keyboard.nativeKeyboardTop ?? height);
   const inputMaxHeight = Math.max(
-    48,
-    Math.min(144, Math.floor((keyboard.viewport?.height ?? height) / 4)),
+    INPUT_MIN_HEIGHT,
+    Math.min(144, Math.floor(availableHeight / 4)),
   );
+  const inputHeight = draft
+    ? Math.min(Math.max(INPUT_MIN_HEIGHT, contentHeight), inputMaxHeight)
+    : INPUT_MIN_HEIGHT;
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -91,10 +101,9 @@ export default function CounselorChatScreen() {
     if (!field) return;
     const previous = field.style.height;
     field.style.height = 'auto';
-    const height = Math.max(48, Math.min(inputMaxHeight, field.scrollHeight));
+    setContentHeight(field.scrollHeight);
     field.style.height = previous;
-    setInputHeight(height);
-  }, [draft, width, inputMaxHeight]);
+  }, [draft, width]);
 
   useEffect(() => {
     if (notice && followLatest.current)
@@ -298,58 +307,62 @@ export default function CounselorChatScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.composer, inputFocused && styles.composerFocused]}>
-          <TextInput
-            ref={input}
-            accessibilityLabel="상담 질문 입력"
-            placeholder="궁금한 점을 뭐든지 물어보세요"
-            placeholderTextColor={colors.muted}
-            value={draft}
-            onChangeText={setDraft}
-            editable={!sending}
-            maxLength={CHAT_MESSAGE_LIMIT}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            multiline
-            numberOfLines={1}
-            blurOnSubmit={false}
-            submitBehavior="newline"
-            onContentSizeChange={(event) => {
-              if (Platform.OS !== 'web') {
-                setInputHeight(
-                  Math.max(
-                    48,
-                    Math.min(
-                      inputMaxHeight,
-                      event.nativeEvent.contentSize.height,
-                    ),
-                  ),
-                );
-              }
-            }}
-            onKeyPress={(event) => {
-              if (
-                Platform.OS !== 'web' ||
-                !window.matchMedia('(hover: hover) and (pointer: fine)').matches
-              )
-                return;
-              const key = event.nativeEvent as unknown as KeyboardEvent;
-              if (
-                key.key === 'Enter' &&
-                !key.shiftKey &&
-                !key.isComposing &&
-                key.keyCode !== 229
-              ) {
-                event.preventDefault();
-                send();
-              }
-            }}
-            onSubmitEditing={send}
-            style={[
-              styles.input,
-              { height: Math.min(inputHeight, inputMaxHeight) },
-            ]}
-          />
+        <View
+          testID="chat-composer"
+          style={[styles.composer, inputFocused && styles.composerFocused]}
+        >
+          <View style={styles.inputColumn}>
+            {Platform.OS !== 'web' && (
+              <Text
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                onLayout={({ nativeEvent }) =>
+                  setContentHeight(Math.ceil(nativeEvent.layout.height))
+                }
+                style={[styles.inputText, styles.inputMeasure]}
+              >
+                {/* Keep the final empty line measurable when the draft ends in a newline. */}
+                {draft.endsWith('\n') || !draft ? `${draft}\u200b` : draft}
+              </Text>
+            )}
+            <TextInput
+              ref={input}
+              accessibilityLabel="상담 질문 입력"
+              placeholder="궁금한 점을 뭐든지 물어보세요"
+              placeholderTextColor={colors.muted}
+              value={draft}
+              onChangeText={setDraft}
+              editable={!sending}
+              maxLength={CHAT_MESSAGE_LIMIT}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              multiline
+              numberOfLines={Platform.OS === 'web' ? 1 : undefined}
+              blurOnSubmit={false}
+              submitBehavior="newline"
+              scrollEnabled={contentHeight > inputMaxHeight}
+              onKeyPress={(event) => {
+                if (
+                  Platform.OS !== 'web' ||
+                  !window.matchMedia('(hover: hover) and (pointer: fine)')
+                    .matches
+                )
+                  return;
+                const key = event.nativeEvent as unknown as KeyboardEvent;
+                if (
+                  key.key === 'Enter' &&
+                  !key.shiftKey &&
+                  !key.isComposing &&
+                  key.keyCode !== 229
+                ) {
+                  event.preventDefault();
+                  send();
+                }
+              }}
+              onSubmitEditing={send}
+              style={[styles.inputText, styles.input, { height: inputHeight }]}
+            />
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="질문 보내기"
@@ -458,12 +471,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   composerFocused: { borderColor: colors.primary },
-  input: {
+  inputColumn: { flex: 1, minWidth: 0 },
+  inputText: {
     ...typography.body,
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: 12,
-    lineHeight: 24,
+    paddingHorizontal: 0,
+    paddingVertical: INPUT_VERTICAL_PADDING,
+    lineHeight: INPUT_LINE_HEIGHT,
+    includeFontPadding: false,
+  },
+  inputMeasure: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    opacity: 0,
+  },
+  input: {
     textAlignVertical: 'top',
     ...Platform.select({ web: { outlineStyle: 'solid', outlineWidth: 0 } }),
     color: colors.text,
