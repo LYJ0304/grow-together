@@ -1,5 +1,9 @@
 import { spacing } from '../../src/theme/spacing';
 import { ChatMessageList } from '../../src/components/chat/chat-message-list';
+import {
+  CHAT_MESSAGE_LIMIT,
+  generateChatReply,
+} from '../../src/lib/features/chat/api';
 import type { ChatMessage } from '../../src/lib/features/chat/types';
 import { useSessionValue } from '../../src/lib/session-state';
 import { PageIntro } from '../../src/components/page-intro';
@@ -31,7 +35,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
 
-import { useChatDraft } from '../../src/components/auth-provider';
+import { useAuth, useChatDraft } from '../../src/components/auth-provider';
 import { typography } from '../../src/components/typography';
 import { useChatKeyboard } from '../../src/lib/use-chat-keyboard';
 
@@ -59,6 +63,11 @@ export default function CounselorChatScreen() {
   const input = useRef<ComponentRef<typeof TextInput>>(null);
   const { width, height } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
+  const { client, epoch, status } = useAuth();
+  const preview = status === 'preview';
+  const [sending, setSending] = useSessionValue('chat.sending', false);
+  const requestInFlight = useRef(false);
+  const canSend = !sending && Boolean(draft.trim());
   const [messages, setMessages] = useSessionValue<ChatMessage[]>(
     'chat.messages',
     () => [],
@@ -99,22 +108,46 @@ export default function CounselorChatScreen() {
     }
   }, [compose]);
 
-  const send = () => {
-    if (!draft.trim()) return;
+  const send = async () => {
+    if (!canSend || requestInFlight.current) return;
     const content = draft.trim();
+    const question: ChatMessage = {
+      id: `local-${Date.now()}-${++nextMessageId}`,
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
     followLatest.current = true;
-    setMessages((previous) => [
-      ...previous,
-      {
-        id: `local-${Date.now()}-${++nextMessageId}`,
-        role: 'user',
-        content,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    setMessages((previous) => [...previous, question]);
     setDraft('');
     setNotice('');
     input.current?.focus();
+    if (preview) return;
+
+    requestInFlight.current = true;
+    setSending(true);
+    try {
+      const reply = await generateChatReply(client, content, messages);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `${question.id}-reply`,
+          role: 'assistant',
+          content: reply.content,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    } catch {
+      if (client.getSnapshot().epoch !== epoch) return;
+      setMessages((previous) =>
+        previous.filter((message) => message.id !== question.id),
+      );
+      setDraft(content);
+      setNotice('답변을 받지 못했어요. 잠시 후 다시 보내주세요.');
+    } finally {
+      requestInFlight.current = false;
+      setSending(false);
+    }
   };
 
   return (
@@ -167,6 +200,8 @@ export default function CounselorChatScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="새 대화"
+                  accessibilityState={{ disabled: sending }}
+                  disabled={sending}
                   onPress={() => {
                     setMessages([]);
                     setDraft('');
@@ -184,12 +219,16 @@ export default function CounselorChatScreen() {
                 </Pressable>
               </View>
               <ChatMessageList messages={messages} />
-              <Text
-                accessibilityLiveRegion="polite"
-                style={styles.connectionNote}
-              >
-                질문을 작성했어요. AI 답변 기능은 준비 중이에요.
-              </Text>
+              {(sending || preview) && (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={styles.connectionNote}
+                >
+                  {sending
+                    ? '답변을 작성하고 있어요…'
+                    : 'AI 답변은 로그인 후에 받을 수 있어요.'}
+                </Text>
+              )}
             </>
           ) : (
             <>
@@ -198,13 +237,13 @@ export default function CounselorChatScreen() {
                 title="육아 도우미"
                 description="함께 고민해요. 궁금한 점과 기억하고 싶은 순간을 질문으로 남겨보세요."
               />
-              <View style={editorial.hero}>
-                <Text style={editorial.section}>현재 연결 준비 중</Text>
-                <Text style={editorial.description}>
-                  아직 AI 답변을 연결하지 않았어요. 질문 초안은 이 세션에서
-                  유지돼요.
-                </Text>
-              </View>
+              {preview && (
+                <View style={editorial.hero}>
+                  <Text style={editorial.description}>
+                    AI 답변은 로그인 후에 받을 수 있어요.
+                  </Text>
+                </View>
+              )}
               <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
               <View style={styles.suggestions}>
                 {suggestions.map((item) => (
@@ -267,6 +306,8 @@ export default function CounselorChatScreen() {
             placeholderTextColor={colors.muted}
             value={draft}
             onChangeText={setDraft}
+            editable={!sending}
+            maxLength={CHAT_MESSAGE_LIMIT}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
             multiline
@@ -312,21 +353,21 @@ export default function CounselorChatScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="질문 보내기"
-            accessibilityState={{ disabled: !draft.trim() }}
-            disabled={!draft.trim()}
+            accessibilityState={{ disabled: !canSend }}
+            disabled={!canSend}
             onPress={() => {
               send();
               input.current?.focus();
             }}
             style={({ pressed }) => [
               styles.sendButton,
-              !draft.trim() && styles.disabled,
+              !canSend && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
             <Image
               source={require('../../assets/images/chat/send.svg')}
-              tintColor={draft.trim() ? colors.surface : colors.muted}
+              tintColor={canSend ? colors.surface : colors.muted}
               style={styles.sendIcon}
               contentFit="contain"
               accessible={false}

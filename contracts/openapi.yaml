@@ -315,6 +315,45 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/chat/generate:
+    post:
+      operationId: generateChatReply
+      summary: Generate a parenting chat reply
+      description: >-
+        Sends the current message and client-supplied history to the configured AI Worker.
+        Conversation turns are not stored by this endpoint.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatQuestion' }
+      responses:
+        '200':
+          description: Generated assistant reply
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatReply' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '502':
+          description: Upstream failure or invalid Worker reply
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Worker is unconfigured or unreachable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: Worker or model timed out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /api/v1/todos/generate:
     post:
       operationId: generateSchedule
@@ -742,6 +781,35 @@ components:
         validated on each authenticated request. Authentication endpoints use their JSON
         credentials instead; an Authorization header on those endpoints is ignored.
   schemas:
+    ChatQuestion:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          pattern: '\S'
+          maxLength: 4000
+          description: Nonblank question, limited to 4000 UTF-16 code units.
+        history:
+          type: [array, 'null']
+          maxItems: 20
+          items: { $ref: '#/components/schemas/ChatTurn' }
+          description: Prior turns in chronological order. Omitted or null means empty history.
+    ChatTurn:
+      type: object
+      required: [role, content]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content:
+          type: string
+          pattern: '\S'
+          maxLength: 4000
+          description: Nonblank turn, limited to 4000 UTF-16 code units.
+    ChatReply:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1 }
     UserProfileResponse:
       type: object
       required: [id, name, email]

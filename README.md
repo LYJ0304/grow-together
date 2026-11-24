@@ -69,9 +69,9 @@ adding new photos through the mobile upload flow is not connected yet.
 
 Weekly report aggregation and AI generation exist in the API and Worker. The mobile
 report view is a presentation foundation, not a connected report experience.
-The chat UI keeps local session messages without producing AI replies, and diary
-writing assistance currently composes text locally. Worker chat and diary generators
-exist separately; their mobile/API integration remains outstanding.
+Signed-in caregivers can ask the parenting assistant questions and receive AI replies.
+Recent turns inform follow-up answers within the current session. Diary writing
+assistance currently composes text locally.
 
 ## Tech Stack
 
@@ -107,8 +107,7 @@ internal generation requests and does not query the application database directl
 The mobile app never receives the Worker service key or the LLM provider key.
 
 The default Compose stack runs PostgreSQL and the API. Enable the optional
-`worker` profile for connected schedule and report generation. Internal chat and
-diary routes are not shown as connected product flows in the diagram.
+`worker` profile for schedule generation, report generation, and parenting chat.
 
 ## Getting Started
 
@@ -234,6 +233,7 @@ Status describes code in this repository, not deployment or release certificatio
 - [x] Single-child profile registration and personalization inputs.
 - [x] Dated diary CRUD and activity management with recorded reactions.
 - [x] Review-and-save AI schedule generation through the API and Worker.
+- [x] Authenticated parenting chat with AI replies and session history.
 - [x] Weekly report API aggregation and internal AI generation.
 - [x] Local photo-preview UI and a standalone mock Admin console.
 
@@ -242,8 +242,7 @@ Status describes code in this repository, not deployment or release certificatio
 Partial implementations with integration still outstanding:
 
 - [ ] Connect the mobile report presentation to the weekly report API.
-- [ ] Connect local chat and diary-assistance UIs to the existing Worker generators
-      through an authenticated API flow.
+- [ ] Connect diary writing assistance to the Worker through the authenticated API.
 - [ ] Connect mobile photo selection to signed uploads and diary attachment persistence.
 - [ ] Add real Admin authentication, authorization, and operational API integration.
 

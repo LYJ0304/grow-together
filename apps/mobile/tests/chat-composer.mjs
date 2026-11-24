@@ -9,6 +9,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   page.setDefaultNavigationTimeout(300000);
   await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/chat/generate', (route) =>
+    route.fulfill({ json: { content: '그림책을 함께 읽어보세요.' } }),
+  );
   await page.goto(`${process.env.CHAT_URL ?? 'http://localhost:8101'}/chat`);
   const input = page.getByRole('textbox', {
     name: '상담 질문 입력',

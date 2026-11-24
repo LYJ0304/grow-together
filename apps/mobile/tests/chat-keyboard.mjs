@@ -24,6 +24,9 @@ try {
     Object.defineProperty(window, 'visualViewport', { value: viewport });
   });
   const page = await context.newPage();
+  await page.route('**/api/v1/chat/generate', (route) =>
+    route.fulfill({ json: { content: '그림책을 함께 읽어보세요.' } }),
+  );
   await page.goto(`${process.env.CHAT_URL ?? 'http://127.0.0.1:8202'}/chat`);
   const input = page.getByRole('textbox', {
     name: '상담 질문 입력',
@@ -59,7 +62,7 @@ try {
   assert.ok(await tabs.isVisible());
   assert.equal(
     await tabs
-      .getByRole('tab', { name: '질문', exact: true })
+      .getByRole('tab', { name: '상담', exact: true })
       .getAttribute('aria-selected'),
     'true',
   );
@@ -71,12 +74,12 @@ try {
     'Width/orientation changes do not imply a keyboard',
   );
   await resize({ height: 852, scale: 1, width: 393 });
-  await tabs.getByRole('tab', { name: '오늘', exact: true }).click();
+  await tabs.getByRole('tab', { name: '홈', exact: true }).click();
   await page.waitForURL('**/main');
   await resize({ height: 390 });
   assert.ok(await tabs.isVisible(), 'Other screens keep their navigation');
   await resize({ height: 852 });
-  await tabs.getByRole('tab', { name: '질문', exact: true }).click();
+  await tabs.getByRole('tab', { name: '상담', exact: true }).click();
   await input.waitFor();
   assert.ok(await tabs.isVisible());
   const desktop = await browser.newPage({
