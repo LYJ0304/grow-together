@@ -20,9 +20,7 @@ try {
       apiRequests.push(request.url());
   });
   await page.goto(`${process.argv[2] ?? 'http://localhost:8135'}/login`);
-  await page
-    .getByRole('heading', { name: '다시 만났네요!', exact: true })
-    .waitFor();
+  await page.getByRole('heading', { name: '로그인', exact: true }).waitFor();
   await page
     .getByRole('textbox', { name: '이메일', exact: true })
     .fill('qa@example.com');

@@ -1,12 +1,6 @@
-import { buttonSurface, buttonLabel } from '../theme/buttons';
-import { typography } from './typography';
-import { colors } from '../theme/colors';
-import { env } from '../config/env';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
-import { useAuth } from './auth-provider';
+import { useRef, useState, type ComponentRef, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,39 +12,87 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
+import { useAuth } from './auth-provider';
+import { AppHeader } from './app-header';
+import { ActionButton } from './action-button';
+import { typography } from '../theme/typography';
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { radius } from '../theme/radius';
+import { env } from '../config/env';
+import { ApiError } from '../lib/api/errors';
+import {
+  authFieldOrder,
+  validateAuthForm,
+  type AuthFieldName,
+  type AuthFormValues,
+  type AuthFormErrors,
+} from '../lib/features/auth/form-validation';
 
 type AuthScreenProps = { mode: 'login' | 'signup' };
-
 export function AuthScreen({ mode }: AuthScreenProps) {
   const isSignup = mode === 'signup';
   const { client, notice: sessionNotice } = useAuth();
   const { registered } = useLocalSearchParams<{ registered?: string }>();
   const pending = useRef(false);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const positions = useRef<Partial<Record<AuthFieldName, number>>>({});
+  const nameRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const confirmationRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const refs = {
+    name: nameRef,
+    email: emailRef,
+    password: passwordRef,
+    passwordConfirmation: confirmationRef,
+  };
   const [busy, setBusy] = useState(false);
-  const canSkipAuthentication = env.canPreview;
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [values, setValues] = useState<AuthFormValues>({
+    name: '',
+    email: '',
+    password: '',
+    passwordConfirmation: '',
+  });
+  const [errors, setErrors] = useState<AuthFormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [notice, setNotice] = useState('');
-
+  const focusField = (field: AuthFieldName) => {
+    requestAnimationFrame(() => {
+      scroll.current?.scrollTo({
+        y: Math.max(0, (positions.current[field] ?? 0) - spacing.lg),
+        animated: false,
+      });
+      refs[field].current?.focus();
+    });
+  };
+  const change = (field: AuthFieldName, value: string) => {
+    const next = { ...values, [field]: value };
+    setValues(next);
+    setNotice('');
+    const validation = validateAuthForm(mode, next);
+    setErrors((current) => {
+      const updated = { ...current };
+      for (const key of authFieldOrder)
+        if (current[key]) updated[key] = validation[key];
+      return updated;
+    });
+  };
+  const blur = (field: AuthFieldName) => {
+    const error = validateAuthForm(mode, values)[field];
+    // Keep server field errors until editing; clearing on blur moves actions
+    // between pointer-down and pointer-up and can cancel navigation presses.
+    if (values[field] && error)
+      setErrors((current) => ({ ...current, [field]: error }));
+  };
   const submit = async () => {
     if (pending.current) return;
-    if (isSignup && !name.trim()) {
-      setNotice('이름을 입력해 주세요.');
-      return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setNotice('올바른 이메일 주소를 입력해 주세요.');
-      return;
-    }
-    if (password.length < 8) {
-      setNotice('비밀번호를 8자 이상 입력해 주세요.');
-      return;
-    }
-    if (isSignup && password !== passwordConfirmation) {
-      setNotice('비밀번호가 일치하지 않아요.');
+    const validation = validateAuthForm(mode, values);
+    setErrors(validation);
+    const first = authFieldOrder.find((field) => validation[field]);
+    if (first) {
+      focusField(first);
       return;
     }
     pending.current = true;
@@ -59,22 +101,86 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     try {
       if (isSignup) {
         await client.signup({
-          name: name.trim(),
-          email: email.trim(),
-          password,
+          name: values.name.trim(),
+          email: values.email.trim(),
+          password: values.password,
         });
         router.replace({ pathname: '/login', params: { registered: 'true' } });
-      } else {
-        await client.login({ email: email.trim(), password });
-      }
+      } else
+        await client.login({
+          email: values.email.trim(),
+          password: values.password,
+        });
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '다시 시도해 주세요.');
+      if (
+        isSignup &&
+        error instanceof ApiError &&
+        error.code === 'EMAIL_ALREADY_EXISTS'
+      ) {
+        setErrors({ email: error.message });
+        focusField('email');
+      } else
+        setNotice(
+          error instanceof Error ? error.message : '다시 시도해 주세요.',
+        );
     } finally {
       pending.current = false;
       setBusy(false);
     }
   };
-
+  const field = (
+    key: AuthFieldName,
+    label: string,
+    placeholder: string,
+    extra: Partial<
+      Omit<React.ComponentProps<typeof TextInput>, 'onLayout'>
+    > = {},
+    accessory?: React.ReactNode,
+  ) => (
+    <AuthField
+      key={key}
+      inputRef={refs[key]}
+      label={label}
+      fieldId={key}
+      placeholder={placeholder}
+      value={values[key]}
+      onChangeText={(value) => change(key, value)}
+      error={errors[key]}
+      editable={!busy}
+      onBlur={() => blur(key)}
+      onLayout={(y) => {
+        positions.current[key] = y;
+      }}
+      accessory={accessory}
+      {...extra}
+    />
+  );
+  const toggle = (confirmation: boolean) => {
+    const visible = confirmation ? showConfirmation : showPassword;
+    const label = confirmation ? '비밀번호 확인' : '비밀번호';
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} ${visible ? '숨기기' : '보기'}`}
+        disabled={busy}
+        onPress={() => {
+          if (confirmation) setShowConfirmation(!visible);
+          else setShowPassword(!visible);
+          requestAnimationFrame(() =>
+            (confirmation ? confirmationRef : passwordRef).current?.focus(),
+          );
+        }}
+        style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
+      >
+        <Text style={styles.toggleLabel}>{visible ? '숨기기' : '보기'}</Text>
+      </Pressable>
+    );
+  };
+  const information =
+    sessionNotice ||
+    (!isSignup && registered === 'true'
+      ? '가입이 완료되었어요. 로그인해 주세요.'
+      : '');
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -82,147 +188,94 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="이전 화면으로 돌아가기"
+        <AppHeader
           disabled={busy}
-          onPress={() =>
+          onBack={() =>
             router.canGoBack() ? router.back() : router.replace('/welcome')
           }
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && styles.pressed,
-            busy && buttonSurface('tertiary', true),
-          ]}
-        >
-          <Text style={styles.backIcon}>‹</Text>
-        </Pressable>
+          style={styles.header}
+        />
         <ScrollView
+          ref={scroll}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          <Image
-            source={require('../../assets/images/grow-together-logo.png')}
-            style={styles.logo}
-            contentFit="contain"
-            accessible={false}
-          />
           <Text accessibilityRole="header" style={styles.title}>
-            {isSignup ? '함께 키워가요' : '다시 만났네요!'}
+            {isSignup ? '계정 만들기' : '로그인'}
           </Text>
           <Text style={styles.subtitle}>
             {isSignup
-              ? '계정을 만들고 소중한 하루를 기록해요.'
-              : '로그인하고 사랑둥이의 오늘을 만나보세요.'}
+              ? '아이와 함께한 하루를 기록해요.'
+              : '아이와 함께한 기록을 이어가요.'}
           </Text>
-
-          {isSignup ? (
-            <AuthField
-              label="이름"
-              placeholder="이름을 입력해 주세요"
-              value={name}
-              onChangeText={setName}
-              autoComplete="name"
-              returnKeyType="next"
-            />
-          ) : null}
-          <AuthField
-            label="이메일"
-            placeholder="example@email.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            returnKeyType="next"
-          />
-          <AuthField
-            label="비밀번호"
-            placeholder="8자 이상 입력해 주세요"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoComplete={isSignup ? 'new-password' : 'current-password'}
-            returnKeyType={isSignup ? 'next' : 'done'}
-            onSubmitEditing={isSignup ? undefined : () => void submit()}
-            accessory={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  showPassword ? '비밀번호 숨기기' : '비밀번호 보기'
-                }
-                onPress={() => setShowPassword((visible) => !visible)}
-                hitSlop={8}
-              >
-                <Text style={styles.passwordToggle}>
-                  {showPassword ? '숨기기' : '보기'}
-                </Text>
-              </Pressable>
-            }
-          />
-          {isSignup ? (
-            <AuthField
-              label="비밀번호 확인"
-              placeholder="비밀번호를 다시 입력해 주세요"
-              value={passwordConfirmation}
-              onChangeText={setPasswordConfirmation}
-              secureTextEntry={!showPassword}
-              autoComplete="new-password"
-              returnKeyType="done"
-              onSubmitEditing={submit}
-            />
-          ) : null}
-
-          {notice || sessionNotice || (!isSignup && registered === 'true') ? (
+          {isSignup
+            ? field('name', '이름', '이름을 입력해 주세요', {
+                autoComplete: 'name',
+                returnKeyType: 'next',
+                onSubmitEditing: () => emailRef.current?.focus(),
+                submitBehavior: 'submit',
+              })
+            : null}
+          {field('email', '이메일', 'example@email.com', {
+            keyboardType: 'email-address',
+            autoCapitalize: 'none',
+            autoComplete: 'email',
+            returnKeyType: 'next',
+            onSubmitEditing: () => passwordRef.current?.focus(),
+            submitBehavior: 'submit',
+          })}
+          {field(
+            'password',
+            '비밀번호',
+            '8~72자로 입력해 주세요',
+            {
+              autoCapitalize: 'none',
+              secureTextEntry: !showPassword,
+              autoComplete: isSignup ? 'new-password' : 'current-password',
+              returnKeyType: isSignup ? 'next' : 'done',
+              submitBehavior: isSignup ? 'submit' : 'blurAndSubmit',
+              onSubmitEditing: () =>
+                isSignup ? confirmationRef.current?.focus() : void submit(),
+            },
+            toggle(false),
+          )}
+          {isSignup
+            ? field(
+                'passwordConfirmation',
+                '비밀번호 확인',
+                '비밀번호를 다시 입력해 주세요',
+                {
+                  autoCapitalize: 'none',
+                  secureTextEntry: !showConfirmation,
+                  autoComplete: 'new-password',
+                  returnKeyType: 'done',
+                  onSubmitEditing: () => void submit(),
+                },
+                toggle(true),
+              )
+            : null}
+          {notice ? (
             <Text
               accessibilityRole="alert"
               accessibilityLiveRegion="polite"
-              style={styles.notice}
+              style={styles.errorNotice}
             >
-              {notice ||
-                sessionNotice ||
-                '가입이 완료되었어요. 로그인해 주세요.'}
+              {notice}
+            </Text>
+          ) : information ? (
+            <Text accessibilityLiveRegion="polite" style={styles.information}>
+              {information}
             </Text>
           ) : null}
-
-          {!isSignup && canSkipAuthentication ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint="인증 없이 UI 미리보기 메인 화면으로 이동합니다"
+          <View style={styles.submit} accessibilityState={{ busy }}>
+            <ActionButton
+              variant="primary"
               disabled={busy}
-              onPress={() => {
-                void client
-                  .preview()
-                  .catch((error: Error) => setNotice(error.message));
-              }}
-              style={({ pressed }) => [
-                styles.previewButton,
-                pressed && styles.pressed,
-                busy && buttonSurface('tertiary', true),
-              ]}
-            >
-              <Text
-                style={[styles.previewLabel, buttonLabel('tertiary', busy)]}
-              >
-                인증 없이 미리보기 진입
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            accessibilityState={{ busy, disabled: busy }}
-            onPress={() => void submit()}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryPressed,
-              busy && buttonSurface('primary', true),
-            ]}
-          >
-            <Text style={[styles.primaryLabel, buttonLabel('primary', busy)]}>
-              {busy ? '처리 중…' : isSignup ? '가입하기' : '로그인'}
-            </Text>
-          </Pressable>
+              label={busy ? '처리 중…' : isSignup ? '가입하기' : '로그인'}
+              onPress={() => void submit()}
+            />
+          </View>
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>
               {isSignup ? '이미 계정이 있나요?' : '아직 계정이 없으신가요?'}
@@ -231,179 +284,192 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               accessibilityRole="link"
               disabled={busy}
               onPress={() => router.replace(isSignup ? '/login' : '/signup')}
-              hitSlop={8}
+              style={({ pressed }) => [
+                styles.switchTarget,
+                pressed && styles.pressed,
+              ]}
             >
               <Text style={styles.switchLink}>
                 {isSignup ? '로그인' : '회원가입'}
               </Text>
             </Pressable>
           </View>
+          {!isSignup && env.canPreview ? (
+            <ActionButton
+              variant="tertiary"
+              disabled={busy}
+              label="인증 없이 미리보기 진입"
+              onPress={() => {
+                void client
+                  .preview()
+                  .catch((error: Error) => setNotice(error.message));
+              }}
+            />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-type AuthFieldProps = {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  accessory?: React.ReactNode;
-} & Pick<
+type AuthFieldProps = Omit<
   React.ComponentProps<typeof TextInput>,
-  | 'autoCapitalize'
-  | 'autoComplete'
-  | 'keyboardType'
-  | 'onSubmitEditing'
-  | 'returnKeyType'
-  | 'secureTextEntry'
->;
-
+  'onLayout'
+> & {
+  inputRef: RefObject<ComponentRef<typeof TextInput> | null>;
+  label: string;
+  fieldId: AuthFieldName;
+  error?: string;
+  accessory?: React.ReactNode;
+  onLayout: (y: number) => void;
+};
 function AuthField({
+  inputRef,
   label,
-  placeholder,
-  value,
-  onChangeText,
+  fieldId,
+  error,
   accessory,
+  onLayout,
   ...inputProps
 }: AuthFieldProps) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.field}>
+    <View
+      style={styles.field}
+      onLayout={(event) => onLayout(event.nativeEvent.layout.y)}
+    >
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputRow}>
+      <View
+        style={[
+          styles.inputRow,
+          focused && styles.focused,
+          error && styles.invalid,
+        ]}
+      >
         <TextInput
+          {...inputProps}
+          ref={inputRef}
+          autoCorrect={false}
           selectionColor={colors.primary}
           accessibilityLabel={label}
-          placeholder={placeholder}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
           placeholderTextColor={colors.muted}
-          value={value}
-          onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={(event) => {
+            setFocused(false);
+            inputProps.onBlur?.(event);
+          }}
           style={styles.input}
-          {...inputProps}
         />
         {accessory}
       </View>
+      {error ? (
+        <Text
+          nativeID={`${fieldId}-error`}
+          accessibilityLiveRegion="polite"
+          style={styles.fieldError}
+        >
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  backButton: {
-    width: 44,
-    height: 44,
-    marginTop: 7,
-    marginLeft: 20,
-    borderRadius: 15,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: { marginTop: -4, fontSize: 34, lineHeight: 38, color: colors.text },
+  header: { maxWidth: 420, paddingHorizontal: spacing.lg + spacing.sm },
   content: {
     flexGrow: 1,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 420,
     alignSelf: 'center',
-    paddingHorizontal: 28,
-    paddingTop: 15,
-    paddingBottom: 32,
+    paddingHorizontal: spacing.lg + spacing.sm,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.section,
   },
-  logo: { width: 82, height: 82, alignSelf: 'center', marginBottom: 13 },
   title: {
-    ...typography.title,
-    fontSize: 28,
-    lineHeight: 37,
-    textAlign: 'center',
-    color: colors.brand,
+    ...typography.section,
+    fontSize: 26,
+    lineHeight: 34,
+    color: colors.heading,
   },
   subtitle: {
-    marginTop: 5,
-    marginBottom: 29,
     ...typography.label,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
     color: colors.muted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.section,
   },
-  field: { marginBottom: 17 },
-  fieldLabel: {
-    marginBottom: 8,
-    ...typography.label,
-    fontSize: 14,
-    color: colors.text,
-  },
+  field: { marginBottom: spacing.lg },
+  fieldLabel: { ...typography.caption, color: colors.text, marginBottom: 6 },
   inputRow: {
-    minHeight: 55,
-    paddingHorizontal: 16,
+    minHeight: 54,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.xs,
     borderWidth: 1,
     borderColor: colors.controlBorder,
-    borderRadius: 15,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
   },
+  focused: { borderColor: colors.primary },
+  invalid: { borderColor: colors.danger },
   input: {
-    outlineColor: colors.primary,
+    ...typography.body,
+    lineHeight: 24,
     flex: 1,
     minWidth: 0,
-    paddingVertical: 14,
-    ...typography.label,
-    fontSize: 16,
-    color: colors.text,
+    paddingVertical: spacing.md,
+    paddingRight: spacing.sm,
+    color: colors.heading,
+    outlineColor: colors.primary,
   },
-  passwordToggle: {
-    paddingVertical: 10,
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.primary,
-  },
-  primaryButton: {
-    minHeight: 58,
-    marginTop: 12,
-    borderRadius: 15,
-    ...buttonSurface('primary'),
+  toggle: {
+    minWidth: 48,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radius.sm,
   },
-  primaryLabel: {
-    ...typography.section,
-    fontSize: 19,
-    ...buttonLabel('primary'),
-  },
-  previewButton: {
-    minHeight: 54,
-    marginTop: 9,
-    borderWidth: 1,
-    borderRadius: 15,
-    ...buttonSurface('tertiary'),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewLabel: {
-    ...typography.button,
-    fontSize: 16,
-    ...buttonLabel('tertiary'),
-  },
-  notice: {
-    marginTop: 1,
-    marginBottom: 5,
+  toggleLabel: { ...typography.caption, color: colors.primary },
+  pressed: { backgroundColor: colors.tint },
+  fieldError: {
     ...typography.caption,
-    fontSize: 13,
-    lineHeight: 19,
     color: colors.danger,
+    marginTop: spacing.xs,
   },
+  errorNotice: {
+    ...typography.caption,
+    color: colors.danger,
+    marginBottom: spacing.md,
+  },
+  information: {
+    ...typography.caption,
+    color: colors.onTint,
+    backgroundColor: colors.tint,
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    marginBottom: spacing.md,
+  },
+  submit: { marginTop: spacing.sm },
   switchRow: {
-    marginTop: 22,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 7,
+    columnGap: spacing.xs,
+    marginVertical: spacing.sm,
   },
-  switchText: { ...typography.caption, fontSize: 13, color: colors.muted },
-  switchLink: { ...typography.caption, fontSize: 13, color: colors.primary },
-  primaryPressed: { ...buttonSurface('primary', false, true) },
-  pressed: { ...buttonSurface('tertiary', false, true) },
+  switchText: { ...typography.caption, color: colors.muted },
+  switchTarget: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.sm,
+  },
+  switchLink: { ...typography.caption, color: colors.primary },
 });

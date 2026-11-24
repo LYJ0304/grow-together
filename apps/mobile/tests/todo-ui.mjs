@@ -338,7 +338,7 @@ try {
         .click();
       await button('로그아웃').click();
       await page
-        .getByRole('heading', { name: '다시 만났네요!', exact: true })
+        .getByRole('heading', { name: '로그인', exact: true })
         .waitFor();
       await button('인증 없이 미리보기 진입').click();
       await page.getByRole('tab', { name: '일정', exact: true }).click();

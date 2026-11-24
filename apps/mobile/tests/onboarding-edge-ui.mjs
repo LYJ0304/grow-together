@@ -209,7 +209,7 @@ try {
   await logout.click('내 프로필 열기');
   await logout.click('로그아웃');
   await logout.page
-    .getByRole('heading', { name: '다시 만났네요!', exact: true })
+    .getByRole('heading', { name: '로그인', exact: true })
     .waitFor();
   await logout.page.waitForFunction(
     () =>
