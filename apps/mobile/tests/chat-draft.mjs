@@ -8,6 +8,12 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
   await page.addInitScript(authenticatedSessionFixture);
+  await page.route('**/api/v1/children/me', (route) =>
+    route.fulfill({ json: { name: '하늘', birthday: '2025-01-01' } }),
+  );
+  await page.route('**/api/v1/chat/generate', (route) =>
+    route.fulfill({ json: { content: '그림책을 함께 읽어보세요.' } }),
+  );
   await page.addInitScript(() => {
     const original = window.fetch.bind(window);
     window.fetch = (input, init) => {
@@ -63,13 +69,12 @@ try {
   await input.fill('우리 아이 질문 초안');
   const tabs = page.getByRole('tablist');
   for (const [label, route] of [
-    ['오늘', '/main'],
-    ['기록', '/calendar'],
-    ['일정', '/todo'],
+    ['홈', '/main'],
+    ['캘린더', '/calendar'],
   ]) {
     await tabs.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
-    await tabs.getByRole('tab', { name: '질문', exact: true }).click();
+    await tabs.getByRole('tab', { name: '상담', exact: true }).click();
     assert.equal(
       await input.inputValue(),
       '우리 아이 질문 초안',
@@ -84,9 +89,7 @@ try {
   );
   assert.equal(await page.getByTestId('chat-message-user').count(), 1);
   await input.fill('전송 후 새 초안');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('textbox', { name: '이메일', exact: true })
@@ -95,7 +98,7 @@ try {
     .getByRole('textbox', { name: '비밀번호', exact: true })
     .fill('password123');
   await page.getByRole('button', { name: '로그인', exact: true }).click();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
   assert.equal(
     await input.inputValue(),
     '',
@@ -109,14 +112,12 @@ try {
   await input.fill('다른 사용자의 질문');
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   await input.fill('다른 사용자의 초안');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await page
     .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
     .click();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
   assert.equal(
     await input.inputValue(),
     '',
@@ -130,16 +131,14 @@ try {
   await input.fill('미리보기 질문');
   await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
   await input.fill('미리보기 초안');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
   await page
     .getByRole('button', { name: '미리보기 종료', exact: true })
     .click();
   await page
     .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
     .click();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
   assert.equal(await input.inputValue(), '', 'Ending preview clears its draft');
   assert.equal(
     await page.getByTestId('chat-message-user').count(),

@@ -17,8 +17,9 @@ await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const chatRequests = [];
-page.on('request', (r) => {
-  if (/\/api\/.*chat/.test(r.url())) chatRequests.push(r.url());
+await page.route('**/api/v1/chat/generate', (route) => {
+  chatRequests.push(route.request().postDataJSON());
+  return route.fulfill({ json: { content: '그림책을 함께 읽어보세요.' } });
 });
 const base = process.env.CHAT_URL ?? 'http://localhost:8217';
 const input = page.getByRole('textbox', {
@@ -52,14 +53,9 @@ try {
     await page.getByRole('button', { name: /^질문 입력:/ }).count(),
     0,
   );
-  assert.equal(await page.getByTestId('chat-message-assistant').count(), 0);
-  await page
-    .getByText('질문을 작성했어요. AI 답변 기능은 준비 중이에요.', {
-      exact: true,
-    })
-    .waitFor();
-  await page.getByRole('tab', { name: '오늘', exact: true }).click();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
+  await page.getByTestId('chat-message-assistant').waitFor();
+  await page.getByRole('tab', { name: '홈', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
   assert.equal(
     await page.getByTestId('chat-message-user').innerText(),
     content,
@@ -109,6 +105,9 @@ try {
       path: `/tmp/grow-chat-messages/conversation-${width}.png`,
     });
   }
+  await page
+    .getByRole('button', { name: '새 대화', exact: true })
+    .click({ trial: true });
   await input.fill('초기화할 초안');
   await page.getByRole('button', { name: '새 대화', exact: true }).click();
   assert.equal(await page.getByTestId('chat-message-user').count(), 0);
@@ -117,11 +116,15 @@ try {
     .getByRole('button', { name: /^질문 입력:/ })
     .first()
     .waitFor();
-  assert.deepEqual(chatRequests, []);
+  assert.equal(chatRequests.length, 18);
+  assert.equal(chatRequests.at(-1).history.length, 20);
   assert.deepEqual(errors, []);
-  assert.equal(await page.getByRole('progressbar').count(), 0);
+  assert.equal(
+    await page.getByText('답변을 작성하고 있어요…', { exact: true }).count(),
+    0,
+  );
   console.log(
-    'PASS local messages, multiline/long content, empty/conversation/reset, tab retention, scroll, no fake AI or chat requests',
+    'PASS multiline messages, replies, history limit, tab retention, scrolling, and reset',
   );
 } finally {
   await browser.close();

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { authenticatedSessionFixture } from './auth-fixture.mjs';
+
 const browser = await chromium.launch({
   executablePath: process.env.BROWSER_EXECUTABLE_PATH,
   headless: true,
@@ -12,86 +13,82 @@ try {
     route.fulfill({ status: 404, json: {} }),
   );
   const requests = [];
-  page.on('request', (request) => {
-    if (request.url().includes('/api/')) requests.push(request.url());
+  let releaseReply;
+  const waitForRelease = new Promise((resolve) => {
+    releaseReply = resolve;
+  });
+  await page.route('**/api/v1/chat/generate', async (route) => {
+    assert.match(route.request().headers().authorization, /^Bearer /);
+    requests.push(route.request().postDataJSON());
+    switch (requests.length) {
+      case 1:
+        await waitForRelease;
+        return route.fulfill({
+          json: { content: '그림책을 함께 읽어보세요.' },
+        });
+      case 2:
+        return route.fulfill({
+          status: 503,
+          json: { code: 'SERVICE_UNAVAILABLE' },
+        });
+      default:
+        return route.fulfill({
+          json: { content: '좋아하는 그림을 찾아보세요.' },
+        });
+    }
   });
   await page.goto(`${process.env.CHAT_URL ?? 'http://127.0.0.1:8204'}/chat`);
   const input = page.getByRole('textbox', {
     name: '상담 질문 입력',
     exact: true,
   });
-  await input.waitFor();
-  assert.equal(
-    await page.getByText('Online', { exact: false }).count(),
-    0,
-    'No fake online status',
-  );
-  assert.ok(
-    await page.getByText('현재 연결 준비 중', { exact: true }).isVisible(),
-  );
-  assert.equal(
-    await page.getByRole('button', { name: '음성 입력', exact: true }).count(),
-    0,
-  );
-  await input.fill('질문을 작성했습니다');
-  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
-  const notice = page.getByText(
-    '질문을 작성했어요. AI 답변 기능은 준비 중이에요.',
-    { exact: true },
-  );
-  await notice.waitFor();
-  assert.equal(await input.inputValue(), '');
-  assert.equal(
-    await page.getByTestId('chat-message-user').innerText(),
-    '질문을 작성했습니다',
-  );
-  assert.ok(await input.evaluate((el) => el === document.activeElement));
-  await input.press('Enter');
-  assert.equal(
-    await page.getByTestId('chat-message-user').count(),
-    1,
-    'Empty Enter never adds a message',
-  );
+  const send = page.getByRole('button', { name: '질문 보내기', exact: true });
+  const reset = page.getByRole('button', { name: '새 대화', exact: true });
+
+  await input.fill('오늘 어떤 놀이를 할까요?');
+  await send.click();
+  await page.getByText('답변을 작성하고 있어요…', { exact: true }).waitFor();
+  assert.ok(await send.isDisabled());
+  assert.ok(await reset.isDisabled());
+  releaseReply();
   await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
-  await page.waitForURL('**/mypage');
-  await page
-    .getByRole('heading', { name: '마이페이지', exact: true })
+    .getByTestId('chat-message-assistant')
+    .getByText('그림책을 함께 읽어보세요.')
     .waitFor();
+  assert.deepEqual(requests[0], {
+    message: '오늘 어떤 놀이를 할까요?',
+    history: [],
+  });
+
+  await input.fill('어떻게 읽어줄까요?');
+  await send.click();
   await page
-    .getByRole('button', { name: '이전 화면으로', exact: true })
-    .click();
-  await page.waitForURL('**/chat');
-  await input.focus();
-  assert.equal(await input.inputValue(), '');
+    .getByText('답변을 받지 못했어요. 잠시 후 다시 보내주세요.', {
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(await input.inputValue(), '어떻게 읽어줄까요?');
   assert.equal(await page.getByTestId('chat-message-user').count(), 1);
-  assert.ok(await input.evaluate((el) => el === document.activeElement));
-  await page.setViewportSize({ width: 320, height: 360 });
-  await input.fill('짧은 화면에서 작성한 질문');
-  await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
-  await notice.scrollIntoViewIfNeeded();
-  assert.ok(await notice.isVisible());
-  const field = await input.boundingBox();
-  const tabs = await page.getByRole('tablist').boundingBox();
-  assert.ok(field.y + field.height <= tabs.y);
-  assert.ok(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  );
-  assert.equal(
-    requests.filter(
-      (url) =>
-        !['/api/v1/auth/refresh', '/api/v1/children/me'].includes(
-          new URL(url).pathname,
-        ),
-    ).length,
-    0,
-    'No fake chat/voice API call',
-  );
+  await send.click();
+  await page
+    .getByTestId('chat-message-assistant')
+    .getByText('좋아하는 그림을 찾아보세요.')
+    .waitFor();
+  assert.deepEqual(requests[1], {
+    message: '어떻게 읽어줄까요?',
+    history: [
+      { role: 'user', content: '오늘 어떤 놀이를 할까요?' },
+      { role: 'assistant', content: '그림책을 함께 읽어보세요.' },
+    ],
+  });
+  assert.deepEqual(requests[2], requests[1]);
+  await reset.click();
+  await input.fill('새 질문');
+  await send.click();
+  await page.getByTestId('chat-message-assistant').waitFor();
+  assert.deepEqual(requests[3], { message: '새 질문', history: [] });
   console.log(
-    'PASS: honest readiness, local message/settings navigation, focus, preserved conversation, no voice button or fake chat requests.',
+    'PASS authenticated chat, pending state, reply, history, retry, and reset',
   );
 } finally {
   await browser.close();

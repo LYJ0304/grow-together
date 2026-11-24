@@ -12,6 +12,9 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 393, height: 852 } });
 await page.addInitScript(authenticatedSessionFixture);
+await page.route('**/api/v1/chat/generate', (route) =>
+  route.fulfill({ json: { content: '그림책을 함께 읽어보세요.' } }),
+);
 const input = page.getByRole('textbox', {
   name: '상담 질문 입력',
   exact: true,
@@ -111,11 +114,7 @@ try {
   await page.setViewportSize({ width: 320, height: 400 });
   await send.click();
   await fits(400);
-  await page
-    .getByText('질문을 작성했어요. AI 답변 기능은 준비 중이에요.', {
-      exact: true,
-    })
-    .waitFor();
+  await page.getByTestId('chat-message-assistant').waitFor();
   await page.screenshot({ path: `${artifacts}/chat-long-short.png` });
   await page.addStyleTag({
     content:
@@ -123,13 +122,9 @@ try {
   });
   await fits(400);
   assert.equal(await input.inputValue(), '');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
   await page.waitForURL('**/mypage');
-  await page
-    .getByRole('button', { name: '이전 화면으로', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
   await input.waitFor();
   await fits(400);
   await page.screenshot({ path: `${artifacts}/chat-large-text.png` });

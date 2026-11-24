@@ -26,19 +26,19 @@ const input = page.getByRole('textbox', {
   name: '상담 질문 입력',
   exact: true,
 });
-const settings = page.getByRole('button', {
-  name: '내 프로필 열기',
-  exact: true,
-});
+const settings = page
+  .getByTestId('chat-scroll')
+  .locator('..')
+  .getByRole('button', { name: '내 프로필 열기', exact: true });
 const heading = page.getByRole('heading', { name: '육아 도우미' });
 const tabs = page.getByRole('tablist');
-const questionTab = tabs.getByRole('tab', { name: '질문', exact: true });
+const questionTab = tabs.getByRole('tab', { name: '상담', exact: true });
 
 async function checkChat() {
   await input.waitFor();
-  assert.equal(new URL(page.url()).pathname, '/chat');
+  await page.waitForURL((address) => address.pathname === '/chat');
   assert.equal(await questionTab.getAttribute('aria-selected'), 'true');
-  assert.equal(await tabs.getByRole('tab').count(), 5);
+  assert.equal(await tabs.getByRole('tab').count(), 4);
   assert.equal(
     await page
       .getByRole('heading', { name: '누구랑 같이 키워볼까요?' })
@@ -81,10 +81,12 @@ try {
     await checkChat();
     await checkLayout(height);
     await settings.locator('img').waitFor();
-    await page.waitForFunction(() => {
-      const icon = document.querySelector('[aria-label="내 프로필 열기"] img');
-      return icon?.complete && icon.naturalWidth > 0;
-    });
+    assert.ok(
+      await settings.locator('img').evaluate(async (icon) => {
+        await icon.decode();
+        return icon.naturalWidth > 0;
+      }),
+    );
     assert.equal(await settings.innerText(), '');
     await page.screenshot({
       path: `${artifacts}/${engine.name()}-${width}.png`,
@@ -107,7 +109,9 @@ try {
       const intro = [...document.querySelectorAll('[dir="auto"]')].find(
         (element) => element.textContent === '이런 질문으로 시작해보세요',
       );
-      const header = document.querySelector('[role="heading"]');
+      const header = document.querySelector(
+        '[data-testid="chat-scroll"] [role="heading"]',
+      );
       return (
         intro?.getBoundingClientRect().top >=
         header?.getBoundingClientRect().bottom
@@ -130,9 +134,8 @@ try {
 
   await page.setViewportSize({ width: 393, height: 852 });
   for (const [label, route] of [
-    ['오늘', '/main'],
-    ['기록', '/calendar'],
-    ['일정', '/todo'],
+    ['홈', '/main'],
+    ['캘린더', '/calendar'],
   ]) {
     await tabs.getByRole('tab', { name: label, exact: true }).click();
     await page.waitForURL((address) => address.pathname === route);
@@ -151,15 +154,22 @@ try {
   await page.getByRole('button', { name: '육아 도우미 페르소나 선택' }).click();
   await checkChat();
 
-  // Probe the installed safe-area provider without claiming device notch coverage.
+  // Simulate web safe-area padding on the chat view and its bottom tab frame.
   await page.goto(`${url}/chat`);
   await checkChat();
-  await page.addStyleTag({
-    content:
-      'body > div[style*="safe-area-inset-top"] { padding-top: 47px !important; padding-bottom: 34px !important; }',
+  await page.getByTestId('chat-scroll').evaluate((scroll) => {
+    const safeArea = scroll.closest('div[style*="safe-area-inset-top"]');
+    safeArea.style.paddingTop = '47px';
+  });
+  await page.getByTestId('floating-tab-bar-frame').evaluate((frame) => {
+    const { height, paddingBottom } = getComputedStyle(frame);
+    frame.style.height = `${parseFloat(height) + 34}px`;
+    frame.style.paddingBottom = `${parseFloat(paddingBottom) + 34}px`;
   });
   await page.waitForFunction(() => {
-    const header = document.querySelector('[role="heading"]');
+    const header = document.querySelector(
+      '[data-testid="chat-scroll"] [role="heading"]',
+    );
     const nav = document.querySelector('[role="tablist"]');
     return (
       header?.getBoundingClientRect().top >= 47 &&
