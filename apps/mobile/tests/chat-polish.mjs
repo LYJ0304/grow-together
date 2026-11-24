@@ -79,7 +79,8 @@ try {
   );
   const hint = await input.evaluate((node) => ({
     text: getComputedStyle(node, '::placeholder').color,
-    background: getComputedStyle(node.parentElement).backgroundColor,
+    background: getComputedStyle(node.closest('[data-testid="chat-composer"]'))
+      .backgroundColor,
     opacity: getComputedStyle(node, '::placeholder').opacity,
   }));
   assert.equal(Number(hint.opacity), 1);
@@ -88,7 +89,11 @@ try {
     'Placeholder contrast',
   );
   const border = () =>
-    input.evaluate((node) => getComputedStyle(node.parentElement).borderColor);
+    input.evaluate(
+      (node) =>
+        getComputedStyle(node.closest('[data-testid="chat-composer"]'))
+          .borderColor,
+    );
   await input.blur();
   const restingBorder = await border();
   await input.focus();

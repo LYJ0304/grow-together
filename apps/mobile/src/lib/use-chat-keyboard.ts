@@ -6,17 +6,27 @@ type Viewport = { height: number; offsetTop: number };
 export function useChatKeyboard() {
   const [visible, setVisible] = useState(false);
   const [viewport, setViewport] = useState<Viewport | null>(null);
+  const [nativeKeyboardTop, setNativeKeyboardTop] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
       setVisible(Keyboard.isVisible());
+      setNativeKeyboardTop(Keyboard.metrics()?.screenY ?? null);
       const show = Keyboard.addListener(
         Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-        () => setVisible(true),
+        ({ endCoordinates }) => {
+          setVisible(true);
+          setNativeKeyboardTop(endCoordinates.screenY);
+        },
       );
       const hide = Keyboard.addListener(
         Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-        () => setVisible(false),
+        () => {
+          setVisible(false);
+          setNativeKeyboardTop(null);
+        },
       );
       return () => {
         show.remove();
@@ -65,5 +75,5 @@ export function useChatKeyboard() {
     };
   }, []);
 
-  return { visible, viewport };
+  return { visible, viewport, nativeKeyboardTop };
 }

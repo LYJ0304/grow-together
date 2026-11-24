@@ -45,6 +45,33 @@ try {
       document.querySelector('textarea').getBoundingClientRect().height <= 48,
   );
   const short = (await input.boundingBox()).height;
+  const shortBox = (await page.getByTestId('chat-composer').boundingBox())
+    .height;
+  assert.ok(
+    await input.evaluate((element) => {
+      const { paddingTop, paddingBottom, lineHeight } =
+        getComputedStyle(element);
+      const contentHeight =
+        element.clientHeight -
+        parseFloat(paddingTop) -
+        parseFloat(paddingBottom);
+      return (
+        paddingTop === paddingBottom && contentHeight >= parseFloat(lineHeight)
+      );
+    }),
+    'A single line fits with symmetric padding',
+  );
+  await input.fill('자동 줄바꿈이 되는 긴 질문을 입력해요. '.repeat(6));
+  await page.waitForFunction(
+    (initialHeight) =>
+      document.querySelector('textarea').clientHeight > initialHeight,
+    short,
+  );
+  assert.ok(
+    (await page.getByTestId('chat-composer').boundingBox()).height > shortBox,
+  );
+  await input.fill('첫 줄');
+
   await input.press('Shift+Enter');
   await input.pressSequentially('둘째 줄');
   assert.equal(await input.inputValue(), '첫 줄\n둘째 줄');
@@ -78,6 +105,14 @@ try {
       document.querySelector('textarea').clientHeight,
   );
   assert.ok((await input.boundingBox()).height <= 144);
+  assert.ok(
+    await input.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      return element.scrollTop > 0;
+    }),
+    'Long content scrolls inside the capped input',
+  );
+
   await input.fill('짧은 질문');
   await page.waitForFunction(
     () =>
