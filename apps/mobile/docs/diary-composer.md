@@ -22,27 +22,20 @@ Android 뒤로 가기와 Web ESC로 닫는다. 확대 제스처는 이번 범위
 
 기기 저장 실패 시 글/사진을 유지한다. 미리보기 수정은 기존 감정·성장 정보·원문 메타데이터를
 보존하며 사진 목록의 명시적 변경만 적용한다. 로그인 수정도 원래 서버 활동 관계를 보존하며
-원래 사진 URL 중 사용자가 남긴 참조만 다시 전송한다. 저장 전 서버 파일 삭제는 하지 않는다.
+사용자가 남긴 기존 사진 참조와 업로드를 완료한 새 파일 ID를 전송한다. 저장 전 서버 파일 삭제는 하지 않는다.
 본문 필수 UI, 로그인 본문 1000자 제한, 날짜/409 충돌·저장 결과 불확실성 처리도 유지한다.
 
-## 로그인 사진 업로드 경계
+## 로그인 사진 업로드
 
-이번 PR은 **미리보기의 사진 작성·저장·재조회**, **로그인의 기존 사진 조회·제거**를 지원한다.
-로그인 새 사진 추가는 제공하지 않으며 화면에 준비 중임을 표시한다. 텍스트 저장은 가능하다.
+1. 모바일에서 `POST /api/files/presigned-url`로 업로드 URL과 파일 ID를 받는다.
+2. 서명 URL에 JPEG 바이트를 PUT한 뒤 `POST /api/files/{id}/complete`를 호출한다.
+   API는 파일 소유자와 객체의 크기·Content-Type을 확인한다.
+3. 업로드를 완료한 파일의 `fileId`를 일기 저장 요청에 포함한다.
+   일기 조회 시 API는 연결된 사진의 새 GET 서명 URL을 반환한다.
 
-기존 API 조사 결과:
-
-- `POST /api/files/presigned-url`: owner-scoped pending 파일과 PUT URL 발급
-- `POST /api/files/{id}/complete`: 소유자·객체 크기·content-type 확인
-- 파일 응답은 ID/메타데이터이며 안정적인 조회 URL은 없다. StorageService의 GET URL 생성은
-  HTTP 조회 API로 노출되지 않았다.
-- 일기의 `DiaryFileRequest.imageUrl`은 문자열로 저장될 뿐 StoredFile ID/소유권과 연결되지 않는다.
-- presigned PUT/GET URL을 영구 imageUrl로 저장하면 만료 후 열리지 않는다.
-
-따라서 업로드만 호출하고 일기에 연결되었다고 표시하지 않는다. API/DB/Worker/OpenAPI는 변경하지
-않았다. 후속 계약 작업에는 owned COMPLETED file ID를 일기에 연결하는 검증, 조회 시 권한 검증과
-만료 URL 재발급, 형식/수량 제한, 업로드 부분 성공·재시도·미참조 객체 수명 정책이 필요하다.
-실제 S3 환경의 CORS와 iOS/PWA/Android 업로드는 그 계약 완료 후 별도 검증한다.
+네이티브 실기기에서 사진을 업로드하고 다시 열어보려면
+[맥북 staging 가이드](../../api/docs/staging/Development.md)를 따른다.
+브라우저 업로드는 사용하는 스토리지의 CORS 설정도 확인한다.
 
 ## 검증
 

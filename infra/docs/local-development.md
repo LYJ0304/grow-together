@@ -44,5 +44,5 @@ The [worker guide](../../apps/worker/docs/development.md) covers running the
 current example job through Compose or locally with uv. The worker is optional
 and runs independently from the API.
 
-Each module guide includes its checks. For Render staging deployment, follow the
-[API staging guide](../../apps/api/docs/staging/Development.md).
+Each module guide includes its checks. For the separate MacBook staging stack, follow the
+[Tailscale staging guide](../../apps/api/docs/staging/Development.md).

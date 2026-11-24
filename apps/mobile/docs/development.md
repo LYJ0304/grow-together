@@ -22,6 +22,10 @@ EXPO_PUBLIC_API_URL=http://192.168.1.10:8080 npm start
 
 Replace the example IP with the computer's LAN address.
 
+For phone QA away from the local network, follow the
+[MacBook staging guide](../../api/docs/staging/Development.md). It sets the
+Tailscale API and Metro URLs and disables authentication preview.
+
 ## Vercel 정적 Web 경로
 
 `app.json`의 `expo.web.output`은 `static`이며 export는 경로별 HTML을 생성한다.
