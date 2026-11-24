@@ -81,11 +81,11 @@ assistance currently composes text locally.
 | Backend API              | Java 21, Spring Boot 4, Spring Security, JPA, Flyway                                          |
 | AI Worker                | Python 3.12+, FastAPI, Pydantic, uv, OpenRouter                                               |
 | Database                 | PostgreSQL 16; local Compose uses a pgvector-enabled image                                    |
-| File storage             | AWS S3 with API-issued signed URLs and upload-completion checks                               |
+| File storage             | S3-compatible storage with signed URLs and upload verification, using MinIO in staging             |
 | Admin prototype          | Next.js App Router, React, Tailwind CSS, shadcn/ui, Recharts; mock data only                  |
-| Development & deployment | Docker Compose, Gradle, npm; Vercel static-web configuration and Render staging documentation |
+| Development & deployment | Docker Compose, Gradle, npm; MacBook staging over Tailscale                                  |
 
-The storage API exists independently of the unfinished mobile photo-upload flow.
+The mobile app uploads photos directly through API-issued signed URLs.
 The Admin console has no real authentication or production API connection.
 Provider deployment settings and live service availability are not established by
 this README.
@@ -97,7 +97,8 @@ flowchart TB
     Mobile["Expo · Mobile / Web"] --> API["Spring Boot API"]
     API --> DB[("PostgreSQL")]
     API --> Worker["FastAPI Worker"]
-    API --> S3["AWS S3"]
+    API --> Storage["Object storage · MinIO in staging"]
+    Mobile -->|Signed PUT and GET| Storage
     Worker --> LLM["OpenRouter / LLM"]
 ```
 
@@ -105,6 +106,9 @@ The API owns authentication, account scoping, persistence, and the external
 [OpenAPI contract](contracts/openapi.yaml). The Worker accepts authenticated
 internal generation requests and does not query the application database directly.
 The mobile app never receives the Worker service key or the LLM provider key.
+
+The [MacBook staging guide](apps/api/docs/staging/Development.md) covers Expo, API,
+Worker, PostgreSQL and MinIO over Tailscale.
 
 The default Compose stack runs PostgreSQL and the API. Enable the optional
 `worker` profile for schedule generation, report generation, and parenting chat.
@@ -138,7 +142,8 @@ For AI generation, set the same nonempty `AI_WORKER_API_KEY` in the API and Work
 files. Configure `OPENROUTER_API_KEY`, `LLM_DIARY_MODEL`, and `LLM_CHAT_MODEL` only in
 the Worker. Optional schedule/report model settings fall back to the diary model.
 The service key and provider key are different credentials; neither belongs in
-`EXPO_PUBLIC_*` variables. S3 file operations require a configured bucket and AWS credentials.
+`EXPO_PUBLIC_*` variables. File operations require a configured S3-compatible
+bucket and signing credentials.
 
 ### Backend API and database
 

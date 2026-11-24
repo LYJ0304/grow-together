@@ -37,7 +37,7 @@ class FileServiceTest {
     @BeforeEach
     void setUp() {
         service = new FileService(storage, files,
-                new S3Properties("ap-northeast-2", "test", Duration.ofMinutes(10), DataSize.ofMegabytes(10)),
+                new S3Properties("ap-northeast-2", "test", Duration.ofMinutes(10), DataSize.ofMegabytes(10), null, null, false),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

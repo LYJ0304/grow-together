@@ -1,0 +1,104 @@
+name: growtogether-staging
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: growtogether_staging
+      POSTGRES_USER: growtogether_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?Set STAGING_POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: growtogether-staging-minio:7aac2a2-mc77f82e1
+    build: ./minio
+    restart: unless-stopped
+    command: ["minio", "server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${STAGING_MINIO_ROOT_USER:?Set STAGING_MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${STAGING_MINIO_ROOT_PASSWORD:?Set STAGING_MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER: "off"
+    ports:
+      - "127.0.0.1:${STAGING_MINIO_PORT:-19000}:9000"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  minio-init:
+    image: growtogether-staging-minio:7aac2a2-mc77f82e1
+    pull_policy: never
+    entrypoint: ["/bin/sh", "/bootstrap/init.sh"]
+    environment:
+      MINIO_ROOT_USER: ${STAGING_MINIO_ROOT_USER:?Set STAGING_MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${STAGING_MINIO_ROOT_PASSWORD:?Set STAGING_MINIO_ROOT_PASSWORD}
+      MINIO_API_USER: ${STAGING_MINIO_API_USER:?Set STAGING_MINIO_API_USER}
+      MINIO_API_PASSWORD: ${STAGING_MINIO_API_PASSWORD:?Set STAGING_MINIO_API_PASSWORD}
+    volumes:
+      - ./minio:/bootstrap:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  api:
+    image: growtogether-staging-api:${STAGING_BUILD_TAG:-local}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      DATABASE_URL: jdbc:postgresql://postgres:5432/growtogether_staging
+      POSTGRES_USER: growtogether_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?Set STAGING_POSTGRES_PASSWORD}
+      JWT_SECRET: ${STAGING_JWT_SECRET:?Set STAGING_JWT_SECRET}
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_BUCKET: growtogether-staging
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_PRESIGN_ENDPOINT: ${STAGING_STORAGE_URL:?Set STAGING_STORAGE_URL}
+      STORAGE_S3_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: ${STAGING_MINIO_API_USER:?Set STAGING_MINIO_API_USER}
+      AWS_SECRET_ACCESS_KEY: ${STAGING_MINIO_API_PASSWORD:?Set STAGING_MINIO_API_PASSWORD}
+      WORKER_BASE_URL: http://worker:8000
+      AI_WORKER_API_KEY: ${STAGING_WORKER_API_KEY:?Set STAGING_WORKER_API_KEY}
+    ports:
+      - "127.0.0.1:${STAGING_API_PORT:-18080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      worker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    image: growtogether-staging-worker:${STAGING_BUILD_TAG:-local}
+    build: ../apps/worker
+    restart: unless-stopped
+    environment:
+      AI_WORKER_API_KEY: ${STAGING_WORKER_API_KEY:?Set STAGING_WORKER_API_KEY}
+      OPENROUTER_API_KEY: ${STAGING_OPENROUTER_API_KEY:?Set STAGING_OPENROUTER_API_KEY}
+      LLM_CHAT_MODEL: ${STAGING_LLM_CHAT_MODEL:?Set STAGING_LLM_CHAT_MODEL}
+      LLM_DIARY_MODEL: ${STAGING_LLM_DIARY_MODEL:?Set STAGING_LLM_DIARY_MODEL}
+      LLM_SCHEDULE_MODEL: ${STAGING_LLM_SCHEDULE_MODEL:-}
+      LLM_REPORT_MODEL: ${STAGING_LLM_REPORT_MODEL:-}
+
+volumes:
+  postgres-data:
+  minio-data:

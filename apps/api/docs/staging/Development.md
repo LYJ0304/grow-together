@@ -1,153 +1,162 @@
-# API staging 배포 가이드
+# 맥북 staging 운영 가이드
 
-이 문서는 **개발 검증용 staging 환경**을 Render 무료 Web Service와 Render 무료 Postgres로 구성하는 방법을 설명한다. production 배포 절차는 다루지 않는다.
+GrowTogether staging은 맥북의 Docker Compose에서 API, Worker, PostgreSQL,
+MinIO를 실행합니다. Expo/Metro는 맥북에서 별도로 실행하고, 휴대폰은 같은
+Tailscale tailnet에서 앱 번들과 HTTPS API 및 파일 주소에 접근합니다.
 
-설정은 Render 대시보드에서 진행하며 CLI 설치는 필요하지 않다. API는 기존 Dockerfile로 실행하고, DB는 별도 Render Postgres 리소스로 생성한다. 로컬 개발용 `infra/compose.yaml`은 Render에서 실행하지 않는다.
+## 1. 배포 후보와 준비물
 
-## 1. 배포할 코드 준비
-
-staging은 개발 검증용 배포 환경이며 별도 브랜치가 아니다. 서비스는 GitHub의 `main` 브랜치를 배포한다. 로컬 커밋만으로는 Render에 반영되지 않는다.
-
-1. 작업 브랜치를 push하고 `main` 대상 PR을 만든다.
-2. 검증 후 작업 PR을 squash merge한다.
-3. Render에서 배포할 정확한 `main` 커밋 SHA를 확인하고 기록한다.
-4. 수동 배포 시 **Deploy a specific commit**으로 그 SHA를 지정한다. 검증 중 `main`이 전진해도 검증 대상이 바뀌지 않게 한다.
-
-브랜치 병합과 실제 배포는 각각 별도 요청으로 진행한다. 전체 규칙은 [harness conventions](../../../../.harness/conventions.md)을 따른다.
-
-저장소 루트에서 API 테스트와 Docker 이미지 빌드를 확인한다. 테스트에는 Docker와 Java 21이 필요하다.
-
-```bash
-cd apps/api
-./gradlew test
-```
-
-Docker 이미지는 저장소 루트에서 빌드한다.
+- Docker Desktop, 저장소 README가 요구하는 Node.js/npm, 맥북과 휴대폰의 Tailscale.
+- tailnet에서 MagicDNS와 HTTPS 인증서를 활성화합니다. 맥북의 전체
+  `*.ts.net` 이름과 접근할 계정·기기의 포트 권한을 확인합니다.
+- 휴대폰에서 프로젝트 SDK를 지원하는 Expo Go 또는 development build를
+  준비합니다. iOS에서 설치된 Expo Go가 프로젝트 SDK를 지원하지 않으면,
+  Xcode에서 기기 등록·서명을 준비하고 `apps/mobile`에서
+  `npx expo run:ios --device`로 development build를 설치합니다. Android
+  development build는 Android SDK와 기기 연결 후
+  `npx expo run:android --device`로 설치합니다.
+- 확인할 `main` 커밋을 별도 디렉터리에 체크아웃하고 SHA를 기록합니다.
+  아래 Compose 명령은 해당 체크아웃의 저장소 루트에서 실행합니다.
 
 ```bash
-docker build -f apps/api/Dockerfile -t growtogether-api:staging .
+git fetch origin main
+staging_sha="$(git rev-parse origin/main)"
+git worktree add --detach ../growtogether-staging "$staging_sha"
+cd ../growtogether-staging
+git rev-parse HEAD
 ```
 
-Dockerfile은 `bootJar`를 빌드하며 테스트는 실행하지 않는다. 이미지 빌드 성공과 테스트 통과를 별도로 확인한다. 테스트 결과에서 PostgreSQL 통합 테스트가 생략되지 않았는지도 확인한다.
+## 2. staging 설정 및 기동
 
-## 2. staging PostgreSQL 생성
+```bash
+umask 077
+cp infra/staging/.env.example infra/staging/.env
+```
 
-[Render 대시보드](https://dashboard.render.com/)에서 **New → Postgres**를 선택한다.
+템플릿의 `STAGING_BUILD_TAG`를 체크아웃한 SHA로 설정합니다. DB 비밀번호, `openssl rand -base64 32`로 생성한 JWT secret,
+API·Worker 공유 키, OpenRouter 키와 모델 ID, MinIO root 및 API 계정을
+채웁니다. root와 API 계정은 서로 다른 이름과 비밀번호를 사용합니다.
+파일은 Git에서 제외되며 OpenRouter 키는 Worker에만 주입됩니다.
+환경변수 이름에 `AWS_`가 붙은 액세스 키는 AWS SDK가 읽는 MinIO 계정입니다.
 
-| 항목 | 입력값 |
-| --- | --- |
-| Name | `growtogether-staging-db` |
-| Database | `growtogether_staging` |
-| User | 비워두어 자동 생성하거나 `growtogether` 지정 |
-| Region | API와 동일한 리전 |
-| PostgreSQL Version | `16` — 현재 API 통합 테스트와 동일 |
-| Plan | `Free` |
+기본 포트는 아래와 같습니다. 주소 예시의 호스트를 실제 MagicDNS 이름으로
+바꾸고, `STAGING_STORAGE_URL`에는 MinIO의 **외부 HTTPS 주소**를 입력합니다.
+API는 내부적으로 `http://minio:9000`에 접속하며 서명 URL에는 외부 주소를
+사용합니다. 스토리지 주소는 경로 접두어 없이 호스트와 포트로 구성합니다.
 
-DB가 준비되면 Info의 연결 정보에서 **내부 Hostname, Port, Database, Username, Password**를 확인한다. API에는 이 정보를 사용하고, 로컬·production DB와 공유하지 않는다.
-
-동일 계정·리전의 API는 내부 주소로 연결한다. 외부에서 DB에 접속할 필요가 없다면 DB 설정에서 외부 접근을 비활성화한다. 이 구성에서는 별도 관리형 Connection Pooling을 추가하지 않는다.
-
-무료 Render Postgres는 **생성 후 30일에 만료되어 접속이 중단**된다. 이후 14일의 유료 전환 유예 기간이 지나면 DB와 데이터가 삭제된다. 매달 자동 초기화되어 계속 제공되는 서비스가 아니다. 무료 DB에는 백업도 제공되지 않는다.
-
-staging에는 폐기 가능한 테스트 데이터를 사용한다. 만료 후 새 DB를 만들면 API의 접속 정보도 다시 설정해야 하며, 기존 데이터는 자동 복원되지 않는다. 보존할 데이터가 필요해지면 백업·복원 또는 유료 DB 사용을 먼저 준비한다.
-
-## 3. staging API Web Service 생성
-
-**New → Web Service**에서 GitHub 저장소 `LYJ0304/grow-together`를 연결한다.
-
-| 항목 | 입력값 |
-| --- | --- |
-| Name | `growtogether-staging-api` 또는 사용 가능한 고유 이름 |
-| Branch | `main` |
-| Language / Runtime | `Docker` |
-| Region | staging DB와 동일 |
-| Root Directory | 비워두기 — 저장소 루트 사용 |
-| Dockerfile Path | `apps/api/Dockerfile` |
-| Docker Build Context Directory | `.` |
-| Docker Command | 비워두기 — Dockerfile의 ENTRYPOINT 사용 |
-| Plan | `Free` |
-| Health Check Path | `/actuator/health` |
-| Auto Deploy | 초기 검증 중에는 비활성화하고 수동 배포 |
-
-API 이미지에는 루트 `contracts/openapi.yaml`이 포함되므로 **빌드 컨텍스트는 저장소 루트 `.`**이어야 한다. 기존 Render 설정의 Root Directory가 `apps/api`였다면 비우고 Dockerfile Path와 Build Context도 위 표대로 변경한다. 이전의 `apps/api` 빌드 컨텍스트로는 명세 파일을 복사할 수 없다.
-
-Docker 실행 방식이므로 별도 Build/Start Command는 필요하지 않다. Render가 제공하는 `https://<서비스 이름>.onrender.com` 주소로 접근하며, HTTPS는 Render가 처리한다.
-
-## 4. API 환경변수 설정
-
-**API Web Service → Environment → Environment Variables**에 입력한다. DB 리소스의 환경변수 설정과 혼동하지 않는다.
-
-| Key | Value | 설명 |
+| 서비스 | 맥북 루프백 | 휴대폰에서 사용할 주소 |
 | --- | --- | --- |
-| `SERVER_PORT` | `10000` | 현재 Spring API의 포트를 Render 기본 PORT와 맞춤 |
-| `SPRING_PROFILES_ACTIVE` | `staging` | local 대신 staging 프로필 활성화 |
-| `DATABASE_URL` | `jdbc:postgresql://<내부 Hostname>:5432/<Database>?sslmode=require` | Render Postgres 내부 접속 정보로 작성 |
-| `POSTGRES_USER` | `<Username>` | DB 생성 후 표시되는 실제 사용자명 |
-| `POSTGRES_PASSWORD` | `<Password>` | DB 생성 후 표시되는 실제 비밀번호 |
-| `JWT_SECRET` | `<생성한 Base64 키>` | 아래 명령으로 생성 |
-| `JWT_ACCESS_TOKEN_SECONDS` | `900` | 선택 사항, 기본값 15분 |
-| `JWT_REFRESH_SESSION_SECONDS` | `1209600` | 선택 사항, 기본값 14일 |
-| `CORS_ALLOWED_ORIGINS` | `<브라우저 프런트엔드 origin>` | 브라우저 호출이 있을 때 지정. 여러 주소는 쉼표로 구분 |
-
-`<...>`는 실제 값으로 바꾸고, 대시보드 입력값에는 따옴표를 붙이지 않는다. Render가 제공하는 `postgresql://...` 전체 URL을 `DATABASE_URL`에 그대로 넣지 않는다. 현재 API는 **JDBC URL과 별도 사용자명·비밀번호**를 사용한다.
-
-JWT 키는 로컬 터미널에서 생성한다.
+| API | `127.0.0.1:18080` | `https://<macbook>.ts.net` |
+| MinIO S3 | `127.0.0.1:19000` | `https://<macbook>.ts.net:9443` |
+| Expo/Metro | `127.0.0.1:18081` | `https://<macbook>.ts.net:8443` |
 
 ```bash
-openssl rand -base64 32
+stage() { docker compose --env-file infra/staging/.env -f infra/compose.staging.yaml "$@"; }
+stage config -q
+stage build
+stage up -d --no-build --wait
+stage ps -a
+stage images
+curl -fsS http://127.0.0.1:18080/actuator/health
 ```
 
-출력된 값을 `JWT_SECRET`에 한 줄로 입력한다. 실제 키와 DB 비밀번호는 저장소·문서·로그에 남기지 않는다. JWT 키는 재배포 시에도 유지하며, 변경하면 기존 서명으로 발급한 access token은 무효화된다.
+PostgreSQL의 준비 상태, Worker의 HTTP 준비 상태, MinIO 버킷과 정책 초기화
+성공 후 API가 시작됩니다. `minio-init`의 정상 상태는 종료 코드 0입니다.
+MinIO는 [고정된 Community 소스](../../../../infra/minio/Dockerfile)에서
+빌드합니다. QA 기록에는 Git SHA와 `stage images`에 나온 이미지의 전체
+ID(`docker image inspect <image> --format '{{.Id}}'`) 또는 레지스트리 digest를
+남깁니다. 동일 후보를 재시작할 때는 빌드 없이 실행합니다.
 
-현재 `application-staging.yml`은 없으며 별도 파일을 만들 필요는 없다. 공통 `application.yml`과 Render 환경변수를 사용한다. 로컬 `.env` 파일은 Render로 업로드하지 않는다. 변수 이름은 [API 환경변수 예시](../../.env.example)를 참고한다.
+## 3. Tailnet 진입점과 Expo 실행
 
-CORS 값은 API 주소가 아니라 **브라우저에서 API를 호출하는 프런트엔드 origin**이다. 예를 들어 로컬 Expo 웹은 `http://localhost:8081`을 사용한다. 네이티브 모바일 요청에는 CORS가 적용되지 않는다. CORS는 인증이나 staging 접근 제한을 대신하지 않는다.
-
-## 5. 배포 및 검증
-
-1. 배포할 커밋이 원격 `main`에 반영되었는지 확인한다.
-2. DB가 준비되었고 API의 환경변수가 저장되었는지 확인한다.
-3. API 서비스의 **Manual Deploy → Deploy a specific commit**에서 기록한 SHA를 지정해 배포한다.
-4. 로그에서 Docker 빌드, Flyway 마이그레이션, Spring API 기동 성공을 확인한다.
-5. 실제 서비스 주소로 health를 확인한다.
+기존 Serve 구성을 `tailscale serve status`로 확인한 뒤 사용 가능한 포트에
+연결합니다. macOS 앱 설치 방식에 따라 CLI 위치가 다르면 공식 문서의
+[macOS CLI 경로](https://tailscale.com/docs/reference/tailscale-cli#using-the-cli-on-macos)를 사용합니다.
 
 ```bash
-curl --fail --show-error https://<실제-API-호스트>/actuator/health
+tailscale serve --bg --https=443 http://127.0.0.1:18080
+tailscale serve --bg --https=9443 http://127.0.0.1:19000
+tailscale serve --bg --https=8443 http://127.0.0.1:18081
+tailscale serve status
 ```
 
-정상 응답은 `{"status":"UP"}`이다. `/api/health`는 고정 UP 응답이므로 DB 연결까지 확인하는 배포 판정에는 `/actuator/health`를 사용한다.
+Compose는 API와 MinIO S3 포트만 루프백에 바인딩합니다. Worker와
+PostgreSQL은 내부 네트워크에서 통신하며 MinIO 관리 콘솔은 비활성화됩니다.
+파일 PUT·GET 요청은 Tailscale Serve를 기본 경로 `/`에서 통과합니다.
+서명 URL의 호스트·포트·경로·쿼리와 업로드 Content-Type을 유지합니다.
 
-Flyway가 API 시작 시 스키마를 생성·이전하므로 별도 테이블 생성 명령은 필요하지 않다. V4는 일기에 연결된 기존 Todo에 일기 소유자를 반영한다. 소유자를 알 수 없는 미연결 Todo는 삭제하지 않고 보존하며, API에서는 접근할 수 없게 한다.
+```bash
+cd apps/mobile
+npm ci
+export EXPO_PUBLIC_APP_ENV=staging
+export EXPO_PUBLIC_API_URL=https://macbook.example.ts.net
+export EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false
+export EXPO_PACKAGER_PROXY_URL=https://macbook.example.ts.net:8443
+npm start -- --localhost --port 18081 --dev-client
+```
 
-Swagger UI는 `https://<실제-API-호스트>/swagger-ui.html`에서 접근한다. UI와 `/openapi.yaml`은 로그인 없이 공개되며, 실제 Todo·일기 API의 JWT 인증은 유지한다. Swagger UI는 `contracts/openapi.yaml`을 읽고 `/v3/api-docs` 자동 생성 명세는 제공하지 않는다.
+위 주소에서 `macbook.example.ts.net`을 실제 전체 이름으로 치환합니다. SDK와
+호환되는 Expo Go를 사용하는 경우 `--dev-client`를 `--go`로 바꿉니다.
+휴대폰에서 Metro가 안내하는 링크 또는 QR을 엽니다. 개발 빌드에서
+`npx expo run:ios --device` 등으로 최초 설치한 뒤에는 위 명령으로 번들을
+실행합니다. [Expo CLI](https://docs.expo.dev/more/expo-cli/) · [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve)
 
-Swagger UI에서 회원가입·로그인 API의 **Try it out**으로 요청을 실행한다. 로그인 응답의 `accessToken` 값만 복사해 **Authorize → bearerAuth**에 입력한다(`Bearer ` 접두사는 입력하지 않는다). 이후 보호 API를 실행하면 UI가 Authorization 헤더를 붙인다. refresh token을 Authorize에 넣지 않는다. 갱신한 access token은 Authorize에 다시 입력한다. 기본 설정에서는 새로고침 후 토큰을 다시 입력해야 한다.
+## 4. QA 및 재시작
 
-기능 검증은 Swagger UI 또는 API 클라이언트로 진행한다. 모바일 가입·로그인 화면도 인증 API와 연결되어 있다. 모바일 설정과 세션 동작은 [모바일 개발 가이드](../../../mobile/docs/development.md)와 [인증 문서](../../../mobile/docs/authentication.md)를 참고한다.
+1. 휴대폰의 Wi-Fi를 끄고 셀룰러에서 Tailscale을 켭니다. API
+   `/actuator/health`와 Metro 번들 로딩을 확인합니다.
+2. 새 QA 계정으로 로그인합니다. 사진 일기를 작성한 뒤 앱을 다시 열어
+   사진을 확인합니다. 업로드 실패 시 URL 발급, PUT, 완료, GET 단계의 상태
+   코드를 확인합니다. 로그나 이슈에 서명 URL 전체를 남기지 않습니다.
+3. AI 채팅으로 실제 답변을 받은 뒤 API·Worker 연결 및 모델 설정을 확인합니다.
+4. 맥북을 재시작하고 로그인합니다. Docker Desktop 및 Tailscale이 실행
+   중인지 확인하고, 필요하면 `stage up -d --no-build --wait`로 복구합니다.
+   Metro를 다시 실행하고 같은 계정의 사진을 조회합니다.
 
-- 테스트 사용자 A와 B를 `/api/v1/auth/signup`으로 가입시킨다.
-- `/api/v1/auth/login`으로 로그인하고, 보호된 API에 `Authorization: Bearer <accessToken>`을 전달한다.
-- 토큰 없이 Todo·일기 API를 호출하면 `401`인지 확인한다.
-- A가 생성한 Todo는 A의 날짜별 목록에만 나타나는지 확인한다.
-- B가 A의 Todo를 조회·수정·삭제하거나 일기에 연결하면 `404`인지 확인한다.
-- `/api/v1/auth/refresh` 호출 후 반환된 새 refresh token으로 교체한다. 동시 갱신이나 이전 토큰 재사용은 세션을 폐기할 수 있으므로 갱신 요청은 순차 처리한다.
-- `/api/v1/auth/logout` 후 해당 세션의 access·refresh token이 거부되는지 확인한다.
+운영 시간에는 전원과 네트워크를 연결하고 macOS에서 맥북이 절전 상태로
+들어가는지 확인합니다. Docker Desktop의 로그인 시 시작 설정을 사용할 수
+있습니다. `stage stop`은 컨테이너를 중지하고 볼륨을 보존합니다. Metro는
+실행 터미널에서 종료하고, Serve 주소를 내릴 때는 해당 포트별로
+`tailscale serve --https=<port> off`를 실행합니다.
 
-요청 본문과 응답은 [OpenAPI 계약](../../../../contracts/openapi.yaml)을 따른다. 검증에 사용한 Render 배포 커밋과 결과를 PR에 남긴다. 이 문서의 절차는 실제 배포 성공을 의미하지 않는다.
+## 5. PostgreSQL 및 파일 백업과 복원
 
-## 6. 공개 범위와 운영 보완
+백업은 DB와 파일을 같은 시점에 보관합니다. 테스트를 종료하고 진행 중인
+업로드를 끝낸 뒤 MinIO Serve 포트를 내립니다. API와 MinIO를 중지하면
+PostgreSQL 덤프와 MinIO 볼륨을 안전하게 복사할 수 있습니다. MinIO
+아카이브에는 객체 메타데이터와 버킷 설정이 포함됩니다. 운영자만 읽을 수
+있도록 보관하고 맥북 장애 시에도 접근할 수 있는 위치에 복사합니다.
 
-Render Web Service는 기본적으로 인터넷에 공개된다. 최초 staging에서 허용할 테스트 대상과 접근 제한 방식을 정한다. 일반 공개로 진행하면 로그인·회원가입 요청 제한을 공개 전에 적용한다.
+```bash
+stage stop api minio
+umask 077
+backup_dir="$(mktemp -d "${HOME}/growtogether-staging-backup.XXXXXXXX")"
+stage exec -T postgres pg_dump -Fc -U growtogether_staging growtogether_staging > "$backup_dir/db.dump"
+stage run --rm --no-deps -v "$backup_dir:/backup" --entrypoint tar minio -C /data -cf /backup/minio.tar .
+stage up -d --no-build --wait
+```
 
-재시작 정책·백업/복원·이전 버전 복구·로그/알림·배포 자동화는 [#63](https://github.com/LYJ0304/grow-together/issues/63)의 운영 보완 범위다. Compose 재시작 정책을 Render에 복사하지 않고 플랫폼이 제공하는 기능을 먼저 확인한다. 최초 배포 필수 작업은 [#62](https://github.com/LYJ0304/grow-together/issues/62)에서 관리한다.
+백업 후 MinIO Serve 포트를 다시 연결합니다. 복원은 원본과 동일한
+MinIO 이미지 및 자격 증명을 사용해 별도 프로젝트의 빈 볼륨에서 검증합니다.
+아래 명령은 원본 staging과 충돌하지 않는 포트를 사용합니다.
 
-무료 API는 15분 동안 요청이 없으면 절전되며, 다음 요청에서 다시 시작하는 데 시간이 걸릴 수 있다. 무료 DB의 30일 만료와는 별개다.
+```bash
+restore_stage() {
+  STAGING_MINIO_PORT=29000 STAGING_API_PORT=28080 STAGING_STORAGE_URL=http://127.0.0.1:29000 docker compose \
+    --env-file infra/staging/.env -f infra/compose.staging.yaml \
+    -p growtogether-staging-restore "$@"
+}
+restore_stage up -d --wait postgres
+restore_stage exec -T postgres pg_restore --exit-on-error --no-owner \
+  -U growtogether_staging -d growtogether_staging < "$backup_dir/db.dump"
+restore_stage run --rm --no-deps -v "$backup_dir:/backup:ro" --entrypoint /bin/sh minio -ec '
+  test -z "$(ls -A /data)"
+  tar -C /data -xf /backup/minio.tar
+'
+restore_stage up -d --no-build --wait
+```
 
-## 공식 문서
-
-- [Render Docker 배포](https://render.com/docs/docker)
-- [모노레포 Root Directory와 Docker 경로](https://render.com/docs/monorepo-support)
-- [Web Service 포트와 HTTPS](https://render.com/docs/web-services)
-- [Postgres 생성 및 내부 연결](https://render.com/docs/postgresql-creating-connecting)
-- [Health checks](https://render.com/docs/health-checks)
-- [무료 API와 DB 제한](https://render.com/docs/free)
+복원된 API의 `http://127.0.0.1:28080/actuator/health`를 확인하고, 맥북에서
+동일 QA 계정으로 일기와 사진을 조회해 DB의 객체 키와 파일이 함께
+복원됐는지 확인합니다. `restore_stage stop`으로 복원 검증 프로젝트를
+중지합니다.

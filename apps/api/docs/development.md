@@ -64,7 +64,7 @@ Sign up and log in using **Try it out**, then enter the login `accessToken` in
 here. After token refresh, enter the new access token again; reloading the UI
 requires authorization again under the default settings.
 
-For Render deployment and staging verification, see the
+For the MacBook Compose stack, Tailscale access and MinIO verification, see the
 [staging deployment guide](staging/Development.md).
 
 ## Child profile

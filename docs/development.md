@@ -10,8 +10,9 @@ or test suites have been executed in your environment.
 | Template                                                | Main settings                                                                                              | Scope                                                       |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [infra/.env.example](../infra/.env.example)             | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`                                                        | Local Compose database                                      |
+| [infra/staging/.env.example](../infra/staging/.env.example) | `STAGING_*` | Separate MacBook staging stack and credentials |
 | [apps/mobile/.env.example](../apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS`                             | Public client configuration only                            |
-| [apps/api/.env.example](../apps/api/.env.example)       | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `WORKER_BASE_URL`, `AI_WORKER_API_KEY`, AWS settings | API persistence, authentication, storage, internal requests |
+| [apps/api/.env.example](../apps/api/.env.example)       | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `WORKER_BASE_URL`, `AI_WORKER_API_KEY`, S3-compatible storage settings | API persistence, authentication, storage, internal requests |
 | [apps/worker/.env.example](../apps/worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL`, `AI_WORKER_API_KEY`, `OPENROUTER_API_KEY`, `LLM_*_MODEL`                      | Worker configuration and provider credentials               |
 
 Compose supplies the API database connection from `infra/.env` and overrides its
@@ -74,8 +75,8 @@ environments. Task PRs target `main`. App tags (`mobile/v*`, `api/v*`, `worker/v
 reference independently verified release commits. Publishing a tag is separate
 from a deployment and does not configure provider triggers or prove a successful rollout.
 
-See [Render API staging](../apps/api/docs/staging/Development.md) for that
-environment's configuration and verification. The mobile app exports static HTML;
+See [MacBook staging](../apps/api/docs/staging/Development.md) for the Expo, API,
+Worker, PostgreSQL and MinIO setup and Tailscale phone verification. The mobile app exports static HTML;
 its [Vercel guide](../apps/mobile/docs/development.md#vercel-정적-web-경로) explains
 extensionless routes. The [Admin README](../apps/admin/README.md#배포) describes a
 separate Next.js project rooted at `apps/admin`. No live deployment URLs or

@@ -1,5 +1,8 @@
 # Worker development
 
+The [MacBook staging guide](../../api/docs/staging/Development.md) runs the Worker
+in Compose with the API and supplies staging secrets and model IDs.
+
 Runs internal AI jobs independently from the API. Shared worker infrastructure
 remains provider- and feature-neutral; diary generation uses an OpenRouter client.
 

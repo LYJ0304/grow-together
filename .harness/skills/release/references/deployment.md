@@ -12,10 +12,7 @@
   successfully deployed staging commit `f6ecdd8e034ed455e2097c0a02680bbf9d69d17a`
   to an environment named `Production`. This proves a provider deployment for
   that SHA, not an approved tag release or the actual Vercel production policy.
-- API staging uses documented Render Docker/Postgres setup; initial Auto Deploy
-  should be disabled for manual validation. Actual dashboard settings are not
-  verified. See [staging guide](../../../../apps/api/docs/staging/Development.md).
-  Worker production host and native mobile publication are not established.
+- Worker production hosting and native mobile publication were not established.
 
 ## Current branch policy (2026-11-01)
 
@@ -35,8 +32,9 @@ Do not create a staging/production branch or require a branch-promotion PR.
 Keep release publication and actual deployment state distinct.
 
 Staging should deploy a pinned main SHA after required CI succeeds; initially use
-manual selection as described in the staging guide. Record the exact SHA and
-app-specific results, even when main advances during QA. Version changes need
+manual selection as described in the [MacBook staging guide](../../../../apps/api/docs/staging/Development.md).
+The MacBook runs API, Worker, PostgreSQL, MinIO and Expo, with phone QA over
+Tailscale. Record the exact SHA and app-specific results, even when main advances. Version changes need
 fresh final-merge QA. Later automation must preserve that identity.
 For API/worker, build an image for that candidate once and promote its verified
 immutable digest to production. For mobile, identify the exact web/native build
@@ -67,8 +65,8 @@ mid-flight. Prevent older queued tags from rolling production back silently.
 Record app, tag, immutable SHA/artifact, provider deployment identifier and outcome.
 A rollback is a separate operator action, never tag movement.
 
-Before enabling this transition, inventory Vercel/Render Git integrations and main
-push automatic deployment; otherwise a Release PR merge may deploy before tags
+Before enabling this transition, inventory production provider Git integrations
+and automatic deployment on main pushes; otherwise a Release PR merge may deploy before tags
 and duplicate a later Actions rollout. Show concrete impact, proposed trigger
 changes, staging preservation, verification and rollback to the maintainer. Obtain
 explicit approval before changing any workflow/dashboard trigger or protection.
@@ -78,7 +76,7 @@ Mobile web: confirm actual Vercel project, root, web export/build command and
 production environment/branch. Native: confirm whether EAS/store publication is
 required, then agree artifact/versionCode/buildNumber/store approval policy.
 Do not treat native mobile as a server or introduce a native publishing pipeline
-because web deployments exist. API: confirm real Render production service and
+because web deployments exist. API: confirm the actual production API service and
 safe migration/health evidence. Worker: establish the actual job deployment
 architecture before suggesting a provider action. Do not invent endpoints/secrets.
 Document only required environment variable names in an appropriate `.env.example`

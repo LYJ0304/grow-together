@@ -25,8 +25,11 @@ app:
     refresh-session-seconds: ${JWT_REFRESH_SESSION_SECONDS:1209600}
   storage:
     s3:
-      region: ${AWS_REGION}
-      bucket: ${AWS_S3_BUCKET_NAME}
+      region: ${STORAGE_S3_REGION:${AWS_REGION}}
+      bucket: ${STORAGE_S3_BUCKET:${AWS_S3_BUCKET_NAME}}
+      endpoint: ${STORAGE_S3_ENDPOINT:}
+      presign-endpoint: ${STORAGE_S3_PRESIGN_ENDPOINT:}
+      path-style: ${STORAGE_S3_PATH_STYLE:false}
       presigned-url-expiration: 10m
       max-file-size: 10MB
   worker:
