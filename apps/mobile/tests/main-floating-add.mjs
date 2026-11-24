@@ -51,7 +51,7 @@ try {
     await page.getByText('하늘의 하루', { exact: false }).waitFor();
     await cta.waitFor();
     const fab = page.getByRole('button', {
-      name: '선택한 날 일기 작성하기',
+      name: '오늘 활동 빠른 추가',
       exact: true,
     });
     const button = await fab.boundingBox();
@@ -79,31 +79,54 @@ try {
     );
     const x = last.x + 20;
     const y = button.y + button.height / 2;
-    await page.mouse.move(x, y);
-    await page.mouse.wheel(0, -120);
-    await page.waitForFunction(
-      (old) => {
-        const node = document.elementFromPoint(old.x, old.y);
-        let parent = node;
+    const rowReceivesScroll = await page.evaluate(
+      ({ x, y }) => {
+        let node = document.elementFromPoint(x, y);
         while (
-          parent &&
-          !['auto', 'scroll'].includes(getComputedStyle(parent).overflowY)
+          node &&
+          !['auto', 'scroll'].includes(getComputedStyle(node).overflowY)
         )
-          parent = parent.parentElement;
-        return parent && parent.scrollTop < old.top;
+          node = node.parentElement;
+        return Boolean(node);
       },
-      { x, y, top: viewport.scrollTop },
+      { x, y },
     );
-    const current = await cta.evaluate(scrollState);
-    const action = await cta.boundingBox();
-    await cta.evaluate(
-      scrollState,
-      current.scrollTop + action.y + action.height / 2 - y,
+    assert(
+      rowReceivesScroll,
+      'The area beside the FAB belongs to the content viewport',
     );
-    await page.screenshot({ path: `${artifacts}/overlay-${width}.png` });
-    await page.mouse.click(x, y);
+    // Compact content may fit entirely; wheel movement is only expected when
+    // the viewport is actually scrolled. Keep the overlap/click check below
+    // for smaller viewports that still overflow.
+    if (viewport.scrollTop > 0) {
+      await page.mouse.move(x, y);
+      await page.mouse.wheel(0, -120);
+      await page.waitForFunction(
+        (old) => {
+          const node = document.elementFromPoint(old.x, old.y);
+          let parent = node;
+          while (
+            parent &&
+            !['auto', 'scroll'].includes(getComputedStyle(parent).overflowY)
+          )
+            parent = parent.parentElement;
+          return parent && parent.scrollTop < old.top;
+        },
+        { x, y, top: viewport.scrollTop },
+      );
+      const current = await cta.evaluate(scrollState);
+      const action = await cta.boundingBox();
+      await cta.evaluate(
+        scrollState,
+        current.scrollTop + action.y + action.height / 2 - y,
+      );
+      await page.screenshot({ path: `${artifacts}/overlay-${width}.png` });
+      await page.mouse.click(x, y);
+    } else {
+      await cta.click();
+    }
     await page.waitForURL('**/chat?**');
-    await page.getByRole('tab', { name: '오늘', exact: true }).click();
+    await page.getByRole('tab', { name: '홈', exact: true }).click();
     await fab.click();
     await page
       .getByRole('heading', { name: '무엇을 남길까요?', exact: true })

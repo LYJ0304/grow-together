@@ -51,6 +51,15 @@ try {
       const icon = tab.locator('img').first();
       await icon.waitFor();
       const b = await icon.boundingBox();
+      assert.equal(Math.round(b.width), 22);
+      assert.equal(Math.round(b.height), 22);
+      const labelText = tab.getByText(await tab.getAttribute('aria-label'), {
+        exact: true,
+      });
+      assert.equal(
+        await labelText.evaluate((node) => getComputedStyle(node).fontSize),
+        '11px',
+      );
       const label = await tab
         .getByText(await tab.getAttribute('aria-label'), { exact: true })
         .boundingBox();
@@ -80,7 +89,7 @@ try {
       .getByRole('tablist')
       .getByRole('tab', { selected: true })
       .boundingBox();
-    assert.equal(Math.round(active.height), 56);
+    assert.equal(Math.round(active.height), 46);
     assert(
       Math.abs(
         active.x + active.width / 2 - (selected.x + selected.width / 2),
@@ -91,7 +100,7 @@ try {
         active.y + active.height <= nav.y + nav.height - 6,
       'Selected background stays inside the glass capsule',
     );
-    assert.equal(Math.round(nav.height), 70);
+    assert.equal(Math.round(nav.height), 58);
     const surface = await page.getByRole('tablist').evaluate((node) => {
       const style = getComputedStyle(node);
       return {
@@ -118,7 +127,7 @@ try {
         document
           .querySelector('[data-testid="floating-tab-bar-frame"]')
           .getBoundingClientRect().height,
-      ) === 114,
+      ) === 102,
   );
   const keyboardTab = page.getByRole('tab', { name: '마이', exact: true });
   await keyboardTab.focus();

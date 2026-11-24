@@ -19,7 +19,7 @@ import { TabButton } from './tab-button';
 import { safeAreaLength } from './safe-area-view';
 
 // Reserve the capsule and safe bottom gap so no screen needs arbitrary overlay padding.
-export const FLOATING_TAB_BAR_SPACE = 80;
+export const FLOATING_TAB_BAR_SPACE = 68;
 
 export function FloatingTabBar({
   state,
@@ -165,9 +165,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     maxWidth: 520,
-    height: 70,
-    padding: 6,
-    borderRadius: 35,
+    height: 58,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 29,
     borderWidth: 1,
     borderColor: colors.navigationEdge,
     backgroundColor: colors.navigationSurface,
@@ -182,18 +183,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    height: 56,
-    borderRadius: 28,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.tint,
   },
   tab: {
     flex: 1,
     minWidth: 44,
-    minHeight: 56,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingVertical: 6,
+    gap: 1,
+    paddingVertical: 0,
   },
   label: {
     ...typography.label,
