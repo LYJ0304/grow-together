@@ -164,12 +164,24 @@ uv run pytest
 ```
 
 Worker PostgreSQL integration tests are opt-in and otherwise explicitly skipped.
-To run them, initialize a **disposable** rag-239-test* container with the infra
-tests' dummy credentials, loopback-publish its 5432 port, apply migrations, then:
+To run them, use an unused **disposable** rag-239-test* container name. From the
+repository root (all credentials below are test-only):
 
 ```sh
+docker run -d --name rag-239-test --publish 127.0.0.1::5432 \
+  --tmpfs /var/lib/postgresql/data \
+  -e POSTGRES_DB=growtogether_rag -e POSTGRES_USER=rag_admin \
+  -e POSTGRES_PASSWORD=test-admin-only pgvector/pgvector:0.8.2-pg16
+RAG_TEST_CONTAINER=rag-239-test python3 infra/tests/test_rag_postgres.py
+cd apps/worker
 RAG_TEST_CONTAINER=rag-239-test uv run pytest tests/test_rag_postgres.py
+# Only the disposable fixture created above; never a retained/production database.
+docker rm -f rag-239-test
 ```
+
+The infra test resets that fixture, applies all migrations and provisions the
+dummy reader/ingestion/migration passwords used by the Worker integration tests.
+Do not point it at an existing retained environment.
 
 They use real pgvector for ingestion/search/order, idempotency, rollback, revision
 conflicts, role separation, reader/writer pool closure and CLI behavior. Model
