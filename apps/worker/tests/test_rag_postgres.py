@@ -215,3 +215,145 @@ def test_cli_uses_only_ingest_credentials_without_generation_settings(
         with psycopg.connect(url("rag_ingest"), autocommit=True) as connection:
             connection.execute("DELETE FROM rag.documents WHERE collection_name=%s", (name,))
             connection.execute("DELETE FROM rag.collections WHERE name=%s", (name,))
+
+
+def test_real_knowledge_filtering_and_metadata_updates():
+    from pathlib import Path
+
+    from app.features.rag.knowledge import load_knowledge
+    from app.features.rag.models import RetrievalFilters
+    from app.features.rag.retrieval import RagRetriever
+
+    async def scenario(writer, reader, name, pool):
+        records = load_knowledge(
+            Path(__file__).parents[1] / "knowledge/cdc/cdc_milestones_ko.jsonl", name
+        )
+        embeddings = FixtureEmbeddings()
+        ingestor = Ingestor(writer, embeddings, CollectionSpec(chunking_mode="prechunked"))
+        for record in records:
+            assert await ingestor.ingest(record) == "updated"
+        for record in records:
+            assert await ingestor.ingest(record) == "unchanged"
+        assert embeddings.calls == 92
+        async with pool.connection() as connection:
+            row = await (
+                await connection.execute(
+                    "SELECT count(*) AS count FROM rag.chunks WHERE collection_name=%s", (name,)
+                )
+            ).fetchone()
+            assert row["count"] == 92
+        vector = [1.0] + [0.0] * 1535
+        for age, benchmark in [(2, 2), (3, 2), (4, 4), (5, 4), (59, 48), (60, 60)]:
+            hits = await reader.search(
+                name, vector, 10, filters=RetrievalFilters(age_months=age, chunk_type="milestone")
+            )
+            assert len(hits) == 4
+            assert {h.metadata.age_months for h in hits} == {benchmark}
+        assert (
+            await reader.search(
+                name, vector, 10, filters=RetrievalFilters(age_months=1, chunk_type="milestone")
+            )
+            == []
+        )
+        hits = await reader.search(
+            name,
+            vector,
+            10,
+            filters=RetrievalFilters(age_months=5, chunk_type="reference_guidance"),
+        )
+        assert len(hits) == 3
+        assert all(h.metadata.age_months is None for h in hits)
+        assert any(h.document_id.endswith("early_action_under_36m") for h in hits)
+        assert not any(h.document_id.endswith("early_action_36m_plus") for h in hits)
+        hits = await reader.search(
+            name,
+            vector,
+            10,
+            filters=RetrievalFilters(age_months=40, chunk_type="reference_guidance"),
+        )
+        assert any(h.document_id.endswith("early_action_36m_plus") for h in hits)
+        assert not any(h.document_id.endswith("early_action_under_36m") for h in hits)
+        hits = await reader.search(
+            name,
+            vector,
+            10,
+            filters=RetrievalFilters(age_months=5, chunk_type="milestone", topic="cognitive"),
+        )
+        assert len(hits) == 1
+        assert hits[0].metadata.source_pages == [3, 4]
+        assert hits[0].metadata.age_months == 4
+        assert hits[0].metadata.translation_status == "unofficial_korean_editorial_translation"
+        assert (
+            await reader.search(
+                name, vector, 10, filters=RetrievalFilters(age_months=5, chunk_type="screening")
+            )
+            == []
+        )
+        gap = await reader.search(
+            name,
+            vector,
+            10,
+            filters=RetrievalFilters(age_months=35, chunk_type="reference_guidance"),
+        )
+        assert len(gap) == 2  # No coercion of the actual age into either applicable interval.
+        assert (
+            await reader.search(
+                name, vector, 10, filters=RetrievalFilters(topic="cognitive' OR true --")
+            )
+            == []
+        )
+        original = records[0]
+        before = await reader.document(name, original.document_id)
+        changed = original.model_copy(
+            update={"metadata": original.metadata.model_copy(update={"review_status": "reviewed"})}
+        )
+        assert await ingestor.ingest(changed) == "updated"
+        assert await ingestor.ingest(changed) == "unchanged"
+        assert embeddings.calls == 92
+        after = await reader.document(name, original.document_id)
+        assert before.revision != after.revision
+        assert before.content_hash == after.content_hash
+        with pytest.raises(RagConflictError):
+            await writer.update_metadata(original, before.revision)
+        assert (
+            await reader.document(name, original.document_id)
+        ).metadata.review_status == "reviewed"
+        result = await RagRetriever(reader, embeddings, CollectionSpec()).retrieve(
+            QueryRequest(
+                collection=name,
+                question="발달",
+                filters=RetrievalFilters(age_months=5, chunk_type="milestone", topic="cognitive"),
+            )
+        )
+        assert not result.reason
+        assert result.hits[0].metadata.source_pages == [3, 4]
+        common = records[-1].model_copy(
+            update={
+                "document_id": "unrestricted-guidance",
+                "metadata": records[-1].metadata.model_copy(update={"applicable_age_months": None}),
+            }
+        )
+        await ingestor.ingest(common)
+        assert (
+            len(await reader.search(name, vector, 10, filters=RetrievalFilters(age_months=1))) == 1
+        )
+        for age in (3, 6):
+            other = original.model_copy(
+                update={
+                    "document_id": f"other-source:{age}",
+                    "metadata": original.metadata.model_copy(
+                        update={"source_id": "other-source", "age_months": age}
+                    ),
+                }
+            )
+            await ingestor.ingest(other)
+        hits = await reader.search(
+            name, vector, 10, filters=RetrievalFilters(age_months=5, chunk_type="milestone")
+        )
+        assert len(hits) == 5
+        assert {(h.metadata.source_id, h.metadata.age_months) for h in hits} == {
+            ("cdc_ltsae_milestone_checklists", 4),
+            ("other-source", 3),
+        }
+
+    asyncio.run(with_repositories(scenario))

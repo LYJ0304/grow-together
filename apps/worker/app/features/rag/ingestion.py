@@ -33,19 +33,32 @@ class Ingestor:
             )
 
     async def _ingest(self, document):
-        text = normalize_text(document.text)
+        text = (
+            document.text
+            if self.spec.chunking_mode == "prechunked"
+            else normalize_text(document.text)
+        )
+        if self.spec.chunking_mode == "prechunked" and len(text) > 2000:
+            raise ValueError("Pre-chunked content exceeds storage limit")
         content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         state = await self.repository.collection(document.collection)
         if state is not None and state.spec != self.spec:
             raise RagCollectionError("Collection embedding/chunk configuration mismatch")
         previous = await self.repository.document(document.collection, document.document_id)
-        if previous and (previous.content_hash, previous.title, previous.source) == (
-            content_hash,
-            document.title,
-            document.source,
-        ):
-            return "unchanged"
-        chunks = split_text(text, self.spec.chunk_size, self.spec.chunk_overlap)
+        if previous and previous.content_hash == content_hash:
+            if (previous.title, previous.source, previous.metadata) == (
+                document.title,
+                document.source,
+                document.metadata,
+            ):
+                return "unchanged"
+            changed = await self.repository.update_metadata(document, previous.revision)
+            return "updated" if changed else "unchanged"
+        chunks = (
+            [text]
+            if self.spec.chunking_mode == "prechunked"
+            else split_text(text, self.spec.chunk_size, self.spec.chunk_overlap)
+        )
         vectors = []
         for start in range(0, len(chunks), 16):
             vectors.extend(await self.embeddings.embed(chunks[start : start + 16]))
