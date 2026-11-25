@@ -25,7 +25,7 @@ export function AppHeader({
 }: {
   disabled?: boolean;
   title?: string;
-  onBack?: () => void;
+  onBack: () => void;
   backLabel?: string;
   rightActions?: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -33,43 +33,31 @@ export function AppHeader({
   return (
     <View testID="app-header" style={[styles.header, style]}>
       <View style={styles.identity}>
-        {onBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={backLabel}
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            onPress={onBack}
-            style={({ pressed }) => [styles.target, pressed && styles.pressed]}
-          >
-            <Image
-              source={require('../../assets/images/main/chevron-left.svg')}
-              tintColor={disabled ? colors.muted : colors.text}
-              style={styles.backIcon}
-              accessible={false}
-            />
-          </Pressable>
-        ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={backLabel}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onBack}
+          style={({ pressed }) => [styles.target, pressed && styles.pressed]}
+        >
           <Image
-            source={require('../../assets/images/brand/emblem.svg')}
-            style={styles.logo}
-            contentFit="contain"
+            source={require('../../assets/images/main/chevron-left.svg')}
+            tintColor={disabled ? colors.muted : colors.text}
+            style={styles.backIcon}
             accessible={false}
           />
-        )}
-        {!onBack || title ? (
+        </Pressable>
+        {title ? (
           <Text
-            accessibilityRole={onBack ? 'header' : undefined}
-            style={[styles.title, onBack && styles.detailTitle]}
+            accessibilityRole="header"
+            style={[styles.title, styles.detailTitle]}
           >
-            {title ?? '같이 키우기'}
+            {title}
           </Text>
         ) : null}
       </View>
-      <View style={styles.actions}>
-        {rightActions}
-        {!onBack ? <HeaderTools disabled={disabled} /> : null}
-      </View>
+      {rightActions ? <View style={styles.actions}>{rightActions}</View> : null}
     </View>
   );
 }
@@ -116,7 +104,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  logo: { width: 32, height: 32 },
   title: { ...typography.button, color: colors.heading, flexShrink: 1 },
   detailTitle: { ...typography.section, fontSize: 18, lineHeight: 26 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

@@ -28,7 +28,6 @@ import {
   shiftCalendarDate,
 } from '../../../src/lib/calendar';
 import { diaryDateKey, parseDiaryDate } from '../../../src/lib/diary-storage';
-import { AppHeader } from '../../../src/components/app-header';
 import { ActionButton } from '../../../src/components/action-button';
 import { RecordCalendar } from '../../../src/components/records/record-calendar';
 import { RecordCard } from '../../../src/components/records/record-card';
@@ -378,7 +377,6 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <StatusBar style="dark" />
-      <AppHeader />
       {hydrated ? (
         <FlatList<RecordRow>
           ref={list}

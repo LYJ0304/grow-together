@@ -226,7 +226,7 @@ export default function MainScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
         >
-          <HomeDayHeader date={date} blocked={pendingId !== null} />
+          <HomeDayHeader date={date} />
           <View>
             {profile.isPending ? (
               <Text style={styles.meta}>아이 정보를 불러오고 있어요.</Text>
