@@ -81,7 +81,10 @@ services:
     profiles: ["worker"]
     env_file: ../apps/worker/.env
     environment:
+      RAG_ENABLED: ${RAG_ENABLED:-false}
       RAG_DATABASE_URL: ${RAG_DATABASE_URL:-}
+      RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-openai/text-embedding-3-small}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-0.35}
     expose: ["8000"]
 
 volumes:

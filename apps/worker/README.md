@@ -109,3 +109,10 @@ Weekly reports use `weekly-v2` and optional `sources.todos[].child_reaction`.
 The Worker continues to accept `weekly-v1` without recorded reactions and keeps
 that model payload/prompt unchanged. Upgrade the Worker before the API sends the
 new fields/version. No model training, Mobile changes or new DB columns are needed.
+
+## Optional Vanilla RAG
+
+Worker-only RAG uses a dedicated pgvector database, disabled by default.
+The authenticated internal query endpoint and operator-only normalized text CLI
+are documented in [Vanilla RAG](docs/rag.md). It is not automatically connected
+to chat/schedules/diaries/reports and includes no production corpus.

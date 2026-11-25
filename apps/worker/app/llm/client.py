@@ -21,20 +21,33 @@ class OpenRouterClient:
         self.api_key = api_key
         self.model = model
 
-    async def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+    async def complete(
+        self, *, system_prompt: str, user_prompt: str, max_tokens: int | None = None
+    ) -> str:
         return await self._send(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             json_response=True,
+            max_tokens=max_tokens,
         )
 
     async def complete_chat(self, *, messages: list[dict[str, str]]) -> str:
         return await self._send(messages=messages, json_response=False)
 
-    async def _send(self, *, messages: list[dict[str, str]], json_response: bool) -> str:
+    async def _send(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        json_response: bool,
+        max_tokens: int | None = None,
+    ) -> str:
         options = {"response_format": {"type": "json_object"}} if json_response else {}
+        if max_tokens is not None:
+            if not 1 <= max_tokens <= 2048:
+                raise ValueError("Invalid completion token limit")
+            options["max_tokens"] = max_tokens
         try:
             async with OpenRouter(api_key=self.api_key, timeout_ms=30_000) as sdk:
                 response = await sdk.chat.send_async(

@@ -1,4 +1,4 @@
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr
 
     # Optional infrastructure setting; never use the service database credentials.
+    rag_enabled: bool = False
+    rag_embedding_model: str | None = Field(default=None, min_length=1, max_length=200)
+    rag_min_similarity: float = Field(default=0.35, ge=0, le=1, allow_inf_nan=False)
     rag_database_url: SecretStr | None = None
 
     @field_validator("rag_database_url", mode="before")

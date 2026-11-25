@@ -65,6 +65,12 @@ class RagComposeTest(unittest.TestCase):
                 self.assertNotIn(
                     "rag-postgres", services["worker"].get("depends_on", {})
                 )
+                self.assertEqual(
+                    services["worker"]["environment"]["RAG_ENABLED"], "false"
+                )
+                self.assertNotIn(
+                    "RAG_INGEST_DATABASE_URL", services["worker"]["environment"]
+                )
                 disabled = self.config(filename, rag=False)
                 self.assertNotIn("rag-postgres", disabled["services"])
                 self.assertNotIn("rag-migrate", disabled["services"])

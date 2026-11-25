@@ -1,8 +1,9 @@
 # RAG PostgreSQL / pgvector
 
-This is storage infrastructure for #239. Document ingestion, embeddings, runtime
-connection pools and query/generation endpoints belong to #240. No production
-corpus or embedding dimension is chosen here.
+This is the storage infrastructure for #239 and the Worker Vanilla RAG foundation
+for #240. No production corpus is loaded. The initial embedding space is
+openai/text-embedding-3-small, 1536 dimensions, cosine. See
+[Worker RAG](../../apps/worker/docs/rag.md) for the execution contract and limitations.
 
 ## Boundaries
 
@@ -15,7 +16,8 @@ corpus or embedding dimension is chosen here.
   Worker still has outbound connectivity on `ai` for existing model calls.
 - No RAG DB port is published. `rag-postgres-data` is a distinct persistent volume.
 - The optional `rag` profile and blank `RAG_DATABASE_URL` leave existing Worker
-  startup independent of RAG. The URL is a secret setting, not an active pool yet.
+  startup independent of RAG. The URL is secret; a reader pool is created only
+  when RAG_ENABLED=true.
 
 ## Roles and schema ownership
 
@@ -60,14 +62,14 @@ an explicitly secured tunnel/network arrangement; no public port is added here.
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml --profile rag up -d rag-postgres
 docker compose --env-file infra/.env -f infra/compose.yaml --profile rag run --rm rag-migrate
-# Existing Worker remains usable; RAG runtime is not implemented in #239.
+# Existing Worker remains usable. Enable RAG_ENABLED=true only after provisioning.
 docker compose --env-file infra/.env -f infra/compose.yaml --profile worker up -d worker
 ```
 
 For staging substitute `--env-file infra/staging/.env -f infra/compose.staging.yaml`
 in all commands. The one-shot migrator mounts `infra/rag-postgres` and
 `apps/worker/db` read-only, so deploy the source checkout as well as the app images.
-Do not enable RAG traffic in #240 before provisioning succeeds.
+Do not enable RAG traffic before provisioning and corpus evaluation succeed.
 
 ## Existing volume, migrations and recovery
 

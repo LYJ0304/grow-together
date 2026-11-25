@@ -142,6 +142,12 @@ class RagPostgresTest(unittest.TestCase):
         if result.returncode:
             raise RuntimeError(result.stderr)
 
+    def test_rag_retrieval_tables_are_present(self):
+        result = self.sql(
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='rag' AND table_name IN ('collections', 'documents', 'chunks')"
+        )
+        self.assertEqual(result.stdout.strip(), "3")
+
     def test_reader_cannot_connect_maintenance_database(self):
         for database in ["postgres", "template1"]:
             result = self.sql("SELECT 1", user="rag_reader", database=database)
@@ -164,7 +170,8 @@ class RagPostgresTest(unittest.TestCase):
             "keep existing data",
         )
         self.assertEqual(
-            self.sql("SELECT count(*) FROM rag.schema_migrations").stdout.strip(), "1"
+            self.sql("SELECT count(*) FROM rag.schema_migrations").stdout.strip(),
+            str(len(list((ROOT / "apps/worker/db/migrations").glob("*.sql")))),
         )
         self.assertEqual(
             self.sql(
@@ -240,7 +247,7 @@ class RagPostgresTest(unittest.TestCase):
             self.container,
             "sh",
             "-c",
-            "cat > /test-db/migrations/0002__failure.sql",
+            "cat > /test-db/migrations/9999__failure.sql",
             input="CREATE TABLE rag.must_rollback(id integer); SELECT 1/0;\n",
         )
         try:
@@ -253,7 +260,7 @@ class RagPostgresTest(unittest.TestCase):
             )
             self.assertEqual(
                 self.sql("SELECT count(*) FROM rag.schema_migrations").stdout.strip(),
-                "1",
+                str(len(list((ROOT / "apps/worker/db/migrations").glob("*.sql")))),
             )
         finally:
             self.command(
@@ -261,7 +268,7 @@ class RagPostgresTest(unittest.TestCase):
                 "exec",
                 self.container,
                 "rm",
-                "/test-db/migrations/0002__failure.sql",
+                "/test-db/migrations/9999__failure.sql",
             )
 
     def test_concurrent_migration_runs(self):
@@ -269,7 +276,8 @@ class RagPostgresTest(unittest.TestCase):
             for result in pool.map(lambda _: self.apply(bootstrap=False), range(2)):
                 self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
-            self.sql("SELECT count(*) FROM rag.schema_migrations").stdout.strip(), "1"
+            self.sql("SELECT count(*) FROM rag.schema_migrations").stdout.strip(),
+            str(len(list((ROOT / "apps/worker/db/migrations").glob("*.sql")))),
         )
 
 
