@@ -162,3 +162,10 @@ def test_chat_client_preserves_conversation_and_requests_plain_text(transport) -
     assert payload["model"] == "test/chat"
     assert "response_format" not in payload
     assert outcome["http_client"].is_closed
+
+
+def test_completion_can_bound_rag_output_tokens(transport):
+    requests, _ = transport
+    client = OpenRouterClient(api_key="test-key", model="test/model")
+    asyncio.run(client.complete(system_prompt="system", user_prompt="user", max_tokens=1024))
+    assert json.loads(requests[0].content)["max_tokens"] == 1024

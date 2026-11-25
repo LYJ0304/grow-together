@@ -21,6 +21,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     env_file: ../apps/api/.env
+    networks: [default, ai]
     environment:
       WORKER_BASE_URL: http://worker:8000
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-growtogether}
@@ -36,11 +37,61 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional, isolated storage for Worker RAG; existing API DB/volume is unchanged.
+  rag-postgres:
+    image: pgvector/pgvector:0.8.2-pg16
+    profiles: ["rag"]
+    environment:
+      POSTGRES_DB: growtogether_rag
+      POSTGRES_USER: rag_admin
+      POSTGRES_PASSWORD: ${RAG_POSTGRES_PASSWORD:-}
+    volumes:
+      - rag-postgres-data:/var/lib/postgresql/data
+    networks: [rag]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Run explicitly after DB readiness, including for an existing RAG volume.
+  rag-migrate:
+    image: pgvector/pgvector:0.8.2-pg16
+    profiles: ["rag"]
+    entrypoint: ["sh", "/bootstrap/apply.sh"]
+    environment:
+      PGHOST: rag-postgres
+      PGDATABASE: growtogether_rag
+      PGUSER: rag_admin
+      PGPASSWORD: ${RAG_POSTGRES_PASSWORD:-}
+      RAG_READER_PASSWORD: ${RAG_READER_PASSWORD:-}
+      RAG_INGEST_PASSWORD: ${RAG_INGEST_PASSWORD:-}
+      RAG_MIGRATOR_PASSWORD: ${RAG_MIGRATOR_PASSWORD:-}
+    volumes:
+      - ./rag-postgres:/bootstrap:ro
+      - ../apps/worker/db:/worker-db:ro
+    networks: [rag]
+    depends_on:
+      rag-postgres:
+        condition: service_healthy
+
   worker:
+    networks: [ai, rag]
     build: ../apps/worker
     profiles: ["worker"]
     env_file: ../apps/worker/.env
+    environment:
+      RAG_ENABLED: ${RAG_ENABLED:-false}
+      RAG_DATABASE_URL: ${RAG_DATABASE_URL:-}
+      RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-openai/text-embedding-3-small}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-0.35}
     expose: ["8000"]
 
 volumes:
   postgres-data:
+  rag-postgres-data:
+
+networks:
+  ai:
+  rag:
+    internal: true

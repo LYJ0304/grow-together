@@ -133,3 +133,12 @@ not establish actual model compliance, recommendation quality or medical accurac
 
 The API schedule caller, explicit Todo durations, confirmation locking and local
 execution are described in the [schedule integration guide](../../api/docs/schedule-generation.md).
+
+## RAG storage preparation
+
+`RAG_DATABASE_URL` is an optional secret reader connection setting. With
+RAG_ENABLED=false it never opens a pool. The optional RAG endpoint/ingestion CLI
+are documented in [Vanilla RAG](rag.md).
+Worker-owned migrations live in `db/`, outside Spring Boot Flyway.
+See [RAG infrastructure](../../../infra/docs/rag-postgres.md) for provisioning,
+role separation and real PostgreSQL tests.

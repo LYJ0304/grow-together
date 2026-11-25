@@ -46,3 +46,9 @@ and runs independently from the API.
 
 Each module guide includes its checks. For the separate MacBook staging stack, follow the
 [Tailscale staging guide](../../apps/api/docs/staging/Development.md).
+
+## Optional RAG storage
+
+The Worker RAG database is separate from the API database and is disabled by
+profile by default. See [RAG PostgreSQL setup and permissions](rag-postgres.md)
+for passwords, migrations, network boundaries, existing volumes and tests.
