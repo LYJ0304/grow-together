@@ -34,3 +34,18 @@ def test_settings_require_credentials_and_model(
     assert any(
         error["loc"] == (field,) and error["type"] == "missing" for error in raised.value.errors()
     )
+
+
+def test_rag_url_is_optional_and_secret(worker_environment, monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.delenv("RAG_DATABASE_URL", raising=False)
+    assert Settings(_env_file=None).rag_database_url is None
+    monkeypatch.setenv("RAG_DATABASE_URL", "")
+    assert Settings(_env_file=None).rag_database_url is None
+    url = "postgresql://rag_reader:test-secret@rag-postgres:5432/growtogether_rag"
+    monkeypatch.setenv("RAG_DATABASE_URL", url)
+    settings = Settings(_env_file=None)
+    assert settings.rag_database_url.get_secret_value() == url
+    assert "test-secret" not in repr(settings)
+    assert "test-secret" not in settings.model_dump_json()

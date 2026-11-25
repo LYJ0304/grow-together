@@ -57,6 +57,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    networks: [default, ai]
     environment:
       SPRING_PROFILES_ACTIVE: staging
       DATABASE_URL: jdbc:postgresql://postgres:5432/growtogether_staging
@@ -87,11 +88,52 @@ services:
       timeout: 5s
       retries: 12
 
+  # Optional, isolated storage for Worker RAG; existing API DB/volume is unchanged.
+  rag-postgres:
+    restart: unless-stopped
+    image: pgvector/pgvector:0.8.2-pg16
+    profiles: ["rag"]
+    environment:
+      POSTGRES_DB: growtogether_rag
+      POSTGRES_USER: rag_admin
+      POSTGRES_PASSWORD: ${RAG_POSTGRES_PASSWORD:-}
+    volumes:
+      - rag-postgres-data:/var/lib/postgresql/data
+    networks: [rag]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Run explicitly after DB readiness, including for an existing RAG volume.
+  rag-migrate:
+    image: pgvector/pgvector:0.8.2-pg16
+    profiles: ["rag"]
+    entrypoint: ["sh", "/bootstrap/apply.sh"]
+    environment:
+      PGHOST: rag-postgres
+      PGDATABASE: growtogether_rag
+      PGUSER: rag_admin
+      PGPASSWORD: ${RAG_POSTGRES_PASSWORD:-}
+      RAG_READER_PASSWORD: ${RAG_READER_PASSWORD:-}
+      RAG_INGEST_PASSWORD: ${RAG_INGEST_PASSWORD:-}
+      RAG_MIGRATOR_PASSWORD: ${RAG_MIGRATOR_PASSWORD:-}
+    volumes:
+      - ./rag-postgres:/bootstrap:ro
+      - ../apps/worker/db:/worker-db:ro
+    networks: [rag]
+    depends_on:
+      rag-postgres:
+        condition: service_healthy
+
   worker:
+    networks: [ai, rag]
     image: growtogether-staging-worker:${STAGING_BUILD_TAG:-local}
     build: ../apps/worker
     restart: unless-stopped
     environment:
+      RAG_DATABASE_URL: ${RAG_DATABASE_URL:-}
       AI_WORKER_API_KEY: ${STAGING_WORKER_API_KEY:?Set STAGING_WORKER_API_KEY}
       OPENROUTER_API_KEY: ${STAGING_OPENROUTER_API_KEY:?Set STAGING_OPENROUTER_API_KEY}
       LLM_CHAT_MODEL: ${STAGING_LLM_CHAT_MODEL:?Set STAGING_LLM_CHAT_MODEL}
@@ -102,3 +144,9 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  rag-postgres-data:
+
+networks:
+  ai:
+  rag:
+    internal: true
