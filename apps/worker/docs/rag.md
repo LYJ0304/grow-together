@@ -194,3 +194,11 @@ define update/deletion ownership, evaluate chunking/threshold/Top-K and real-mod
 citation quality, validate the chosen embedding/generation models live, and define
 any tenant authorization needed. Public fixture tests do not make this an approved
 medical knowledge base or a production-ready personal-document retrieval system.
+
+## Curated pre-chunked knowledge
+
+For validated JSONL datasets, metadata-aware retrieval, and CDC provenance/safety
+requirements, see [knowledge ingestion](knowledge.md) and the
+[dataset catalog](../knowledge/README.md). This route preserves pre-existing chunks
+instead of passing them through the normalized text CLI. Apply migration 0003 before
+running the updated Worker or CLI against an existing RAG database.

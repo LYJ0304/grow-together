@@ -6,11 +6,13 @@ from pgvector.psycopg import register_vector_async
 from psycopg import Error
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool, PoolClosed, PoolTimeout
 from pydantic import ValidationError
 
 from .embeddings import validate_vector
 from .errors import RagCollectionError, RagConfigurationError, RagConflictError, RagStorageError
+from .knowledge import KnowledgeMetadata, metadata_json
 from .models import CollectionSpec, CollectionState, DocumentState, RetrievedChunk
 
 DB_ERRORS = (Error, PoolTimeout, PoolClosed)
@@ -81,7 +83,7 @@ class RagRepository:
             async with self.pool.connection() as connection:
                 cursor = await connection.execute(
                     """SELECT embedding_model, dimensions,
-                    distance_metric, chunk_size, chunk_overlap,
+                    distance_metric, chunk_size, chunk_overlap, chunking_mode,
                     EXISTS(SELECT 1 FROM rag.chunks WHERE collection_name = c.name) AS has_chunks
                     FROM rag.collections c WHERE name = %s""",
                     (name,),
@@ -98,35 +100,60 @@ class RagRepository:
         try:
             async with self.pool.connection() as connection:
                 cursor = await connection.execute(
-                    """SELECT revision, content_hash, title, source
+                    """SELECT revision, content_hash, title, source, metadata
                     FROM rag.documents WHERE collection_name=%s AND document_id=%s""",
                     (collection, document_id),
                 )
                 row = await cursor.fetchone()
                 return (
                     DocumentState(
-                        str(row["revision"]), row["content_hash"], row["title"], row["source"]
+                        str(row["revision"]),
+                        row["content_hash"],
+                        row["title"],
+                        row["source"],
+                        KnowledgeMetadata.model_validate(row["metadata"])
+                        if row["metadata"]
+                        else None,
                     )
                     if row
                     else None
                 )
-        except DB_ERRORS:
+        except (*DB_ERRORS, ValidationError):
             raise RagStorageError("RAG storage unavailable") from None
 
-    async def search(self, collection, vector, top_k):
+    async def search(self, collection, vector, top_k, *, filters=None):
         if not 1 <= top_k <= 10:
             raise ValueError("Invalid result limit")
         vector = Vector(validate_vector(vector))
+        conditions, parameters = ["c.collection_name=%s"], [collection]
+        if filters is not None:
+            if filters.age_months is not None:
+                conditions.append("""d.metadata IS NOT NULL AND (
+                    d.age_months = (SELECT max(b.age_months) FROM rag.documents b
+                        WHERE b.collection_name=d.collection_name AND b.source_id=d.source_id
+                        AND b.age_months <= %s)
+                    OR (d.age_months IS NULL AND (
+                        d.metadata->'applicable_age_months' IS NULL
+                        OR d.metadata->'applicable_age_months' = 'null'::jsonb
+                        OR %s BETWEEN (d.metadata->'applicable_age_months'->>0)::integer
+                            AND (d.metadata->'applicable_age_months'->>-1)::integer)))""")
+                parameters.extend([filters.age_months, filters.age_months])
+            for field in ("chunk_type", "topic"):
+                value = getattr(filters, field)
+                if value is not None:
+                    conditions.append(f"d.{field}=%s")
+                    parameters.append(value)
+        where = " AND ".join(conditions)
         try:
             async with self.pool.connection() as connection:
                 cursor = await connection.execute(
-                    """SELECT d.document_id, c.ordinal, d.revision::text AS revision,
-                    d.title, d.source, c.body AS text,
+                    f"""SELECT d.document_id, c.ordinal, d.revision::text AS revision,
+                    d.title, d.source, d.metadata, c.body AS text,
                     1 - (c.embedding OPERATOR(extensions.<=>) %s) AS similarity
                     FROM rag.chunks c JOIN rag.documents d USING (collection_name, document_id)
-                    WHERE c.collection_name=%s
+                    WHERE {where}
                     ORDER BY similarity DESC, d.document_id, c.ordinal LIMIT %s""",
-                    (vector, collection, top_k),
+                    (vector, *parameters, top_k),
                 )
                 rows = await cursor.fetchall()
                 return [
@@ -149,8 +176,8 @@ class RagRepository:
                 )
                 await connection.execute(
                     """INSERT INTO rag.collections
-                    (name, embedding_model, dimensions, distance_metric, chunk_size, chunk_overlap)
-                    VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (name) DO NOTHING""",
+                    (name, embedding_model, dimensions, distance_metric, chunk_size, chunk_overlap, chunking_mode)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (name) DO NOTHING""",
                     (
                         document.collection,
                         spec.embedding_model,
@@ -158,25 +185,32 @@ class RagRepository:
                         spec.distance_metric,
                         spec.chunk_size,
                         spec.chunk_overlap,
+                        spec.chunking_mode,
                     ),
                 )
                 cursor = await connection.execute(
                     """SELECT embedding_model, dimensions,
-                    distance_metric, chunk_size, chunk_overlap FROM rag.collections WHERE name=%s""",
+                    distance_metric, chunk_size, chunk_overlap, chunking_mode FROM rag.collections WHERE name=%s""",
                     (document.collection,),
                 )
                 if CollectionSpec(**await cursor.fetchone()) != spec:
                     raise RagCollectionError("Collection embedding/chunk configuration mismatch")
                 cursor = await connection.execute(
-                    """SELECT revision, content_hash, title, source
+                    """SELECT revision, content_hash, title, source, metadata
                     FROM rag.documents WHERE collection_name=%s AND document_id=%s""",
                     (document.collection, document.document_id),
                 )
                 current = await cursor.fetchone()
-                if current and (current["content_hash"], current["title"], current["source"]) == (
+                if current and (
+                    current["content_hash"],
+                    current["title"],
+                    current["source"],
+                    current["metadata"],
+                ) == (
                     content_hash,
                     document.title,
                     document.source,
+                    metadata_json(document.metadata),
                 ):
                     return False
                 if (str(current["revision"]) if current else None) != expected_revision:
@@ -187,10 +221,11 @@ class RagRepository:
                 )
                 await connection.execute(
                     """INSERT INTO rag.documents
-                    (collection_name, document_id, title, source, content_hash, revision)
-                    VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (collection_name, document_id)
+                    (collection_name, document_id, title, source, content_hash, revision, metadata)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (collection_name, document_id)
                     DO UPDATE SET title=EXCLUDED.title, source=EXCLUDED.source,
                     content_hash=EXCLUDED.content_hash, revision=EXCLUDED.revision,
+                    metadata=EXCLUDED.metadata,
                     updated_at=CURRENT_TIMESTAMP""",
                     (
                         document.collection,
@@ -199,6 +234,7 @@ class RagRepository:
                         document.source,
                         content_hash,
                         uuid4(),
+                        Jsonb(metadata_json(document.metadata)) if document.metadata else None,
                     ),
                 )
                 async with connection.cursor() as cursor:
@@ -215,4 +251,29 @@ class RagRepository:
                     )
                 return True
         except (*DB_ERRORS, ValidationError):
+            raise RagStorageError("RAG storage unavailable") from None
+
+    async def update_metadata(self, document, expected_revision):
+        """Metadata-only edits retain the existing body/vector; CAS protects concurrent writes."""
+        try:
+            async with self.pool.connection() as connection:
+                cursor = await connection.execute(
+                    """UPDATE rag.documents SET title=%s, source=%s, metadata=%s,
+                    revision=%s, updated_at=CURRENT_TIMESTAMP
+                    WHERE collection_name=%s AND document_id=%s AND revision=%s
+                    RETURNING document_id""",
+                    (
+                        document.title,
+                        document.source,
+                        Jsonb(metadata_json(document.metadata)) if document.metadata else None,
+                        uuid4(),
+                        document.collection,
+                        document.document_id,
+                        expected_revision,
+                    ),
+                )
+                if await cursor.fetchone() is None:
+                    raise RagConflictError("Document changed; retry ingestion")
+                return True
+        except DB_ERRORS:
             raise RagStorageError("RAG storage unavailable") from None

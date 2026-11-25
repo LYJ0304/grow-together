@@ -104,3 +104,53 @@ def test_error_stages_are_distinct_and_sanitized(worker_app):
         assert response.status_code == status
         assert response.json()["detail"]["code"] == code
         assert "private-" not in response.text
+
+
+def test_knowledge_filters_are_validated_and_described_in_openapi(worker_app):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.features.rag.models import QueryResponse
+    from app.features.rag.runtime import get_rag_service
+
+    service = SimpleNamespace(
+        query=AsyncMock(
+            return_value=QueryResponse(status="no_context", reason="no_relevant_chunks")
+        )
+    )
+    worker_app.dependency_overrides[get_rag_service] = lambda: service
+    assert (
+        post(
+            worker_app,
+            {
+                "collection": "cdc",
+                "question": "발달",
+                "filters": {"age_months": 5, "chunk_type": "milestone", "topic": "cognitive"},
+            },
+        ).status_code
+        == 200
+    )
+    assert service.query.call_args.args[0].filters.age_months == 5
+    for filters in [
+        {"age_months": -1},
+        {"age_months": True},
+        {"chunk_type": "unknown"},
+        {"topic": ""},
+        {"unknown": 1},
+    ]:
+        assert (
+            post(
+                worker_app, {"collection": "cdc", "question": "발달", "filters": filters}
+            ).status_code
+            == 422
+        )
+    assert (
+        post(
+            worker_app, content=b'{"collection":"cdc","question":"x","filters":{"topic":"\\ud800"}}'
+        ).status_code
+        == 422
+    )
+    schemas = worker_app.openapi()["components"]["schemas"]
+    assert "filters" in schemas["QueryRequest"]["properties"]
+    assert "metadata" in schemas["Citation"]["properties"]
+    assert "source_pages" in schemas["KnowledgeMetadata"]["properties"]

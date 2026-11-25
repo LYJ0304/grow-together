@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .knowledge import KnowledgeMetadata
+
 DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small"
 DIMENSIONS = 1536
 
@@ -12,6 +14,7 @@ class CollectionSpec(BaseModel):
     embedding_model: str = Field(default=DEFAULT_EMBEDDING_MODEL, min_length=1, max_length=200)
     dimensions: Literal[1536] = DIMENSIONS
     distance_metric: Literal["cosine"] = "cosine"
+    chunking_mode: Literal["text", "prechunked"] = "text"
     chunk_size: int = Field(default=800, ge=1, le=2000)
     chunk_overlap: int = Field(default=120, ge=0)
 
@@ -34,15 +37,18 @@ class DocumentState:
     content_hash: str
     title: str
     source: str
+    metadata: KnowledgeMetadata | None = None
 
 
 class Document(BaseModel):
     model_config = ConfigDict(extra="forbid")
     collection: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
-    document_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+    document_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
     title: str = Field(min_length=1, max_length=200)
     source: str = Field(min_length=1, max_length=1000)
     text: str = Field(min_length=1, max_length=100_000)
+
+    metadata: KnowledgeMetadata | None = None
 
     @field_validator("title", "source")
     @classmethod
@@ -61,12 +67,23 @@ class RetrievedChunk(BaseModel):
     source: str
     text: str
     similarity: float = Field(ge=-1, le=1)
+    metadata: KnowledgeMetadata | None = None
+
+
+class RetrievalFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    age_months: int | None = Field(default=None, ge=0, le=240, strict=True)
+    chunk_type: (
+        Literal["milestone", "parenting_guidance", "screening", "reference_guidance"] | None
+    ) = None
+    topic: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class QueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     collection: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
     question: str = Field(min_length=1, max_length=2000)
+    filters: RetrievalFilters | None = None
     top_k: int = Field(default=4, ge=1, le=10, strict=True)
 
     @field_validator("question")
@@ -92,6 +109,7 @@ class Citation(BaseModel):
     source: str = Field(max_length=1000)
     excerpt: str = Field(min_length=1, max_length=2000)
     similarity: float = Field(ge=-1, le=1)
+    metadata: KnowledgeMetadata | None = None
 
 
 class GeneratedAnswer(BaseModel):

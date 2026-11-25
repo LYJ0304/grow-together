@@ -6,8 +6,9 @@ import time
 
 from pydantic import ValidationError
 
-from .errors import RagCollectionError, RagGenerationError, RagTimeoutError
+from .errors import RagGenerationError, RagTimeoutError
 from .models import Citation, GeneratedAnswer, QueryResponse
+from .retrieval import RagRetriever
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,20 +50,15 @@ class RagService:
             )
 
     async def _query(self, request):
-        state = await self.repository.collection(request.collection)
-        if state is None:
-            return QueryResponse(status="no_context", reason="collection_not_found")
-        if state.spec != self.spec:
-            raise RagCollectionError("Collection embedding/chunk configuration mismatch")
-        if not state.has_chunks:
-            return QueryResponse(status="no_context", reason="no_documents")
-        vector = (await self.embeddings.embed([request.question]))[0]
-        hits = await self.repository.search(request.collection, vector, request.top_k)
+        retrieved = await RagRetriever(
+            self.repository, self.embeddings, self.spec, self.min_similarity
+        ).retrieve(request)
+        if retrieved.reason:
+            return QueryResponse(status="no_context", reason=retrieved.reason)
+        hits = retrieved.hits
         LOGGER.info("rag_retrieval hits=%d", len(hits))
         sources = []
         for hit in hits:
-            if hit.similarity < self.min_similarity:
-                continue
             citation = Citation(
                 reference_id=f"S{len(sources) + 1}",
                 collection=request.collection,
@@ -73,20 +69,37 @@ class RagService:
                 source=hit.source,
                 excerpt=hit.text,
                 similarity=hit.similarity,
+                metadata=hit.metadata,
             )
-            candidate = [source.model_dump() for source in [*sources, citation]]
+            candidate = [source.model_dump(mode="json") for source in [*sources, citation]]
             if len(json.dumps(candidate, ensure_ascii=False, separators=(",", ":"))) > 12000:
                 break
             sources.append(citation)
         if not sources:
             return QueryResponse(status="no_context", reason="no_relevant_chunks")
+        safety = ""
+        if any(source.metadata is not None for source in sources):
+            safety = """
+Developmental checklist ages describe source benchmarks, not clinical applicability.
+Never treat the next checklist age as a requirement for a younger child. CDC milestones
+are behaviors at least 75% of children can do by that age, not diagnostic criteria.
+Do not infer a delay or disability from an unmet milestone. For unmet milestones,
+lost skills, or caregiver concerns, recommend consulting a healthcare professional.
+CDC screening schedules and support programs are US guidance; do not present US
+contacts or programs as Korean services. Korean editorial translations are unofficial,
+not official CDC Korean materials; preserve translation/review qualifications.
+"""
         payload = json.dumps(
-            {"question": request.question, "sources": [source.model_dump() for source in sources]},
+            {
+                "question": request.question,
+                "filters": request.filters.model_dump() if request.filters else None,
+                "sources": [source.model_dump(mode="json") for source in sources],
+            },
             ensure_ascii=False,
             separators=(",", ":"),
         )
         raw = await self.generator.complete(
-            system_prompt=SYSTEM_PROMPT, user_prompt=payload, max_tokens=1024
+            system_prompt=SYSTEM_PROMPT + safety, user_prompt=payload, max_tokens=1024
         )
         try:
             answer = GeneratedAnswer.model_validate_json(raw)
