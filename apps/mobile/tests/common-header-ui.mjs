@@ -18,7 +18,6 @@ await page.route('**/api/v1/users/me', (r) =>
   r.fulfill({ json: { id: 1, name: '보호자', email: 'parent@example.test' } }),
 );
 await page.route('**/api/v1/todos**', (r) => r.fulfill({ json: [] }));
-await page.route('**/api/v1/reports**', (r) => r.fulfill({ json: [] }));
 await page.route('**/api/v1/diary**', (r) =>
   r.fulfill(
     new URL(r.request().url()).searchParams.has('month')
@@ -28,100 +27,59 @@ await page.route('**/api/v1/diary**', (r) =>
 );
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-await mkdir('/tmp/common-header-shots', { recursive: true });
+await mkdir('/tmp/remove-header-shots', { recursive: true });
 try {
   for (const width of [320, 390, 430, 768, 1200]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const route of ['todo', 'main', 'calendar', 'report', 'chat']) {
+    for (const route of ['main', 'calendar', 'chat']) {
       await page.goto(`${base}/${route}`);
-      await page
-        .getByRole('button', { name: '내 프로필 열기', exact: true })
-        .waitFor();
-      const header = page.getByTestId('app-header');
-      assert.equal(await header.count(), 1);
+      await page.getByRole('tab', { name: '마이', exact: true }).waitFor();
+      assert.equal(await page.getByTestId('app-header').count(), 0);
       assert.equal(
-        await header.getByText('같이 키우기', { exact: true }).count(),
-        1,
-        'primary screens share a visible brand header',
-      );
-      const bounds = await header.boundingBox();
-      assert.equal(
-        bounds.y,
+        await page.getByText('같이 키우기', { exact: true }).count(),
         0,
-        'primary tab headers start at the same safe-area edge on web',
       );
-      assert(
-        bounds.height >= 52 && bounds.height <= 56,
-        'compact header without embedded safe area',
+      assert.equal(
+        await page
+          .getByRole('button', { name: '내 프로필 열기', exact: true })
+          .count(),
+        0,
       );
-      const profile = await page
-        .getByRole('button', { name: '내 프로필 열기', exact: true })
-        .boundingBox();
-      assert(profile.width >= 44 && profile.height >= 44);
-      assert(
-        profile.y >= bounds.y &&
-          profile.y + profile.height <= bounds.y + bounds.height,
-      );
+      assert.equal(await page.getByRole('tab').count(), 4);
       assert(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       );
-      assert.equal(
-        await page
-          .getByRole('tablist')
-          .filter({ has: page.getByRole('tab', { name: '오늘', exact: true }) })
-          .getByRole('tab')
-          .count(),
-        5,
-      );
-      if (route === 'todo') {
-        const intro = await page
-          .getByText('PLAN THE DAY', { exact: true })
-          .boundingBox();
+      if (route === 'main') {
+        const date = await page.getByTestId('home-day-heading').boundingBox();
         assert(
-          intro.y - (bounds.y + bounds.height) <= 12,
-          'schedule intro follows header without large spacer',
+          date.y <= 32,
+          'date starts near safe area without the removed navigation row',
         );
-        await page.screenshot({
-          path: `/tmp/common-header-shots/todo-${width}.png`,
-        });
       }
+      if (width === 390)
+        await page.screenshot({
+          path: `/tmp/remove-header-shots/${route}.png`,
+        });
     }
   }
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${base}/todo`);
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
-  await page.waitForURL('**/mypage');
-  await page
-    .getByRole('button', { name: '이전 화면으로', exact: true })
-    .click();
-  await page.waitForURL('**/todo');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: '아이 정보 관리', exact: true })
-    .click();
-  await page.waitForURL('**/children');
+  await page.goto(`${base}/diary`);
   const back = page.getByRole('button', {
-    name: '이전 화면으로 돌아가기',
+    name: '기록으로 돌아가기',
     exact: true,
   });
-  assert.equal((await back.innerText()).trim(), '', 'detail back is an icon');
-  await back.click();
-  await page.waitForURL('**/mypage');
-  await page.evaluate(() => (document.documentElement.style.fontSize = '24px'));
+  await back.waitFor();
+  const bounds = await back.boundingBox();
   assert(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
+    bounds.width >= 44 && bounds.height >= 44,
+    'detail back target is retained',
   );
+  assert.equal((await back.innerText()).trim(), '');
+  assert.equal(await page.getByTestId('app-header').count(), 1);
   assert.deepEqual(errors, []);
   console.log(
-    'PASS shared compact header across five tabs, 25 viewport/routes, profile navigation and detail back',
+    'PASS no brand row across 15 route/viewports; four tabs, compact content and detail back retained',
   );
 } finally {
   await browser.close();

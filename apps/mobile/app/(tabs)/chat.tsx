@@ -11,7 +11,6 @@ import { editorial } from '../../src/theme/editorial';
 import { colors } from '../../src/theme/colors';
 import { useTabInteraction } from '../../src/components/tab-interaction';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
-import { AppHeader } from '../../src/components/app-header';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -176,8 +175,6 @@ export default function CounselorChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
-        <AppHeader />
-
         <ScrollView
           ref={scroll}
           testID="chat-scroll"
