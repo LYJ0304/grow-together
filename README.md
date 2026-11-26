@@ -80,12 +80,13 @@ assistance currently composes text locally.
 | Mobile & web             | Expo SDK 58, React Native 0.88, TypeScript, Expo Router, TanStack Query, Reanimated           |
 | Backend API              | Java 21, Spring Boot 4, Spring Security, JPA, Flyway                                          |
 | AI Worker                | Python 3.12+, FastAPI, Pydantic, uv, OpenRouter                                               |
-| Database                 | PostgreSQL 16; local Compose uses a pgvector-enabled image                                    |
+| Database                 | PostgreSQL 16 for application data, separate PostgreSQL 16 + pgvector for optional RAG                                    |
 | File storage             | S3-compatible storage with signed URLs and upload verification, using MinIO in staging             |
 | Admin prototype          | Next.js App Router, React, Tailwind CSS, shadcn/ui, Recharts; mock data only                  |
 | Development & deployment | Docker Compose, Gradle, npm; MacBook staging over Tailscale                                  |
 
-The mobile app uploads photos directly through API-issued signed URLs.
+The API issues signed URLs for direct object storage access. Mobile support for
+uploading new diary photos is pending.
 The Admin console has no real authentication or production API connection.
 Provider deployment settings and live service availability are not established by
 this README.
@@ -98,14 +99,24 @@ flowchart TB
     API --> DB[("PostgreSQL")]
     API --> Worker["FastAPI Worker"]
     API --> Storage["Object storage · MinIO in staging"]
-    Mobile -->|Signed PUT and GET| Storage
-    Worker --> LLM["OpenRouter / LLM"]
+    Mobile -->|Signed GET| Storage
+    Worker -->|Generation and query embeddings| LLM["OpenRouter"]
+    Worker -->|Read-only retrieval| RAGDB[("Dedicated PostgreSQL + pgvector · optional")]
+    Ingest["Operator ingestion CLI"] -->|Document embeddings| LLM
+    Ingest -->|Write documents and vectors| RAGDB
 ```
 
 The API owns authentication, account scoping, persistence, and the external
 [OpenAPI contract](contracts/openapi.yaml). The Worker accepts authenticated
 internal generation requests and does not query the application database directly.
 The mobile app never receives the Worker service key or the LLM provider key.
+
+The Worker exposes optional retrieval-augmented generation (RAG) through its
+service-key-protected `POST /internal/v1/rag/query`. Retrieval uses a dedicated
+database on an internal network and a separate volume. The ingestion CLI writes
+collections using separate credentials. Parenting chat continues to use the
+Worker's chat generation endpoint. RAG is off by default and runs independently
+of chat, schedules, diary assistance, and reports.
 
 The [MacBook staging guide](apps/api/docs/staging/Development.md) covers Expo, API,
 Worker, PostgreSQL and MinIO over Tailscale.
@@ -177,6 +188,13 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 A host API must load its environment explicitly and use a reachable database and
 `WORKER_BASE_URL`; see the [development guide](docs/development.md).
+
+For optional RAG, start the dedicated database with the `rag` profile and run
+`rag-migrate` explicitly. Configure the reader DSN and `RAG_ENABLED` in
+`infra/.env` for Compose. Follow the [RAG database guide](infra/docs/rag-postgres.md)
+for the setup sequence. The bundled Korean CDC dataset requires explicit
+[validation and ingestion](apps/worker/docs/knowledge.md). See the
+[Worker RAG guide](apps/worker/docs/rag.md) for the internal query contract.
 
 ### Mobile application
 

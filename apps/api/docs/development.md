@@ -90,5 +90,6 @@ Request and response use the same two fields:
 Names are trimmed and must contain 1–50 characters. Birthdays use `YYYY-MM-DD`,
 must be real dates from year 0001, and cannot be after the server's current date.
 The `V7` Flyway migration creates the account-owned profile table. It does not
-import profiles already stored in mobile AsyncStorage; the mobile screen still
-uses local storage until API integration is implemented.
+import profiles already stored locally on mobile. The signed-in mobile flow
+reads and writes profiles through these API endpoints. UI preview uses local
+profile storage.

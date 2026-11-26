@@ -1,7 +1,8 @@
 # RAG PostgreSQL / pgvector
 
 This is the storage infrastructure for #239 and the Worker Vanilla RAG foundation
-for #240. No production corpus is loaded. The initial embedding space is
+for #240. The bundled [CDC dataset](../../apps/worker/docs/knowledge.md)
+requires explicit ingestion. The default embedding space is
 openai/text-embedding-3-small, 1536 dimensions, cosine. See
 [Worker RAG](../../apps/worker/docs/rag.md) for the execution contract and limitations.
 
@@ -25,8 +26,8 @@ openai/text-embedding-3-small, 1536 dimensions, cosine. See
 | --- | --- | --- |
 | `rag_admin` | Bootstrap/extension administrator | DB and one-shot provisioning only |
 | `rag_migrator` | Owns `rag` schema, application DDL and migration history | Migration job only |
-| `rag_ingest` | SELECT/INSERT/UPDATE/DELETE, sequence use | Future ingestion CLI only |
-| `rag_reader` | SELECT only | Future Worker query runtime |
+| `rag_ingest` | SELECT/INSERT/UPDATE/DELETE, sequence use | Operator ingestion CLIs |
+| `rag_reader` | SELECT only | Worker retrieval runtime |
 
 Runtime roles cannot CREATE in the database, `public`, `rag`, or `extensions`,
 create temporary tables, install extensions, SET ROLE to the owner or edit
