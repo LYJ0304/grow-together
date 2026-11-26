@@ -10,7 +10,7 @@
 
 ## 내비게이션
 
-Expo SDK 55 / Router 55.0.18에서 Native Tabs는 `unstable-native-tabs`이다. 기존 브랜드, 웹 링크, 화면 상태 보존을 함께 지원하기 위해 이미 설치된 React Navigation 기반 Expo Router JS Tabs를 사용한다. SDK 업그레이드는 하지 않았다.
+SDK 55 / Router 55.0.18 당시 기존 브랜드, 웹 링크, 화면 상태를 함께 지원하기 위해 React Navigation 기반 Expo Router JS Tabs를 선택했다. 현재 앱은 Expo SDK 58과 Router 58에서도 이 구성을 사용한다.
 
 - `(tabs)`에서 오늘·일정·기록·리포트·질문을 관리한다. 수동 `BottomNavigation`은 제거했다.
 - 기록 탭 안의 Stack이 Calendar와 Diary를 관리한다. `/main`, `/todo`, `/calendar`, `/diary`, `/report`, `/chat` 주소와 날짜 파라미터를 유지한다.
@@ -90,4 +90,4 @@ API 클라이언트/세션 검사는 기존 todo-api, auth-session, child-api/ch
 
 iOS/Android JS/Hermes export는 의존성 번들링 확인이다. 장치의 swipe-back, 시스템 뒤로 가기, 실제 키보드/노치, Haptic 강도 및 VoiceOver/TalkBack은 기기 또는 시뮬레이터에서 추가 확인해야 한다. 백엔드/API/worker/생성·저장 계약과 Vercel 배포 설정은 바꾸지 않았다.
 
-참고: [Expo JS Tabs](https://docs.expo.dev/router/advanced/tabs/), [Native Tabs의 SDK별 API](https://docs.expo.dev/router/advanced/native-tabs/), [SDK 55 Haptics](https://docs.expo.dev/versions/v55.0.0/sdk/haptics/), [Keyboard handling](https://docs.expo.dev/guides/keyboard-handling/).
+참고: [Expo JS Tabs](https://docs.expo.dev/router/advanced/tabs/), [Native Tabs의 SDK별 API](https://docs.expo.dev/router/advanced/native-tabs/), [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/), [Keyboard handling](https://docs.expo.dev/guides/keyboard-handling/).

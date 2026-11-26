@@ -43,9 +43,11 @@ live compatibility/quality evaluation.
 ## Provisioning and activation
 
 Follow [RAG PostgreSQL](../../../infra/docs/rag-postgres.md) first. Run the existing
-rag-migrate job on both fresh and existing RAG volumes; append migration 0002,
-never edit applied 0001 or its history. `rag_reader` can only read; `rag_ingest`
-can atomically replace documents/chunks; `rag_migrator` owns DDL.
+`rag-migrate` job on both fresh and existing RAG volumes. It applies pending
+Worker-owned migrations, including `0002__rag_documents.sql` and
+`0003__knowledge_metadata.sql`. Keep applied migrations and their history intact.
+`rag_reader` provides read access, `rag_ingest` can atomically replace documents
+and chunks, and `rag_migrator` owns DDL.
 
 Runtime settings (Compose takes them from the infra env file):
 
@@ -115,8 +117,11 @@ contract. Schema/auth/error tests verify the new operation.
 An answered response has status answered, reason null, nonempty content, configured
 generation model and sources. Each source contains reference_id (S1 etc.),
 collection, document_id, immutable document revision UUID, ordinal, title, source,
-excerpt and similarity. Sources are actual retrieved/context-provided records;
-unknown/unlisted citation IDs, malformed JSON and oversized answers are rejected.
+excerpt, similarity, and nullable `metadata`. Plain-text sources have
+`metadata: null`. For pre-chunked knowledge, see [knowledge retrieval](knowledge.md#retrieval)
+for optional request `filters` and source metadata. Sources refer to records
+included in the generation context.
+Unknown or unlisted citation IDs, malformed JSON and oversized answers are rejected.
 The model field names the configured generation model, not attestation of the
 provider's actual routing. Citation linkage does not prove semantic entailment or
 factual accuracy.

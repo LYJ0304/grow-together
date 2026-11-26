@@ -22,10 +22,10 @@ Keep each `.env` local; never commit secrets. The API is available at `http://lo
 
 Environment variables are split by responsibility:
 
-- `infra/.env`: PostgreSQL settings for Docker Compose.
+- `infra/.env`: PostgreSQL and optional RAG settings for Docker Compose.
 - `apps/api/.env`: API profile, JWT, CORS, and database settings for running outside Docker. Compose supplies its database connection from `infra/.env`.
 - `apps/mobile/.env`: Expo public settings; Expo loads this file when started from `apps/mobile`.
-- `apps/worker/.env`: Worker service name and log level.
+- `apps/worker/.env`: Worker service settings, service key, and model/provider configuration.
 
 Environment templates: [infra](../.env.example), [API](../../apps/api/.env.example),
 [mobile](../../apps/mobile/.env.example), and [worker](../../apps/worker/.env.example).
@@ -40,9 +40,15 @@ For a physical phone, configure the computer's LAN address as described there.
 The [API development guide](../../apps/api/docs/development.md) covers running
 Java outside Docker, testing, health checks, and Swagger UI.
 
-The [worker guide](../../apps/worker/docs/development.md) covers running the
-current example job through Compose or locally with uv. The worker is optional
-and runs independently from the API.
+For AI flows, start the API and the internal Worker HTTP server together:
+
+```bash
+docker compose --env-file infra/.env -f infra/compose.yaml --profile worker up --build
+```
+
+Set the same `AI_WORKER_API_KEY` in the API and Worker env files, and configure
+the OpenRouter credentials and models in the Worker env file. See the
+[Worker development guide](../../apps/worker/docs/development.md) for host setup.
 
 Each module guide includes its checks. For the separate MacBook staging stack, follow the
 [Tailscale staging guide](../../apps/api/docs/staging/Development.md).

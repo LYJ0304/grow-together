@@ -9,7 +9,7 @@ or test suites have been executed in your environment.
 
 | Template                                                | Main settings                                                                                              | Scope                                                       |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [infra/.env.example](../infra/.env.example)             | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`                                                        | Local Compose database                                      |
+| [infra/.env.example](../infra/.env.example)             | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, optional `RAG_*` settings                                                        | Local Compose database                                      |
 | [infra/staging/.env.example](../infra/staging/.env.example) | `STAGING_*` | Separate MacBook staging stack and credentials |
 | [apps/mobile/.env.example](../apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS`                             | Public client configuration only                            |
 | [apps/api/.env.example](../apps/api/.env.example)       | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `WORKER_BASE_URL`, `AI_WORKER_API_KEY`, S3-compatible storage settings | API persistence, authentication, storage, internal requests |
@@ -23,6 +23,12 @@ OpenRouter key stays only in the Worker. Never commit real `.env` files.
 Expo loads the mobile `.env` automatically. Spring Boot does **not** load the API
 `.env` automatically when running a host JVM. The Worker uses pydantic-settings
 to load its `.env`. The Admin demo requires no secrets or Admin password variable.
+
+For optional RAG under Compose, set the dedicated database credentials, reader
+`RAG_DATABASE_URL`, and runtime settings in `infra/.env`. A host Worker takes
+its RAG runtime settings from the Worker environment. Follow the
+[RAG database setup](../infra/docs/rag-postgres.md) and use the separate write DSN
+only in the operator's [ingestion command](../apps/worker/docs/knowledge.md).
 
 ## Common commands
 
