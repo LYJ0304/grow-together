@@ -126,8 +126,11 @@ export default function MyPageScreen() {
                 <View style={styles.divider} />
               </>
             ) : null}
-            <Text style={styles.body}>알림</Text>
-            <Text style={styles.caption}>알림 기능은 준비 중이에요.</Text>
+            <MenuRow
+              label="알림 설정"
+              detail="알림 항목을 미리 살펴봐요."
+              onPress={() => router.push('/notification-settings')}
+            />
           </View>
         </View>
         <View style={styles.section}>
@@ -139,6 +142,24 @@ export default function MyPageScreen() {
               label="기록 관리"
               detail="저장한 일기를 확인하고 관리해요."
               onPress={() => router.navigate('/calendar')}
+            />
+          </View>
+        </View>
+        <View style={styles.section}>
+          <Text accessibilityRole="header" style={styles.heading}>
+            도움말 및 지원
+          </Text>
+          <View style={styles.group}>
+            <MenuRow
+              label="도움말"
+              detail="자주 묻는 질문을 확인해요."
+              onPress={() => router.push('/help')}
+            />
+            <View style={styles.divider} />
+            <MenuRow
+              label="문의하기"
+              detail="문의 화면을 미리 살펴봐요."
+              onPress={() => router.push('/contact')}
             />
           </View>
         </View>
