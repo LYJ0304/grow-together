@@ -83,6 +83,9 @@ function AuthenticatedStack() {
             <Stack.Screen name="children" />
             <Stack.Screen name="spouse" />
             <Stack.Screen name="persona" />
+            <Stack.Screen name="help" />
+            <Stack.Screen name="contact" />
+            <Stack.Screen name="notification-settings" />
           </Stack.Protected>
           <Stack.Protected
             guard={status === 'authenticated'}
