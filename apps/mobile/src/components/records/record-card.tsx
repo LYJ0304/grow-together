@@ -1,3 +1,5 @@
+import { Skeleton, SkeletonGroup } from '../skeleton';
+import { isInitialLoading } from '../../lib/loading-state';
 import { memo, useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -25,6 +27,8 @@ export const RecordCard = memo(function RecordCard({
   const day = parseDiaryDate(date)!;
   const label = `${day.getFullYear()}년 ${day.getMonth() + 1}월 ${day.getDate()}일`;
   const photo = query.data?.photo;
+  const loading = isInitialLoading(query);
+  const blocked = disabled || loading;
   return (
     <View testID={`record-card-${date}`} style={styles.card}>
       <Pressable
@@ -32,8 +36,9 @@ export const RecordCard = memo(function RecordCard({
         accessibilityLabel={
           selected ? '선택한 날짜의 일기 보기' : `${label} 일기 보기`
         }
-        disabled={disabled}
-        accessibilityState={{ disabled }}
+        disabled={blocked}
+        accessibilityState={{ disabled: blocked, busy: loading }}
+        aria-busy={loading}
         onPress={() => onOpen(date, query.data?.id)}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
@@ -52,17 +57,33 @@ export const RecordCard = memo(function RecordCard({
               ? '이날의 일기'
               : `${day.getMonth() + 1}월 ${day.getDate()}일 · 일기`}
           </Text>
-          <Text numberOfLines={2} style={styles.preview}>
-            {query.data?.content.trim() ||
-              (query.isError
-                ? '기록 내용을 불러오지 못했어요.'
-                : query.isPending
-                  ? '기록을 불러오는 중이에요.'
+          {loading ? (
+            <SkeletonGroup
+              label="기록을 불러오는 중이에요."
+              testID={`record-detail-skeleton-${date}`}
+            >
+              <Skeleton width="90%" />
+              <Skeleton width="65%" />
+            </SkeletonGroup>
+          ) : (
+            <Text numberOfLines={2} style={styles.preview}>
+              {query.data?.content.trim() ||
+                (query.isError
+                  ? '기록 내용을 불러오지 못했어요.'
                   : '이날 남긴 일기를 다시 읽어보세요.')}
-          </Text>
-          {query.data && (query.data.photoCount > 0 || query.data.activities.length > 0) ? (
+            </Text>
+          )}
+          {query.data &&
+          (query.data.photoCount > 0 || query.data.activities.length > 0) ? (
             <Text numberOfLines={1} style={styles.preview}>
-              {[query.data.photoCount > 0 ? `사진 ${query.data.photoCount}장` : '', ...query.data.activities].filter(Boolean).join(' · ')}
+              {[
+                query.data.photoCount > 0
+                  ? `사진 ${query.data.photoCount}장`
+                  : '',
+                ...query.data.activities,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           ) : null}
         </View>

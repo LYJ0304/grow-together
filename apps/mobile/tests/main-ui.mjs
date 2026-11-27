@@ -46,25 +46,19 @@ try {
   );
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
-    for (const route of [
-      'main',
-      'todo',
-      'calendar',
-      'chat',
-      'diary?date=2026-11-08',
-    ]) {
+    for (const route of ['main', 'calendar', 'chat', 'diary?date=2026-11-08']) {
       await page.goto(
         `${process.env.MOBILE_URL ?? 'http://localhost:8156'}/${route}`,
         { waitUntil: 'commit', timeout: 120000 },
       );
       await page.getByRole('tablist').waitFor();
-      assert.equal(await page.getByRole('tablist').getByRole('tab').count(), 5);
+      assert.equal(await page.getByRole('tablist').getByRole('tab').count(), 4);
       const expected = {
-        main: '오늘',
+        main: '홈',
         todo: '일정',
-        calendar: '기록',
-        chat: '질문',
-        diary: '기록',
+        calendar: '캘린더',
+        chat: '상담',
+        diary: '캘린더',
       }[route.split('?')[0]];
       assert.equal(
         await page

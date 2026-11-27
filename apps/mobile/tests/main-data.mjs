@@ -59,7 +59,7 @@ try {
     waitUntil: 'commit',
     timeout: 120000,
   });
-  await text('일정을 불러오고 있어요.').waitFor();
+  await page.getByTestId('schedule-skeleton').waitFor();
   hold = undefined;
   release();
   await page.getByRole('button', { name: '일정 2개', exact: true }).waitFor();

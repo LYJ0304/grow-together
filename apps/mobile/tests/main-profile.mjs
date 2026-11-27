@@ -21,9 +21,7 @@ const heading = (name) => page.getByRole('heading', { name, exact: true });
 try {
   await page.goto(`${url}/main`, { waitUntil: 'commit', timeout: 120000 });
   await heading('하늘의 하루 · 11개월').waitFor();
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
+  await page.getByRole('tab', { name: '마이', exact: true }).click();
   await page.waitForURL('**/mypage');
   await page
     .getByRole('button', { name: '이전 화면으로', exact: true })
@@ -31,8 +29,8 @@ try {
   profile = { name: '바다', birthday: '2025-11-08' };
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   // Profile reload is tied to screen focus, not arbitrary window focus.
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
-  await page.getByRole('tab', { name: '오늘', exact: true }).click();
+  await page.getByRole('tab', { name: '상담', exact: true }).click();
+  await page.getByRole('tab', { name: '홈', exact: true }).click();
   await heading('바다의 하루 · 12개월').waitFor();
   status = 500;
   await page.reload();

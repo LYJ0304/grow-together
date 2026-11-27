@@ -71,7 +71,7 @@ try {
   await page.goto(
     `${process.env.MOBILE_URL ?? 'http://localhost:8251'}/calendar`,
   );
-  await page.getByText('기록을 불러오는 중이에요.', { exact: true }).waitFor();
+  await page.getByTestId('record-index-skeleton').waitFor();
   assert.equal(
     await page.getByText('이날의 기록이 아직 없어요', { exact: true }).count(),
     0,
