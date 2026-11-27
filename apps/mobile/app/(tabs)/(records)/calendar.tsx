@@ -1,3 +1,5 @@
+import { Skeleton, SkeletonGroup } from '../../../src/components/skeleton';
+import { isInitialLoading } from '../../../src/lib/loading-state';
 import { CalendarSectionHeader } from '@/components/calendar-section-header';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -90,14 +92,16 @@ export default function CalendarScreen() {
     scheduleMonths.flatMap((query) => query.data ?? []),
   );
   const scheduleMonthError = scheduleMonths.some((query) => query.isError);
+  const scheduleMonthPending = scheduleMonths.some(isInitialLoading);
   const openComposer = () =>
     router.push({
       pathname: '/diary',
       params: { date: dateKey, mode: 'create' },
     });
   const current = index.stateFor(dateKey.slice(0, 7));
-  const unavailable = Boolean(current?.isError),
+  const unavailable = Boolean(current?.isError && current.data === undefined),
     pending = !current || current.isPending;
+  const recordLoading = Boolean(current && isInitialLoading(current));
   const hasDraft = Object.entries(values).some(
     ([key, value]) =>
       key.startsWith(`diary:${dateKey}:`) &&
@@ -262,6 +266,11 @@ export default function CalendarScreen() {
       <Text style={[styles.meta, styles.intro]}>
         <Text style={styles.scheduleMarker}>●</Text> 일정 ● 기록
       </Text>
+      {scheduleMonthPending ? (
+        <Text accessibilityLiveRegion="polite" style={styles.meta}>
+          일정 표시를 확인하고 있어요.
+        </Text>
+      ) : null}
       {scheduleMonthError ? (
         <ActionButton
           label="일정 표시 다시 불러오기"
@@ -347,10 +356,17 @@ export default function CalendarScreen() {
   const empty =
     filter === 'schedule' ? null : (
       <View style={styles.message}>
-        {pending ? (
-          <Text accessibilityLiveRegion="polite" style={styles.meta}>
-            기록을 불러오는 중이에요.
-          </Text>
+        {recordLoading ? (
+          <SkeletonGroup
+            label="기록을 불러오는 중이에요."
+            testID="record-index-skeleton"
+          >
+            <Skeleton width="40%" height={18} />
+            <Skeleton width="90%" />
+            <Skeleton width="65%" />
+          </SkeletonGroup>
+        ) : pending ? (
+          <Text style={styles.meta}>기록 조회를 준비하고 있어요.</Text>
         ) : unavailable ? (
           <ActionButton
             label="선택한 날짜의 일기 확인"
@@ -403,7 +419,12 @@ export default function CalendarScreen() {
           keyboardShouldPersistTaps="handled"
         />
       ) : (
-        <Text style={styles.meta}>캘린더를 불러오는 중이에요.</Text>
+        <SkeletonGroup
+          label="캘린더를 불러오는 중이에요."
+          testID="calendar-restore-skeleton"
+        >
+          <Skeleton width="40%" height={20} />
+        </SkeletonGroup>
       )}
     </SafeAreaView>
   );

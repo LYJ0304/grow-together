@@ -1,3 +1,5 @@
+import { ScheduleSkeleton } from './skeleton';
+import { isInitialLoading } from '../lib/loading-state';
 import { CalendarSectionHeader } from '@/components/calendar-section-header';
 import { spacing } from '@/theme/spacing';
 import {
@@ -221,7 +223,10 @@ export function CalendarScheduleDay({
           title="일정"
           action={
             status === 'authenticated'
-              ? { label: '일정 추가', onPress: () => setAddMenu((open) => !open) }
+              ? {
+                  label: '일정 추가',
+                  onPress: () => setAddMenu((open) => !open),
+                }
               : undefined
           }
         />
@@ -253,9 +258,14 @@ export function CalendarScheduleDay({
             <Text style={styles.listMessage}>
               미리보기에서는 서버 일정을 이용할 수 없어요.
             </Text>
+          ) : isInitialLoading(todos) ? (
+            <ScheduleSkeleton />
           ) : todos.isPending ? (
-            <Text style={styles.listMessage}>일정을 불러오고 있어요.</Text>
-          ) : todos.isError ? (
+            <Text style={styles.listMessage}>
+              일정 조회 연결을 기다리고 있어요.
+            </Text>
+          ) : null}
+          {todos.isError ? (
             <View style={styles.listState}>
               <Text accessibilityRole="alert" style={styles.listError}>
                 일정을 불러오지 못했어요.
@@ -268,7 +278,9 @@ export function CalendarScheduleDay({
                 <Text style={styles.listActionLabel}>다시 시도</Text>
               </Pressable>
             </View>
-          ) : visibleTasks.length === 0 ? (
+          ) : todos.data !== undefined &&
+            status !== 'preview' &&
+            visibleTasks.length === 0 ? (
             <Text style={styles.listMessage}>등록된 일정이 없어요.</Text>
           ) : null}
           {visibleTasks.map((task, index) => (

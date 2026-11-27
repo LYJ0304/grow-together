@@ -1,3 +1,9 @@
+import {
+  Skeleton,
+  SkeletonGroup,
+  ScheduleSkeleton,
+} from '../../src/components/skeleton';
+import { isInitialLoading } from '../../src/lib/loading-state';
 import { TodoReactionModal } from '../../src/components/todo-reaction-modal';
 import { HomeScheduleRow } from '../../src/components/home-schedule-row';
 import { MotionPressable } from '../../src/components/motion-pressable';
@@ -184,7 +190,7 @@ export default function MainScreen() {
   const diaryLabel =
     status === 'preview'
       ? '일기 미리보기'
-      : diary.isError
+      : diary.isError && diary.data === undefined
         ? '일기 다시 확인'
         : diary.isPending
           ? '일기 확인 중'
@@ -198,9 +204,13 @@ export default function MainScreen() {
       },
     });
   };
+  const profileLoading = isInitialLoading(profile);
+  const todosLoading = status === 'authenticated' && isInitialLoading(todos);
+  const diaryLoading = status === 'authenticated' && isInitialLoading(diary);
   const diaryBusy = status === 'authenticated' && diary.isPending;
+  const diaryUnavailable = diary.isError && diary.data === undefined;
   const diaryCta =
-    status === 'authenticated' && diary.isError
+    status === 'authenticated' && diaryUnavailable
       ? '일기를 다시 불러오기'
       : diaryBusy
         ? '일기를 확인하고 있어요.'
@@ -228,9 +238,16 @@ export default function MainScreen() {
         >
           <HomeDayHeader date={date} />
           <View>
-            {profile.isPending ? (
-              <Text style={styles.meta}>아이 정보를 불러오고 있어요.</Text>
-            ) : profile.isError ? (
+            {profileLoading ? (
+              <SkeletonGroup
+                label="아이 정보를 불러오고 있어요."
+                testID="profile-skeleton"
+              >
+                <Skeleton width="48%" height={16} />
+              </SkeletonGroup>
+            ) : profile.isPending ? (
+              <Text style={styles.meta}>아이 정보 조회를 준비하고 있어요.</Text>
+            ) : profile.isError && profile.data === undefined ? (
               <View>
                 <Text accessibilityRole="alert" style={styles.meta}>
                   아이 정보를 불러오지 못했어요.
@@ -263,15 +280,27 @@ export default function MainScreen() {
                 </MotionPressable>
               </View>
             )}
+            {profile.isError && profile.data !== undefined ? (
+              <View>
+                <Text accessibilityRole="alert" style={styles.meta}>
+                  아이 정보를 불러오지 못했어요.
+                </Text>
+                <ActionButton
+                  label="아이 정보 다시 시도"
+                  onPress={() => void profile.refetch()}
+                />
+              </View>
+            ) : null}
           </View>
           <View testID="home-summary" style={styles.summaryRow}>
             {[
               {
                 label: '계획한 활동',
+                loading: todosLoading,
                 value:
                   status === 'preview'
                     ? '—'
-                    : todos.isError || todos.isPending
+                    : todos.data === undefined
                       ? '—'
                       : String(schedules.length),
                 onPress: viewAll,
@@ -286,8 +315,9 @@ export default function MainScreen() {
               },
               {
                 label: '완료한 활동',
+                loading: todosLoading,
                 value:
-                  status === 'preview' || todos.isError || todos.isPending
+                  status === 'preview' || todos.data === undefined
                     ? '—'
                     : String(completed),
                 onPress: viewAll,
@@ -295,14 +325,15 @@ export default function MainScreen() {
               },
               {
                 label: '남긴 일기',
+                loading: diaryLoading,
                 value:
-                  status === 'preview' || diary.isPending || diary.isError
+                  status === 'preview' || diary.data === undefined
                     ? '—'
                     : hasDiary
                       ? '1'
                       : '0',
                 onPress: () =>
-                  diary.isError ? void diary.refetch() : openDiary(),
+                  diaryUnavailable ? void diary.refetch() : openDiary(),
                 name: diaryLabel,
               },
             ].map((metric, index) => (
@@ -311,9 +342,28 @@ export default function MainScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={metric.name}
                 onPress={metric.onPress}
+                aria-busy={metric.loading}
+                disabled={
+                  metric.loading || (metric.label === '남긴 일기' && diaryBusy)
+                }
+                accessibilityState={{
+                  disabled:
+                    metric.loading ||
+                    (metric.label === '남긴 일기' && diaryBusy),
+                  busy: metric.loading,
+                }}
                 style={[styles.metric, index > 0 && styles.metricDivider]}
               >
-                <Text style={styles.metricValue}>{metric.value}</Text>
+                {metric.loading ? (
+                  <SkeletonGroup
+                    label={`${metric.label} 확인 중`}
+                    testID={`metric-skeleton-${index}`}
+                  >
+                    <Skeleton width={30} height={24} />
+                  </SkeletonGroup>
+                ) : (
+                  <Text style={styles.metricValue}>{metric.value}</Text>
+                )}
                 <Text style={styles.metricLabel}>{metric.label}</Text>
               </MotionPressable>
             ))}
@@ -335,11 +385,11 @@ export default function MainScreen() {
               <Text style={styles.body}>
                 미리보기에서는 서버 일정을 이용할 수 없어요.
               </Text>
+            ) : todosLoading ? (
+              <ScheduleSkeleton />
             ) : todos.isPending ? (
-              <View style={styles.loading}>
-                <Text style={styles.meta}>일정을 불러오고 있어요.</Text>
-              </View>
-            ) : todos.isError ? (
+              <Text style={styles.meta}>일정 조회 연결을 기다리고 있어요.</Text>
+            ) : todos.isError && todos.data === undefined ? (
               <View>
                 <Text accessibilityRole="alert" style={styles.body}>
                   일정을 불러오지 못했어요.
@@ -393,6 +443,17 @@ export default function MainScreen() {
                 )}
               </>
             )}
+            {todos.isError && todos.data !== undefined ? (
+              <View>
+                <Text accessibilityRole="alert" style={styles.body}>
+                  일정을 불러오지 못했어요.
+                </Text>
+                <ActionButton
+                  label="일정 다시 불러오기"
+                  onPress={() => void todos.refetch()}
+                />
+              </View>
+            ) : null}
             {completionError ? (
               <View>
                 <Text accessibilityRole="alert" style={styles.error}>
@@ -417,7 +478,9 @@ export default function MainScreen() {
             accessibilityState={{
               disabled: diaryBusy,
             }}
-            onPress={() => (diary.isError ? void diary.refetch() : openDiary())}
+            onPress={() =>
+              diaryUnavailable ? void diary.refetch() : openDiary()
+            }
             style={[styles.diaryCta, diaryBusy && styles.disabledSurface]}
           >
             <Text
@@ -432,6 +495,17 @@ export default function MainScreen() {
               ›
             </Text>
           </MotionPressable>
+          {diary.isError && diary.data !== undefined ? (
+            <View>
+              <Text accessibilityRole="alert" style={styles.meta}>
+                일기를 불러오지 못했어요.
+              </Text>
+              <ActionButton
+                label="일기 다시 불러오기"
+                onPress={() => void diary.refetch()}
+              />
+            </View>
+          ) : null}
           <HomeQuestionEntry />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -591,6 +665,5 @@ const styles = StyleSheet.create({
   link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   linkText: { ...typography.label, fontWeight: '600', color: colors.primary },
   empty: { paddingVertical: 12, gap: 14 },
-  loading: { minHeight: 232 },
   error: { ...typography.caption, color: colors.danger, marginBottom: 8 },
 });
