@@ -54,8 +54,8 @@ try {
       if (route === 'main') {
         const date = await page.getByTestId('home-day-heading').boundingBox();
         assert(
-          date.y <= 32,
-          'date starts near safe area without the removed navigation row',
+          Math.abs(date.y - 16) < 1,
+          'date keeps 16px breathing room below the web safe area',
         );
       }
       if (width === 390)
@@ -77,6 +77,40 @@ try {
   );
   assert.equal((await back.innerText()).trim(), '');
   assert.equal(await page.getByTestId('app-header').count(), 1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const state of ['missing', 'loading']) {
+    let release;
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/v1/children/me', async (route) => {
+      if (state === 'loading') await held;
+      await route.fulfill(
+        state === 'missing'
+          ? { status: 404, json: {} }
+          : { json: { name: '하늘', birthday: '2025-01-01' } },
+      );
+    });
+    await page.goto(`${base}/main`);
+    if (state === 'missing') {
+      await page
+        .getByRole('button', { name: '나중에 등록하기', exact: true })
+        .click();
+      await page
+        .getByText('아이와 함께하는 첫 기록', { exact: true })
+        .waitFor();
+    } else await page.getByTestId('profile-skeleton').waitFor();
+    const heading = await page.getByTestId('home-day-heading').boundingBox();
+    assert(
+      Math.abs(heading.y - 16) < 1,
+      `${state} profile keeps the same top inset`,
+    );
+    await page.screenshot({ path: `/tmp/home-top-spacing-${state}.png` });
+    if (state === 'loading') {
+      release();
+      await page.getByRole('heading', { name: /하늘의 하루/ }).waitFor();
+    }
+  }
   assert.deepEqual(errors, []);
   console.log(
     'PASS no brand row across 15 route/viewports; four tabs, compact content and detail back retained',

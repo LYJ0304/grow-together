@@ -1,3 +1,4 @@
+import { spacing } from '../../src/theme/spacing';
 import {
   Skeleton,
   SkeletonGroup,
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: spacing.lg,
     // End-of-scroll clearance, without shrinking the scrolling viewport.
     paddingBottom: QUICK_ADD_SIZE + QUICK_ADD_BOTTOM + 24,
     gap: 16,
