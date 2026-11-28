@@ -244,6 +244,34 @@ export class AuthSession {
     }
   }
 
+  async withdraw(password: string) {
+    const epoch = this.epoch;
+    if (this.session.status !== 'authenticated' || !this.tokens)
+      throw new ApiError(401, 'UNAUTHORIZED', messages.UNAUTHORIZED);
+    try {
+      // Destructive commands are not automatically replayed after refresh or an uncertain response.
+      await http<void>('/api/v1/users/me/withdrawal', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.tokens.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+    } catch (error) {
+      this.checkEpoch(epoch);
+      if (error instanceof ApiError && error.status === 401)
+        await this.clearSession(
+          '탈퇴 여부를 확인하지 못했어요. 다시 로그인해 확인해주세요.',
+        );
+      throw error;
+    }
+    this.checkEpoch(epoch);
+    await this.clearSession(
+      '회원 탈퇴가 완료됐어요. 사진 정리는 순차적으로 진행돼요.',
+    );
+  }
+
   async logout() {
     const refreshToken = this.tokens?.refreshToken;
     // Clear immediately; even a consumed token can revoke its session on this API.

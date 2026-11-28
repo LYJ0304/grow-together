@@ -154,6 +154,11 @@ export default function MyPageScreen() {
             버전 {Constants.expoConfig?.version ?? '확인 불가'}
           </Text>
         </View>
+        <MenuRow
+          label="회원 탈퇴"
+          detail="계정과 개인정보를 삭제해요."
+          onPress={() => router.push('/withdrawal')}
+        />
         <ActionButton
           label={'로그아웃'}
           variant="tertiary"

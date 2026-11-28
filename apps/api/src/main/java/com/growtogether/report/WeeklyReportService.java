@@ -109,7 +109,7 @@ public class WeeklyReportService {
                 } else {
                     synchronized (cache) {
                         prune();
-                        cache.put(key, new Entry(insight, clock.instant()));
+                        if (flights.get(key) == flight) cache.put(key, new Entry(insight, clock.instant()));
                         while (cache.size() > CACHE_CAPACITY) cache.remove(cache.keySet().iterator().next());
                     }
                 }
@@ -137,6 +137,18 @@ public class WeeklyReportService {
         var latest = reader.read(owner, before.report().period().start());
         return latest.with(latest.report().sourceHash().equals(key.hash())
                 ? insight : ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED"));
+    }
+
+    @org.springframework.transaction.event.TransactionalEventListener
+    public void accountWithdrawn(com.growtogether.user.AccountWithdrawn event) {
+        synchronized (cache) {
+            cache.keySet().removeIf(key -> key.owner().equals(event.owner()));
+            flights.entrySet().removeIf(entry -> {
+                if (!entry.getKey().owner().equals(event.owner())) return false;
+                entry.getValue().completeExceptionally(new IllegalStateException("Account removed"));
+                return true;
+            });
+        }
     }
 
     private ReportInsight call(ReportWorkerRequest input) {

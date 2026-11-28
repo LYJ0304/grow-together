@@ -10,6 +10,7 @@ export class ApiError extends Error {
 
 export const messages: Record<string, string> = {
   EMAIL_ALREADY_EXISTS: '이미 가입된 이메일이에요.',
+  INVALID_PASSWORD: '현재 비밀번호를 확인해주세요.',
   INVALID_CREDENTIALS: '이메일 또는 비밀번호를 확인해 주세요.',
   INVALID_REQUEST: '입력 내용을 확인해 주세요.',
   UNAUTHORIZED: '다시 로그인해 주세요.',
