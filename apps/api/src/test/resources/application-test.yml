@@ -11,6 +11,9 @@ spring:
     enabled: false
 
 app:
+  storage:
+    deletion:
+      enabled: false
   jwt:
     # Test-only signing key; never use outside tests.
     secret: "dGVzdC1vbmx5LXNlY3JldC1rZXktMzItYnl0ZXMtbG9uZw=="

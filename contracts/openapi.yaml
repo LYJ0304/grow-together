@@ -3,6 +3,48 @@ info:
   title: GrowTogether API
   version: 0.1.0
 paths:
+  /api/v1/users/me/withdrawal:
+    post:
+      operationId: withdrawAccount
+      summary: Permanently withdraw the authenticated account
+      description: >-
+        Verifies the current password and deletes the user's relational data and all
+        device sessions in one transaction. Photo objects are queued durably for
+        deletion, including a final sweep after upload URL expiry. Success does not
+        mean immediate physical erasure of storage objects or backups. Never replays
+        automatically: a lost response is uncertain, and a subsequent 401 alone is
+        not proof of withdrawal. Previously issued tokens cannot authenticate after
+        completion. Account recovery is not supported.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  format: password
+                  writeOnly: true
+                  minLength: 1
+                  maxLength: 72
+                  description: Nonblank current password, at most 72 UTF-8 bytes.
+      responses:
+        '204':
+          description: Account deleted and photo deletion durably scheduled
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+        '400':
+          description: INVALID_PASSWORD or INVALID_REQUEST; no data was deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /api/v1/users/me:
     get:
       operationId: getUserProfile

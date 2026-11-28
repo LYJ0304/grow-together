@@ -27,6 +27,23 @@ class WeeklyReportServiceTest {
         when(reader.read(anyLong(),any())).thenReturn(source);
         when(worker.generate(any())).thenAnswer(i->result(i.getArgument(0)));
     }
+    @Test void withdrawalEvictsOnlyOwnerAndLateFlightCannotRepopulateCache() throws Exception {
+        service.generate(1L,WEEK);
+        service.generate(2L,WEEK);
+        service.accountWithdrawn(new com.growtogether.user.AccountWithdrawn(1L));
+        assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
+        assertThat(service.get(2L,WEEK).insight().state()).isEqualTo(ReportInsightState.AVAILABLE);
+        var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
+        doAnswer(i->{entered.countDown();release.await(5,TimeUnit.SECONDS);return result(i.getArgument(0));}).when(worker).generate(any());
+        try(var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            var late=pool.submit(()->service.generate(1L,WEEK));
+            assertThat(entered.await(5,TimeUnit.SECONDS)).isTrue();
+            service.accountWithdrawn(new com.growtogether.user.AccountWithdrawn(1L));
+            release.countDown();late.get(5,TimeUnit.SECONDS);
+            assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
+        } finally {release.countDown();}
+    }
+
     @Test void getNeverGeneratesAndPostReusesOnlyFreshSuccessfulResult() {
         assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
         verifyNoInteractions(worker);

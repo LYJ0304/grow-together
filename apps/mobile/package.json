@@ -69,7 +69,8 @@
     "test:welcome:ui": "node tests/welcome-ui.mjs && node tests/welcome-motion.mjs",
     "test:auth:form": "node tests/auth-form-validation.mjs",
     "test:auth:form:ui": "node tests/auth-form-ui.mjs",
-    "test:auth:required": "node tests/login-only-policy.mjs && node tests/login-only-ui.mjs"
+    "test:auth:required": "node tests/login-only-policy.mjs && node tests/login-only-ui.mjs",
+    "test:account:withdrawal": "node tests/withdrawal-session.mjs && node tests/withdrawal-ui.mjs"
   },
   "dependencies": {
     "@expo/ui": "~58.0.29",

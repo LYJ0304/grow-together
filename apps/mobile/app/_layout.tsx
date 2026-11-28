@@ -91,6 +91,7 @@ function AuthenticatedStack() {
           >
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="profile" />
+            <Stack.Screen name="withdrawal" />
           </Stack.Protected>
         </Stack>
       </View>
