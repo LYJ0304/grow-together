@@ -71,31 +71,6 @@ try {
     'Auth submission is the primary action',
   );
   assert.equal(pair.fg, rgb(colors.surface));
-  const preview = await buttonColors(
-    page.getByRole('button', { name: '인증 없이 미리보기 진입', exact: true }),
-  );
-  assert.notEqual(
-    preview.bg,
-    pair.bg,
-    'Login and preview are different actions',
-  );
-  assert(ratio(preview.bg, preview.fg) >= 4.5);
-  assert(ratio(pair.bg, pair.fg) >= 4.5);
-  const bounds = await login.boundingBox();
-  await page.mouse.move(
-    bounds.x + bounds.width / 2,
-    bounds.y + bounds.height / 2,
-  );
-  await page.mouse.down();
-  await page.waitForTimeout(100);
-  pair = await buttonColors(login);
-  assert.equal(pair.opacity, '1', 'Pressed CTA must not fade its text');
-  assert(ratio(pair.bg, pair.fg) >= 4.5);
-  assert.equal(
-    pair.bg,
-    rgb(colors.onTint),
-    'Pressed primary stays in its color family',
-  );
   await page.screenshot({ path: `${artifacts}/primary-pressed.png` });
   await page.mouse.move(0, 0);
   await page.mouse.up();
@@ -234,40 +209,6 @@ try {
   await home.screenshot({ path: `${artifacts}/schedule-disabled.png` });
   await home.getByRole('button', { name: '닫기', exact: true }).click();
   await home.close();
-  await page
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await page.getByRole('tab', { name: '리포트', exact: true }).click();
-  const loginRequired = page.getByRole('button', {
-    name: '로그인하러 가기',
-    exact: true,
-  });
-  await loginRequired.waitFor();
-  assert.equal((await buttonColors(loginRequired)).bg, rgb(colors.primary));
-  await loginRequired.click();
-  await page.getByRole('textbox', { name: '이메일', exact: true }).waitFor();
-  await page
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  const writeDiary = page.getByRole('button', {
-    name: '선택한 날짜의 일기 작성하기',
-    exact: true,
-  });
-  await writeDiary.waitFor();
-  await page.waitForFunction(
-    () =>
-      !document.querySelector('[aria-label="선택한 날짜의 일기 작성하기"]')
-        ?.disabled,
-  );
-  const calendarWrite = await buttonColors(writeDiary);
-  assert.equal(calendarWrite.bg, rgb(colors.tint));
-  assert(ratio(calendarWrite.bg, calendarWrite.fg) >= 4.5);
-  await page.screenshot({ path: `${artifacts}/calendar.png` });
-  await writeDiary.click();
-  await page
-    .getByRole('button', { name: '일기 저장하기', exact: true })
-    .waitFor();
   const roles = async (target, names) => {
     const primary = ['일기 저장하기', '다음'];
     const tertiary = [

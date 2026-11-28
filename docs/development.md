@@ -11,7 +11,7 @@ or test suites have been executed in your environment.
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [infra/.env.example](../infra/.env.example)             | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, optional `RAG_*` settings                                                        | Local Compose database                                      |
 | [infra/staging/.env.example](../infra/staging/.env.example) | `STAGING_*` | Separate MacBook staging stack and credentials |
-| [apps/mobile/.env.example](../apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ENABLE_AUTH_BYPASS`                             | Public client configuration only                            |
+| [apps/mobile/.env.example](../apps/mobile/.env.example) | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`                             | Public client configuration only                            |
 | [apps/api/.env.example](../apps/api/.env.example)       | `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `WORKER_BASE_URL`, `AI_WORKER_API_KEY`, S3-compatible storage settings | API persistence, authentication, storage, internal requests |
 | [apps/worker/.env.example](../apps/worker/.env.example) | `SERVICE_NAME`, `LOG_LEVEL`, `AI_WORKER_API_KEY`, `OPENROUTER_API_KEY`, `LLM_*_MODEL`                      | Worker configuration and provider credentials               |
 
@@ -70,7 +70,7 @@ JWT authentication. `/actuator/health` includes database health.
 
 For a phone, use the development computer's LAN address in the public mobile API
 URL. For browser API calls, allow the actual Expo origin in `CORS_ALLOWED_ORIGINS`.
-Disable authentication preview for end-to-end authentication checks. See
+Use a test account for end-to-end authentication checks. See
 [mobile development](../apps/mobile/docs/development.md) and
 [authentication/session behavior](../apps/mobile/docs/authentication.md).
 

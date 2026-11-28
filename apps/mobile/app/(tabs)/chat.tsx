@@ -7,7 +7,6 @@ import {
 import type { ChatMessage } from '../../src/lib/features/chat/types';
 import { useSessionValue } from '../../src/lib/session-state';
 import { PageIntro } from '../../src/components/page-intro';
-import { editorial } from '../../src/theme/editorial';
 import { colors } from '../../src/theme/colors';
 import { useTabInteraction } from '../../src/components/tab-interaction';
 import { useTabScrollToTop } from '../../src/lib/use-tab-scroll-to-top';
@@ -33,11 +32,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
-
 import { useAuth, useChatDraft } from '../../src/components/auth-provider';
 import { typography } from '../../src/components/typography';
 import { useChatKeyboard } from '../../src/lib/use-chat-keyboard';
-
 const suggestions = [
   {
     question: '오늘 집에서 할 놀이를 추천해줘',
@@ -52,22 +49,20 @@ const suggestions = [
     preview: '함께한 상황과 아이의 반응을 적어보세요.',
   },
 ];
-
 const INPUT_LINE_HEIGHT = 24;
 const INPUT_VERTICAL_PADDING = 12;
 const INPUT_MIN_HEIGHT = INPUT_LINE_HEIGHT + 2 * INPUT_VERTICAL_PADDING;
-
 let nextMessageId = 0;
-
 export default function CounselorChatScreen() {
-  const { compose } = useLocalSearchParams<{ compose?: string }>();
+  const { compose } = useLocalSearchParams<{
+    compose?: string;
+  }>();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   useTabScrollToTop(scroll);
   const input = useRef<ComponentRef<typeof TextInput>>(null);
   const { width, height } = useWindowDimensions();
   const { draft, setDraft } = useChatDraft();
-  const { client, epoch, status } = useAuth();
-  const preview = status === 'preview';
+  const { client, epoch } = useAuth();
   const [sending, setSending] = useSessionValue('chat.sending', false);
   const requestInFlight = useRef(false);
   const canSend = !sending && Boolean(draft.trim());
@@ -93,7 +88,6 @@ export default function CounselorChatScreen() {
   const inputHeight = draft
     ? Math.min(Math.max(INPUT_MIN_HEIGHT, contentHeight), inputMaxHeight)
     : INPUT_MIN_HEIGHT;
-
   useLayoutEffect(() => {
     if (Platform.OS !== 'web') return;
     const field = input.current as unknown as HTMLTextAreaElement | null;
@@ -103,19 +97,16 @@ export default function CounselorChatScreen() {
     setContentHeight(field.scrollHeight);
     field.style.height = previous;
   }, [draft, width]);
-
   useEffect(() => {
     if (notice && followLatest.current)
       scroll.current?.scrollToEnd({ animated: false });
   }, [notice]);
-
   useEffect(() => {
     if (compose === 'true') {
       input.current?.focus();
       router.setParams({ compose: '' });
     }
   }, [compose]);
-
   const send = async () => {
     if (!canSend || requestInFlight.current) return;
     const content = draft.trim();
@@ -130,8 +121,6 @@ export default function CounselorChatScreen() {
     setDraft('');
     setNotice('');
     input.current?.focus();
-    if (preview) return;
-
     requestInFlight.current = true;
     setSending(true);
     try {
@@ -157,7 +146,6 @@ export default function CounselorChatScreen() {
       setSending(false);
     }
   };
-
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -225,7 +213,7 @@ export default function CounselorChatScreen() {
                 </Pressable>
               </View>
               <ChatMessageList messages={messages} />
-              {(sending || preview) && (
+              {sending && (
                 <Text
                   accessibilityLiveRegion="polite"
                   style={styles.connectionNote}
@@ -243,13 +231,6 @@ export default function CounselorChatScreen() {
                 title="육아 도우미"
                 description="함께 고민해요. 궁금한 점과 기억하고 싶은 순간을 질문으로 남겨보세요."
               />
-              {preview && (
-                <View style={editorial.hero}>
-                  <Text style={editorial.description}>
-                    AI 답변은 로그인 후에 받을 수 있어요.
-                  </Text>
-                </View>
-              )}
               <Text style={styles.intro}>이런 질문으로 시작해보세요</Text>
               <View style={styles.suggestions}>
                 {suggestions.map((item) => (
@@ -388,7 +369,6 @@ export default function CounselorChatScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   keyboard: { flex: 1, minHeight: 0 },

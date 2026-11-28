@@ -2,20 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useAuth } from '../components/auth-provider';
-import { readChildProfile } from './child-profile';
 import { createChildApi } from './features/child/childApi';
 
 export function useChildProfile() {
   const { client, status, accountKey, epoch } = useAuth();
-  const enabled =
-    accountKey !== null && (status === 'authenticated' || status === 'preview');
+  const enabled = accountKey !== null && status === 'authenticated';
   const queryKey = ['childProfile', accountKey, epoch] as const;
   const query = useQuery({
     queryKey,
-    queryFn: () =>
-      status === 'preview'
-        ? readChildProfile(accountKey!)
-        : createChildApi(client).getProfile(),
+    queryFn: () => createChildApi(client).getProfile(),
     enabled,
     retry: false,
   });

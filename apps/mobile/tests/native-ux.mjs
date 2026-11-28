@@ -219,8 +219,7 @@ try {
     );
     await button('내 프로필 열기').click();
     await button('로그아웃').click();
-    await button('인증 없이 미리보기 진입').click();
-    await page.waitForURL('**/main');
+    await page.waitForURL('**/login');
     release();
     hold = undefined;
     await page.waitForTimeout(100);
@@ -228,7 +227,7 @@ try {
     assert.equal(
       await page.getByTestId('home-schedule-row').count(),
       0,
-      'An old completion response cannot repopulate preview',
+      'An old completion response cannot repopulate signed-out UI',
     );
   } else {
     await tab('일정').click();

@@ -43,7 +43,6 @@ const records = [
   },
 ];
 let nextId = 44;
-let reads = 0;
 let writes = 0;
 let readFailure = false;
 let writeFailure = false;
@@ -75,7 +74,6 @@ await page.route('**/api/v1/todos**', async (route) => {
         JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).sub === '1'),
   );
   if (method === 'GET') {
-    reads++;
     if (delayedRead) {
       const wait = delayedRead;
       delayedRead = undefined;
@@ -332,7 +330,7 @@ try {
       );
       await button('목록 새로고침').click();
       await oldRequest;
-      const beforeLogout = reads;
+
       await page
         .getByRole('button', { name: '내 프로필 열기', exact: true })
         .click();
@@ -340,20 +338,7 @@ try {
       await page
         .getByRole('heading', { name: '로그인', exact: true })
         .waitFor();
-      await button('인증 없이 미리보기 진입').click();
-      await page.getByRole('tab', { name: '일정', exact: true }).click();
-      await text('미리보기에서는 서버 일정을 이용할 수 없어요.').waitFor();
-      assert.equal(await text('서버 아침').count(), 0);
       finishOldAccount();
-      assert.equal(reads, beforeLogout);
-      assert.equal(
-        await button('＋ 직접 추가').getAttribute('aria-disabled'),
-        'true',
-      );
-      await page
-        .getByRole('button', { name: '내 프로필 열기', exact: true })
-        .click();
-      await button('미리보기 종료').click();
       await page
         .getByRole('textbox', { name: '이메일', exact: true })
         .fill('second@example.com');
@@ -383,7 +368,7 @@ try {
       await button('취소').click();
       assert.deepEqual(errors, []);
       console.log(
-        'PASS todo UI CRUD, errors, lost responses, date isolation, reload, logout/preview, narrow viewport',
+        'PASS todo UI CRUD, errors, lost responses, date isolation, reload, logout/login, narrow viewport',
       );
     }
   }

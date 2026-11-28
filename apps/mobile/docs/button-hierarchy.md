@@ -20,7 +20,7 @@
 
 | 화면 | 주요 변경 |
 | --- | --- |
-| Welcome/Auth | 로그인·회원가입 제출 primary, 보조 가입 이동 secondary, 인증 없이 미리보기 tertiary |
+| Welcome/Auth | 로그인·회원가입 제출 primary, 보조 가입 이동 secondary |
 | Main | 일정 만들기 primary, 질문 진입·재조회 secondary. 카드·FAB·탭의 밝은 브랜드 표현 유지 |
 | Schedule | 활동 추천 secondary. 후보 생성 전 generate primary, 생성 후 regenerate secondary + 최종 저장 primary. 취소/닫기 tertiary |
 | Diary | 초안 정리/저장 primary, 직접 작성/재생성 secondary, 사진 첨부·변경·제거/재료 확인/돌아가기 tertiary. 실제 일기 삭제는 outlined destructive, 최종 확인은 solid destructive |
@@ -41,13 +41,13 @@
 - `tests/brand-colors.mjs`, `tests/brand-roles-ui.mjs`: 색상 개수 대신 실제 역할·대비·pressed/disabled/selected 상태·기존 동작 검사.
 - `AGENTS.md`, `.harness/conventions.md`, `.harness/references/brand-colors.md`: 종전 Peach 기본/서로 다른 pastel 정책을 새 역할 정책으로 갱신.
 
-전체 파일 목록은 PR diff를 기준으로 한다. API·DB·Worker·캐시·라우팅·입력/저장 핸들러·로고·타이포그래피·간격·애니메이션 타이밍·탭 구조는 변경하지 않는다. UI 테스트의 데이터는 Playwright 응답 fixture/미리보기 로컬 저장에만 사용된다.
+전체 파일 목록은 PR diff를 기준으로 한다. API·DB·Worker·캐시·라우팅·입력/저장 핸들러·로고·타이포그래피·간격·애니메이션 타이밍·탭 구조는 변경하지 않는다. UI 테스트의 데이터는 Playwright 응답 fixture에만 사용된다.
 
 ## 검증과 화면 비교
 
 색상 변경은 TDD 예외를 적용한다. 새 역할 일관성 검사에서는 수정 전 로그인 CTA가 peach라서 primary 기대와 불일치하는 RED를 확인했고, 수정 후 GREEN을 확인했다. 기존 palette-count 검사 대신 각 역할의 normal/pressed 텍스트 대비와 outline 대비를 계산하고, 저장·삭제 확인·후보 선택/해제·비활성 상태·실제 라우팅을 유지해서 검증한다.
 
-화면 비교는 실행 환경의 `/tmp/grow-hierarchy/review.html` 및 `before/`, `after/`에 보존한다. 320/390/430/1024px 기본 화면과 Welcome/Login/Signup, 생성/선택/비활성·일기 작성/저장/삭제 상태를 포함한다. 수정 전 기본 화면 비교는 직전 main(PR #198)의 보존된 Web export를 사용했다. 이후 상태 캡처는 실제 앱의 테스트 전용 fixture와 미리보기 흐름을 사용한다.
+화면 비교는 실행 환경의 `/tmp/grow-hierarchy/review.html` 및 `before/`, `after/`에 보존한다. 320/390/430/1024px 기본 화면과 Welcome/Login/Signup, 생성/선택/비활성·일기 작성/저장/삭제 상태를 포함한다. 수정 전 기본 화면 비교는 직전 main(PR #198)의 보존된 Web export를 사용했다. 이후 상태 캡처는 실제 앱의 테스트 전용 fixture와 당시 체험 모드 흐름(현재 제거됨)을 사용한다.
 
 필수 검증: typecheck, lint, format, colors, brand, brand UI, visual-polish, logo, launch motion, 영향 화면 UI 회귀 검사, Web/iOS/Android export, harness 테스트. 실제 실행 결과는 PR 본문에 기록한다.
 

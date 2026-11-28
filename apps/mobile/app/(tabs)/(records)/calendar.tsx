@@ -29,7 +29,7 @@ import {
   getWeek,
   shiftCalendarDate,
 } from '../../../src/lib/calendar';
-import { diaryDateKey, parseDiaryDate } from '../../../src/lib/diary-storage';
+import { diaryDateKey, parseDiaryDate } from '../../../src/lib/diary-date';
 import { ActionButton } from '../../../src/components/action-button';
 import { RecordCalendar } from '../../../src/components/records/record-calendar';
 import { RecordCard } from '../../../src/components/records/record-card';

@@ -11,7 +11,7 @@ export async function http<T>(
     throw new ApiError(
       0,
       'API_NOT_CONFIGURED',
-      'API 연결이 설정되지 않았어요. 미리보기를 이용해 주세요.',
+      '서버 연결이 설정되지 않았어요. 잠시 후 다시 시도해주세요.',
     );
   }
   const { timeoutMs = 15000, ...fetchInit } = init;

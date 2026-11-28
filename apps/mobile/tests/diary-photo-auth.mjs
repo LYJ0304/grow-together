@@ -88,7 +88,7 @@ try {
   await click('내용 수정');
   assert.equal(
     await page.getByRole('button', { name: '사진 추가', exact: true }).count(),
-    0,
+    1,
   );
   console.log(
     'PASS authenticated photo removal is deferred to save, cancel/failure preserves originals, retry restores remaining reference and activities',

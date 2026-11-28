@@ -20,4 +20,4 @@ After authentication, the child profile gate distinguishes an existing profile,
 404 (new-user onboarding), loading and retryable failure. Account-scoped onboarding
 drafts are cleared on logout; see [child onboarding](child-onboarding.md).
 
-For API URL and UI preview settings, see [mobile development](development.md).
+For API URL and authentication settings, see [mobile development](development.md).

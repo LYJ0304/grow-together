@@ -104,7 +104,7 @@ export function DiaryPhotos({
       ) : null}
       {editable && canAdd ? (
         <Text style={styles.caption}>
-          미리보기 사진은 이 기기에만 저장돼요. 최대 3장까지 첨부할 수 있어요.
+          사진은 일기를 저장할 때 업로드돼요. 최대 3장까지 첨부할 수 있어요.
         </Text>
       ) : null}
       {!photos.length && !editable ? (

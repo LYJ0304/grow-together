@@ -18,7 +18,7 @@ for (const appEnv of ['development', 'staging', 'production']) {
     });
     assert.equal(env.appEnv, appEnv);
     assert.equal(env.apiBaseUrl, 'https://api.example.com');
-    assert.equal(env.canPreview, appEnv !== 'production' && bypass !== 'false');
+    assert.equal('canPreview' in env, false);
     const { AuthSession } = load(
       {
         ...configured,
@@ -31,8 +31,9 @@ for (const appEnv of ['development', 'staging', 'production']) {
       { read: async () => null, clear: async () => {}, write: async () => {} },
       () => {},
     );
-    await client.preview();
-    assert.equal(client.getSnapshot().status === 'preview', env.canPreview);
+    assert.equal(typeof client.preview, 'undefined');
+    await client.restore();
+    assert.equal(client.getSnapshot().status, 'signedOut');
   }
 }
 assert.equal(load(configured).env.appEnv, 'development');
@@ -67,4 +68,4 @@ await assert.rejects(
   (error) => error.code === 'API_NOT_CONFIGURED',
 );
 assert.equal(requests, 0);
-console.log('Environment and preview policy tests passed');
+console.log('Environment and login-only policy tests passed');

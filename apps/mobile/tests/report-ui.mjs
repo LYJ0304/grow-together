@@ -90,32 +90,8 @@ try {
     'Draft must not invent an API contract or silently fetch mock data',
   );
   assert.deepEqual(errors, []);
-  const preview = await browser.newPage({
-    viewport: { width: 390, height: 844 },
-  });
-  try {
-    await preview.goto(base + '/login');
-    await preview
-      .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-      .click();
-    await preview.getByRole('tab', { name: '리포트', exact: true }).click();
-    await preview
-      .getByRole('heading', {
-        name: '로그인하고 기록을 돌아보세요',
-        exact: true,
-      })
-      .waitFor();
-    await preview
-      .getByRole('button', { name: '로그인하러 가기', exact: true })
-      .click();
-    await preview
-      .getByRole('textbox', { name: '이메일', exact: true })
-      .waitFor();
-  } finally {
-    await preview.close();
-  }
   console.log(
-    'PASS five tabs, Seoul week browsing, retained week, existing screen links, preview login, unavailable boundary, no invented calls and 320/390/landscape/wide layouts',
+    'PASS five tabs, Seoul week browsing, retained week, existing screen links, unavailable boundary, no invented calls and 320/390/landscape/wide layouts',
   );
 } finally {
   await browser.close();

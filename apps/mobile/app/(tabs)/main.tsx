@@ -42,12 +42,11 @@ import { typography } from '../../src/components/typography';
 import { useAuth } from '../../src/components/auth-provider';
 import { useChildProfile } from '../../src/lib/use-child-profile';
 import { createTodoApi } from '../../src/lib/features/todo/todoApi';
-import { diaryDateKey } from '../../src/lib/diary-storage';
+import { diaryDateKey } from '../../src/lib/diary-date';
 import type { TodoResponse } from '../../src/lib/features/todo/types';
 import { colors } from '../../src/theme/colors';
 import { successFeedback } from '../../src/lib/haptics';
 import { ScheduleProgress } from '../../src/components/schedule-progress';
-
 const localDateKey = diaryDateKey;
 const QUICK_ADD_SIZE = 56;
 const QUICK_ADD_BOTTOM = 16;
@@ -83,7 +82,7 @@ export default function MainScreen() {
   });
   useFocusEffect(
     useCallback(() => {
-      if (status !== 'authenticated' && status !== 'preview') return;
+      if (status !== 'authenticated') return;
       let timer: ReturnType<typeof setTimeout>;
       const refresh = () => {
         const now = new Date();
@@ -117,7 +116,6 @@ export default function MainScreen() {
       };
     }, [queryClient, status, epoch]),
   );
-
   const schedules = [...(todos.data ?? [])].sort(
     (a, b) =>
       Number(a.completed) - Number(b.completed) ||
@@ -137,7 +135,7 @@ export default function MainScreen() {
     useCallback(() => {
       const update = () => setNow(new Date().toTimeString().slice(0, 8));
       update();
-      const timer = setInterval(update, 60_000);
+      const timer = setInterval(update, 60000);
       return () => clearInterval(timer);
     }, []),
   );
@@ -189,13 +187,11 @@ export default function MainScreen() {
   const addSchedule = () =>
     router.navigate({ pathname: '/calendar', params: { date, add: 'true' } });
   const diaryLabel =
-    status === 'preview'
-      ? '일기 미리보기'
-      : diary.isError && diary.data === undefined
-        ? '일기 다시 확인'
-        : diary.isPending
-          ? '일기 확인 중'
-          : `일기 ${hasDiary ? 1 : 0}개`;
+    diary.isError && diary.data === undefined
+      ? '일기 다시 확인'
+      : diary.isPending
+        ? '일기 확인 중'
+        : `일기 ${hasDiary ? 1 : 0}개`;
   const openDiary = () => {
     router.navigate({
       pathname: '/diary',
@@ -299,40 +295,25 @@ export default function MainScreen() {
                 label: '계획한 활동',
                 loading: todosLoading,
                 value:
-                  status === 'preview'
-                    ? '—'
-                    : todos.data === undefined
-                      ? '—'
-                      : String(schedules.length),
+                  todos.data === undefined ? '—' : String(schedules.length),
                 onPress: viewAll,
-                name:
-                  status === 'preview'
-                    ? '일정 미리보기'
-                    : todos.isError
-                      ? '일정 확인하기'
-                      : todos.isPending
-                        ? '일정 확인 중'
-                        : `일정 ${schedules.length}개`,
+                name: todos.isError
+                  ? '일정 확인하기'
+                  : todos.isPending
+                    ? '일정 확인 중'
+                    : `일정 ${schedules.length}개`,
               },
               {
                 label: '완료한 활동',
                 loading: todosLoading,
-                value:
-                  status === 'preview' || todos.data === undefined
-                    ? '—'
-                    : String(completed),
+                value: todos.data === undefined ? '—' : String(completed),
                 onPress: viewAll,
                 name: '완료한 활동 보기',
               },
               {
                 label: '남긴 일기',
                 loading: diaryLoading,
-                value:
-                  status === 'preview' || diary.data === undefined
-                    ? '—'
-                    : hasDiary
-                      ? '1'
-                      : '0',
+                value: diary.data === undefined ? '—' : hasDiary ? '1' : '0',
                 onPress: () =>
                   diaryUnavailable ? void diary.refetch() : openDiary(),
                 name: diaryLabel,
@@ -382,11 +363,7 @@ export default function MainScreen() {
                 <Text style={styles.linkText}>전체 보기</Text>
               </MotionPressable>
             </View>
-            {status === 'preview' ? (
-              <Text style={styles.body}>
-                미리보기에서는 서버 일정을 이용할 수 없어요.
-              </Text>
-            ) : todosLoading ? (
+            {todosLoading ? (
               <ScheduleSkeleton />
             ) : todos.isPending ? (
               <Text style={styles.meta}>일정 조회 연결을 기다리고 있어요.</Text>
@@ -563,7 +540,6 @@ export default function MainScreen() {
     </SafeAreaView>
   );
 }
-
 function ageMonths(birthday: string, today: string) {
   const born = new Date(`${birthday}T12:00:00`),
     date = new Date(`${today}T12:00:00`);

@@ -19,7 +19,6 @@ import { typography } from '../theme/typography';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { radius } from '../theme/radius';
-import { env } from '../config/env';
 import { ApiError } from '../lib/api/errors';
 import {
   authFieldOrder,
@@ -294,18 +293,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               </Text>
             </Pressable>
           </View>
-          {!isSignup && env.canPreview ? (
-            <ActionButton
-              variant="tertiary"
-              disabled={busy}
-              label="인증 없이 미리보기 진입"
-              onPress={() => {
-                void client
-                  .preview()
-                  .catch((error: Error) => setNotice(error.message));
-              }}
-            />
-          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

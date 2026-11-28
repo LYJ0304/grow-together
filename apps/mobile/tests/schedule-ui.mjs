@@ -171,32 +171,6 @@ try {
   );
   assert.equal(writes, 3);
   await context.close();
-  const previewContext = await browser.newContext({
-    viewport: { width: 320, height: 720 },
-  });
-  const previewPage = await previewContext.newPage();
-  let previewApiCalls = 0;
-  await previewPage.route('**/api/v1/**', (r) => {
-    previewApiCalls++;
-    return r.abort();
-  });
-  await previewPage.goto(base + '/login', {
-    waitUntil: 'commit',
-    timeout: 120000,
-  });
-  await previewPage
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await previewPage.getByRole('tablist').waitFor();
-  await previewPage.getByRole('tab', { name: '일정', exact: true }).click();
-  await previewPage
-    .getByRole('button', { name: '활동 추천받기', exact: true })
-    .click();
-  await previewPage
-    .getByText('AI 일정 생성은 로그인 후 이용할 수 있어요.', { exact: true })
-    .waitFor();
-  assert.equal(previewApiCalls, 0);
-  await previewContext.close();
   console.log(
     'PASS schedule UI: 320px preview, no write before confirmation, selection, failure preservation, uncertain response inspection, conflict and success',
   );

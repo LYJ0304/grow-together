@@ -179,37 +179,6 @@ try {
   );
   await calendar.screenshot({ path: '/tmp/246-skeleton-shots/calendar.png' });
   await calendar.close();
-  const preview = await browser.newPage({
-    viewport: { width: 390, height: 844 },
-    reducedMotion: 'reduce',
-  });
-  preview.setDefaultTimeout(30000);
-  preview.setDefaultNavigationTimeout(120000);
-  let previewServerReads = 0;
-  await preview.route('**/api/v1/todos**', (r) => {
-    previewServerReads++;
-    return r.fulfill({ json: [] });
-  });
-  await preview.goto(base + '/login');
-  await preview
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await preview
-    .getByText('미리보기에서는 서버 일정을 이용할 수 없어요.', { exact: true })
-    .waitFor();
-  assert.equal(await preview.getByTestId('schedule-skeleton').count(), 0);
-  assert.equal(await preview.getByTestId('metric-skeleton-2').count(), 0);
-  await preview.getByRole('tab', { name: '캘린더', exact: true }).click();
-  await preview
-    .getByText('이날의 기록이 아직 없어요', { exact: true })
-    .waitFor();
-  assert.equal(await preview.getByTestId('record-index-skeleton').count(), 0);
-  assert.equal(
-    previewServerReads,
-    0,
-    'disabled server query never becomes preview loading',
-  );
-  await preview.close();
   console.log(
     'PASS independent skeletons, busy/no actions, responsive bounds, cached refetch/error, index/detail split and date cache isolation',
   );

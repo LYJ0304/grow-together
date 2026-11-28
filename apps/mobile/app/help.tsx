@@ -33,12 +33,6 @@ const questions = [
     answer:
       '홈의 일기 작성 버튼이나 캘린더에서 선택한 날짜의 일기 작성하기를 눌러주세요. 본문을 입력하고 사진을 추가한 뒤 일기 저장하기를 누르면 돼요.',
   },
-  {
-    id: 'preview',
-    question: '미리보기와 로그인 사용은 무엇이 다른가요?',
-    answer:
-      '미리보기에서는 일부 기능이 제한되고 미리보기 일기는 이 기기에 저장돼요. 계정의 일정과 기록을 이용하려면 로그인해주세요. 미리보기 기록은 계정으로 자동 이전되지 않아요.',
-  },
 ];
 export default function HelpScreen() {
   const [opened, setOpened] = useState<string | null>(null);

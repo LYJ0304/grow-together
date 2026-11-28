@@ -1,16 +1,10 @@
-import { env } from '../../../config/env';
 import { ApiError, messages } from '../../api/errors';
 import { http, type HttpRequestInit } from '../../api/http';
 import { authApi } from './api';
 import { parseTokens, type Tokens, type TokenStorage } from './tokens';
 
 export type SessionStatus =
-  | 'restoring'
-  | 'restoreError'
-  | 'storageError'
-  | 'signedOut'
-  | 'authenticated'
-  | 'preview';
+  'restoring' | 'restoreError' | 'storageError' | 'signedOut' | 'authenticated';
 export type Session = {
   status: SessionStatus;
   notice: string;
@@ -67,11 +61,9 @@ export class AuthSession {
       status,
       notice,
       accountKey:
-        status === 'preview'
-          ? 'preview'
-          : status === 'authenticated'
-            ? accountKey(this.tokens?.accessToken)
-            : null,
+        status === 'authenticated'
+          ? accountKey(this.tokens?.accessToken)
+          : null,
       epoch: this.epoch,
     };
     this.listeners.forEach((listener) => listener());
@@ -268,14 +260,5 @@ export class AuthSession {
         'signedOut',
         '기기에서 로그아웃했어요. 서버 연결 실패로 서버 세션은 만료 전까지 남아 있을 수 있어요.',
       );
-  }
-
-  async preview() {
-    if (!env.canPreview) return;
-    const cleared = this.clearSession();
-    const epoch = this.epoch;
-    await cleared;
-    this.checkEpoch(epoch);
-    this.publish('preview');
   }
 }

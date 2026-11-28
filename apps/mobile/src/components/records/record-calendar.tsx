@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { calendarDays, getWeek } from '../../lib/calendar';
-import { diaryDateKey, parseDiaryDate } from '../../lib/diary-storage';
+import { diaryDateKey, parseDiaryDate } from '../../lib/diary-date';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { CalendarArrow } from '../home-week-calendar';

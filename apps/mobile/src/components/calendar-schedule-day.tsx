@@ -16,7 +16,7 @@ import { SymbolView } from 'expo-symbols';
 import { typography } from '@/components/typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { diaryDateKey, parseDiaryDate } from '@/lib/diary-storage';
+import { diaryDateKey, parseDiaryDate } from '@/lib/diary-date';
 import {
   Modal,
   Pressable,
@@ -26,14 +26,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
-
 import { AddPlanModal } from '@/components/add-plan-modal';
 import { useAuth } from '@/components/auth-provider';
 import { ApiError } from '@/lib/api/errors';
 import { createDiaryApi } from '@/lib/features/diary/diaryApi';
 import { createTodoApi } from '@/lib/features/todo/todoApi';
 import type { TodoRequest, TodoResponse } from '@/lib/features/todo/types';
-
 export function CalendarScheduleDay({
   dateKey,
   action,
@@ -49,9 +47,10 @@ export function CalendarScheduleDay({
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [addMenu, setAddMenu] = useState(false);
   const [notice, setNotice] = useState('');
-  const [form, setForm] = useState<{ date: Date; todo?: TodoResponse } | null>(
-    null,
-  );
+  const [form, setForm] = useState<{
+    date: Date;
+    todo?: TodoResponse;
+  } | null>(null);
   const [managedTodo, setManagedTodo] = useState<TodoResponse | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -160,11 +159,10 @@ export function CalendarScheduleDay({
     enabled: status === 'authenticated',
     retry: false,
   });
-
   const relatedDiary = useQuery({
     queryKey: ['diaryByDate', epoch, dateKey],
     enabled: status === 'authenticated' && managedTodo !== null,
-    staleTime: 30_000,
+    staleTime: 30000,
     retry: false,
     queryFn: async () => {
       try {
@@ -180,14 +178,12 @@ export function CalendarScheduleDay({
     relatedDiary.data?.todos?.some((todo) => todo.id === managedTodo.id)
       ? relatedDiary.data
       : null;
-
   useEffect(() => {
     if (!action || status !== 'authenticated') return;
     onActionHandled();
     if (action === 'add') setForm({ date: parseDiaryDate(dateKey)! });
     else void requestChild(() => setRecommendations(dateKey));
   }, [action, dateKey, onActionHandled, requestChild, status]);
-
   const addSchedule = () => {
     setAddMenu(false);
     setForm({ date: parseDiaryDate(dateKey)! });
@@ -215,7 +211,6 @@ export function CalendarScheduleDay({
       time: todo.scheduledTime.slice(0, 5),
     }))
     .sort((a, b) => a.time.localeCompare(b.time));
-
   return (
     <View>
       <View style={styles.scheduleList}>
@@ -254,11 +249,7 @@ export function CalendarScheduleDay({
           </Text>
         ) : null}
         <View style={styles.listSurface}>
-          {status === 'preview' ? (
-            <Text style={styles.listMessage}>
-              미리보기에서는 서버 일정을 이용할 수 없어요.
-            </Text>
-          ) : isInitialLoading(todos) ? (
+          {isInitialLoading(todos) ? (
             <ScheduleSkeleton />
           ) : todos.isPending ? (
             <Text style={styles.listMessage}>
@@ -278,9 +269,7 @@ export function CalendarScheduleDay({
                 <Text style={styles.listActionLabel}>다시 시도</Text>
               </Pressable>
             </View>
-          ) : todos.data !== undefined &&
-            status !== 'preview' &&
-            visibleTasks.length === 0 ? (
+          ) : todos.data !== undefined && visibleTasks.length === 0 ? (
             <Text style={styles.listMessage}>등록된 일정이 없어요.</Text>
           ) : null}
           {visibleTasks.map((task, index) => (
@@ -546,7 +535,6 @@ export function CalendarScheduleDay({
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   addChoices: {
     flexDirection: 'row',

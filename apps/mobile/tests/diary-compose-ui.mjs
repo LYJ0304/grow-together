@@ -31,10 +31,13 @@ try {
   assert.equal(await body.inputValue(), '함께 웃었던 날\n오늘의 작은 순간');
   assert.equal(
     await page.getByRole('button', { name: '사진 추가', exact: true }).count(),
-    0,
+    1,
   );
   await page
-    .getByText('새 사진의 계정 저장은 준비 중이에요.', { exact: false })
+    .getByText(
+      '사진은 일기를 저장할 때 업로드돼요. 최대 3장까지 첨부할 수 있어요.',
+      { exact: true },
+    )
     .waitFor();
   await page
     .getByRole('button', { name: '함께한 활동 선택', exact: true })
@@ -45,7 +48,7 @@ try {
     })
     .waitFor();
   console.log(
-    'PASS body-first composer, one text source, confirmed local composition, completed activities and honest upload boundary',
+    'PASS body-first composer, one text source, confirmed local composition, completed activities and authenticated photo attachment',
   );
 } finally {
   await browser.close();

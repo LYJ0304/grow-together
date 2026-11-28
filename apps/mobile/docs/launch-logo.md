@@ -67,7 +67,7 @@ npm run test:brand
 npm run typecheck
 npm run lint
 npm run format:check
-EXPO_PUBLIC_API_URL=http://localhost:8080 EXPO_PUBLIC_ENABLE_AUTH_BYPASS=true npx expo export --platform web --clear --output-dir /tmp/grow-brand-web
+EXPO_PUBLIC_API_URL=http://localhost:8080 npx expo export --platform web --clear --output-dir /tmp/grow-brand-web
 npm run test:logo -- http://localhost:8156
 npm run test:motion -- http://localhost:8156 http://localhost:9223
 ```

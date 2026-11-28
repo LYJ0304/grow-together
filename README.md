@@ -59,11 +59,9 @@ Shared-family accounts and multiple child profiles are not implemented.
 Generate activity candidates through the API and Worker, inspect the proposed
 times, and save a selected set. Recorded activity reactions can inform later suggestions.
 
-**Local photo preview**
+**Diary photos**
 
-In the labeled preview mode, attach up to three photos and open them in a viewer.
-Authenticated diary editing can retain or remove existing server image references;
-adding new photos through the mobile upload flow is not connected yet.
+Authenticated users can attach up to three photos, review them in a viewer, and upload them when saving a diary.
 
 **Foundations for reflection and conversation**
 
@@ -213,9 +211,7 @@ connect the phone to the same Wi-Fi network as the development machine. Expo
 normally uses port `8081`; keep browser origins in
 `CORS_ALLOWED_ORIGINS` consistent with the port you actually use.
 
-Set `EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false` when testing real authentication.
-Labeled UI preview is available in development/staging and never grants protected
-API access. Production always disables that bypass.
+Mobile features require login in every environment. Configure the API URL and use test accounts for staging QA.
 
 ### Optional Admin demo
 
@@ -258,7 +254,7 @@ Status describes code in this repository, not deployment or release certificatio
 - [x] Review-and-save AI schedule generation through the API and Worker.
 - [x] Authenticated parenting chat with AI replies and session history.
 - [x] Weekly report API aggregation and internal AI generation.
-- [x] Local photo-preview UI and a standalone mock Admin console.
+- [x] Diary photo attachment UI and a standalone mock Admin console.
 
 ### In Progress
 

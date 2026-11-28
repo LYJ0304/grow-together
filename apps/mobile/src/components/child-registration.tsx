@@ -13,11 +13,9 @@ import { useAuth } from './auth-provider';
 import { createChildApi } from '../lib/features/child/childApi';
 import { useSessionValue } from '../lib/session-state';
 import { ChildRegistrationModal } from './child-registration-modal';
-
 const RegistrationContext = createContext<
   ((onReady: () => void) => Promise<void>) | null
 >(null);
-
 export function ChildRegistrationProvider({
   children,
 }: {
@@ -74,10 +72,6 @@ export function ChildRegistrationProvider({
     setDialog(null);
   };
   const requestChild = async (onReady: () => void) => {
-    if (status === 'preview') {
-      onReady();
-      return;
-    }
     if (status !== 'authenticated' || pending.current) return;
     const ticket = ++attempt.current;
     const current = () =>
@@ -140,7 +134,6 @@ export function ChildRegistrationProvider({
     </RegistrationContext.Provider>
   );
 }
-
 export function useChildRegistration() {
   const requestChild = useContext(RegistrationContext);
   if (!requestChild) throw new Error('ChildRegistrationProvider is required');
