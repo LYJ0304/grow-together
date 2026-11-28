@@ -31,6 +31,20 @@ class SkillFiles(unittest.TestCase):
                         if '://' not in link:
                             self.assertTrue((document.parent / link.split('#')[0]).exists(), link)
 
+    def test_code_quality_reference_is_reachable_from_workflow_entry_points(self):
+        reference = (ROOT / '.harness/references/clean-code.md').resolve()
+        self.assertTrue(reference.is_file())
+        entries = [ROOT / 'AGENTS.md', ROOT / '.harness/conventions.md']
+        entries += [ROOT / '.harness/skills' / name / 'SKILL.md'
+                    for name in ('start', 'ship', 'review')]
+        for entry in entries:
+            with self.subTest(entry=entry):
+                targets = {(entry.parent / link.split('#')[0]).resolve()
+                           for link in re.findall(r'\]\(([^)]+)\)', entry.read_text())
+                           if '://' not in link}
+                self.assertIn(reference, targets)
+
+
 
 class MergeEvidence(unittest.TestCase):
     branch = 'docs/issue-75-workflow'

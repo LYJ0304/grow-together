@@ -53,6 +53,10 @@ branch, including all states, and read the associated PR with `gh pr view`:
 
 ## Publish and retain the environment
 
+Assess changed code using the [maintainable code and Spring API guide](../../references/clean-code.md).
+Keep the existing scope, verification and authorization boundaries; this reference
+does not invoke another workflow stage.
+
 1. Read the issue when present, otherwise the latest description-task handoff,
    and inspect tracked, staged, and untracked task changes and commits
    against the established base. Do not include another task's staged files.

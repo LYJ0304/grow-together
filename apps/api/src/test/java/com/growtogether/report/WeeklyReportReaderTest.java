@@ -39,6 +39,18 @@ class WeeklyReportReaderTest {
         when(todos.findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(eq(1L), any(), any())).thenReturn(list);
         when(diaries.findByUserIdAndDiaryDateGreaterThanEqualAndDiaryDateLessThanOrderByDiaryDateAsc(eq(1L),any(),any())).thenReturn(ds);
     }
+    @Test void fixedSourceKeepsItsCanonicalHashAndProjection() {
+        var activity=todo(10,"그림책",monday,LocalTime.NOON,true);
+        var entry=diary(20,monday,"함께 웃음");entry.replaceTodos(List.of(activity));
+        sources(List.of(activity),List.of(entry));
+        when(children.findById(1L)).thenReturn(Optional.of(new ChildProfile(1L,"아이",LocalDate.of(2025,1,1))));
+        var snapshot=reader.read(1L,monday);
+        assertThat(snapshot.report().sourceHash()).isEqualTo("e64f93a70b60e4a29ff898d78643a8362ed7b58e44c4cd60c9d936ac8e9ff240");
+        assertThat(snapshot.report().metrics().completed()).isEqualTo(1);
+        assertThat(snapshot.input().sources().diaries().getFirst().excerpt()).isEqualTo("함께 웃음");
+        assertThat(snapshot.input().childContext().ageMonths()).isEqualTo(22);
+    }
+
     @Test void separatesFuturePlansAndZeroDenominatorAndDistinctDiaryDates() {
         sources(List.of(todo(1,"과거",monday,LocalTime.NOON,true),
                 todo(2,"지금",monday.plusDays(2),LocalTime.NOON,false),

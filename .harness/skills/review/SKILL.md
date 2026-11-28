@@ -49,6 +49,10 @@ review automatically. The follow-up loop is `ship → review <PR-number> → fix
 
 ## Review criteria
 
+Use the [maintainable code and Spring API guide](../../references/clean-code.md).
+Keep the existing scope, verification and authorization boundaries; this reference
+does not invoke another workflow stage.
+
 Review changed behavior and code, following connected paths far enough to assess
 impact. Report defects introduced or worsened by this PR; do not turn the task
 into a whole-repository audit.

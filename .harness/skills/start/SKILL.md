@@ -24,6 +24,10 @@ and pass its result forward; do not require a new confirmation for actions alrea
 
 ## Implementation
 
+Before implementation or refactoring, apply the [maintainable code and Spring API guide](../../references/clean-code.md).
+Keep the existing scope, verification and authorization boundaries; this reference
+does not invoke another workflow stage.
+
 Read root AGENTS.md and [conventions](../../conventions.md).
 Resolve the current repository from its remote and select the input path:
 
