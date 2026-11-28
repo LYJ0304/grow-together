@@ -98,7 +98,7 @@ export function createDraftStore(storage: DraftStorage) {
     },
     clear,
     clearAll(owner?: string) {
-      if (owner && owner !== 'preview') owners.add(owner);
+      if (owner) owners.add(owner);
       return Promise.all([...owners].map(clear));
     },
   };

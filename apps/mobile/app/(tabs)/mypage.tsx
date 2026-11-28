@@ -12,9 +12,8 @@ import { useUserProfile } from '@/lib/use-user-profile';
 import { dateLabel } from '@/lib/onboarding';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-
 export default function MyPageScreen() {
-  const { client, status } = useAuth();
+  const { client } = useAuth();
   const user = useUserProfile();
   const child = useChildProfile();
   const childLabel = child.isError
@@ -41,17 +40,7 @@ export default function MyPageScreen() {
           <Text accessibilityRole="header" style={styles.heading}>
             내 프로필
           </Text>
-          {status === 'preview' ? (
-            <View style={styles.summary}>
-              <Avatar />
-              <View style={styles.copy}>
-                <Text style={styles.name}>미리보기 이용 중</Text>
-                <Text style={styles.caption}>
-                  로그인하면 내 계정 정보를 관리할 수 있어요.
-                </Text>
-              </View>
-            </View>
-          ) : user.data ? (
+          {user.data ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="내 프로필 수정"
@@ -120,12 +109,6 @@ export default function MyPageScreen() {
             계정 및 설정
           </Text>
           <View style={styles.group}>
-            {status === 'preview' ? (
-              <>
-                <Text style={styles.body}>미리보기로 이용하고 있어요.</Text>
-                <View style={styles.divider} />
-              </>
-            ) : null}
             <MenuRow
               label="알림 설정"
               detail="알림 항목을 미리 살펴봐요."
@@ -172,7 +155,7 @@ export default function MyPageScreen() {
           </Text>
         </View>
         <ActionButton
-          label={status === 'preview' ? '미리보기 종료' : '로그아웃'}
+          label={'로그아웃'}
           variant="tertiary"
           onPress={() => void client.logout()}
         />

@@ -14,9 +14,7 @@ import {
 } from 'react-native';
 import { AuthProvider, useAuth } from '../src/components/auth-provider';
 import { LaunchTransitionProvider } from '../src/components/launch-transition';
-
 const queryClient = new QueryClient();
-
 function AuthenticatedStack() {
   const { client, status, notice, epoch } = useAuth();
   const reduced = useReduceMotion();
@@ -56,7 +54,7 @@ function AuthenticatedStack() {
       </View>
     );
   }
-  const hasAccess = status === 'authenticated' || status === 'preview';
+  const hasAccess = status === 'authenticated';
   return (
     <ChildRegistrationProvider key={hasAccess ? epoch : 'signed-out'}>
       <View style={styles.root}>
@@ -99,7 +97,6 @@ function AuthenticatedStack() {
     </ChildRegistrationProvider>
   );
 }
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Jua: require('../assets/fonts/Jua-Regular.ttf'),
@@ -117,7 +114,6 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   loading: {

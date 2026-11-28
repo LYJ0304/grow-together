@@ -12,12 +12,4 @@ if (!apiBaseUrl && appEnv !== 'staging') {
   throw new Error('EXPO_PUBLIC_API_URL is not configured');
 }
 
-const authBypassSetting = process.env.EXPO_PUBLIC_ENABLE_AUTH_BYPASS;
-
-export const env = {
-  appEnv,
-  apiBaseUrl,
-  canPreview:
-    appEnv !== 'production' &&
-    (authBypassSetting === undefined || authBypassSetting === 'true'),
-} as const;
+export const env = { appEnv, apiBaseUrl } as const;

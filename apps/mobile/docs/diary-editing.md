@@ -1,6 +1,6 @@
 # 기록과 일기 작성
 
-기록 탭은 기존 `/calendar`, 일기는 `/diary?date=YYYY-MM-DD` 경로를 유지한다. 날짜 선택과 일기·질문 초안은 세션 메모리에 남으며 탭 왕복으로 사라지지 않는다. 로그아웃·계정 전환·미리보기 전환 시 초기화되고 앱 종료나 웹 새로고침 후 복원하지 않는다. 웹 종료에는 미저장 내용이 있을 때 확인을 제공한다.
+기록 탭은 기존 `/calendar`, 일기는 `/diary?date=YYYY-MM-DD` 경로를 유지한다. 날짜 선택과 일기·질문 초안은 세션 메모리에 남으며 탭 왕복으로 사라지지 않는다. 로그아웃·계정 전환 시 초기화되고 앱 종료나 웹 새로고침 후 복원하지 않는다. 웹 종료에는 미저장 내용이 있을 때 확인을 제공한다.
 
 ## 로그인 상태
 
@@ -10,11 +10,9 @@
 
 서버 일기는 `diaryDate`를 저장하며, 신규 생성 시 선택한 로컬 날짜를 필수로 보낸다. 캘린더는 `GET /api/v1/diary?month=YYYY-MM`의 날짜/ID 목록을 조회하고, 선택한 날짜는 `GET /api/v1/diary/by-date?date=YYYY-MM-DD`로 확인한다. 세션의 날짜→ID 기억에 의존하지 않아 재로그인·다른 기기에서도 날짜가 있는 기록을 복원한다. 날짜 없는 legacy 행은 ID 기반 접근을 유지하며 월 목록에는 표시하지 않는다. 관찰 메모 원본·초안 재료는 서버에서 별도로 보존되지 않는다. 계정 데이터용 임시 기기 저장을 추가하지 않는다. 조회 실패는 기록 없음으로 취급하지 않으며, 중복 생성 409·응답 유실에는 초안을 보존하고 기존 일기를 확인하는 경로를 제공한다. 사용자별 하루 한 편의 DB 유일 제약이 동시 생성도 방어한다. 날짜 이동 수정·사진 업로드·로컬 기록 이전은 후속 작업이다. API 생성 계약 변경과 모바일 날짜 전송 변경을 함께 배포해야 한다.
 
-## 미리보기와 과거 데이터
+## 과거 체험 데이터
 
-미리보기는 `@growtogether/diary/preview/v2/`에 기기 전용 일기를 저장한다. 사진은 기존 크기 조절·base64 변환을 사용하며 최대 3장이다. 실패하면 본문과 사진을 유지하고 다시 저장할 수 있다. 본문 수정은 사진·관찰·기타 메타데이터를 보존한다.
-
-과거 `@growtogether/diary/v1/` 데이터는 소유자를 판별할 수 없다. 삭제·자동 계정 귀속·자동 이전 없이 그대로 보존하고, 일반 계정 및 새 미리보기 목록에 표시하지 않는다. 소유자 확인과 이전은 별도 작업이다.
+체험 모드는 제거되었다. 기존 기기의 preview/v2 및 소유자를 판별할 수 없는 v1 일기는 읽거나 삭제하지 않고 보존한다. 로그인 계정에 자동 귀속하거나 이전하지 않는다.
 
 ## 아직 연결되지 않은 기능
 
@@ -44,7 +42,6 @@ PY_SERVER
 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:ux
 MAIN_URL=http://localhost:8156 MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:main:ui
 CALENDAR_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:calendar:ui
-MOBILE_URL=http://localhost:8156 BROWSER_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:diary:saved-edit
 ```
 
 UI 검사의 API 응답은 모킹한다. 작은 화면·큰 글씨·긴 본문·줄어든 viewport 확인은 실제 iOS/Android 키보드, 사진 권한, 시스템 뒤로 가기 검증을 대신하지 않는다.

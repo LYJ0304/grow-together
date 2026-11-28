@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from '@/components/safe-area-view';
 import { calendarDays } from '../lib/calendar';
-import { diaryDateKey, parseDiaryDate } from '../lib/diary-storage';
+import { diaryDateKey, parseDiaryDate } from '../lib/diary-date';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { ActionButton } from './action-button';

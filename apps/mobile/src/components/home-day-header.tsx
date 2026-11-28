@@ -3,7 +3,7 @@ import Animated from 'react-native-reanimated';
 import { colors } from '../theme/colors';
 import { useEntranceOnce } from '../theme/motion';
 import { typography } from '../theme/typography';
-import { parseDiaryDate } from '../lib/diary-storage';
+import { parseDiaryDate } from '../lib/diary-date';
 
 export function HomeDayHeader({ date }: { date: string }) {
   const heading = useEntranceOnce();

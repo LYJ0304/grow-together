@@ -138,37 +138,8 @@ try {
     path: '/tmp/guardian-shots/mypage.png',
     fullPage: true,
   });
-  const preview = await browser.newPage();
-  let previewCalls = 0;
-  await preview.route('**/api/v1/users/me', (r) => {
-    previewCalls++;
-    return r.fulfill({ status: 500, json: {} });
-  });
-  await preview.goto(base + '/login');
-  await preview
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await preview
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
-  await preview.getByText('미리보기 이용 중', { exact: true }).waitFor();
-  assert.equal(previewCalls, 0);
-  assert.equal(
-    await preview
-      .getByRole('button', { name: '내 프로필 수정', exact: true })
-      .count(),
-    0,
-  );
-  await preview
-    .getByRole('button', { name: '미리보기 종료', exact: true })
-    .click();
-  await preview.waitForURL('**/login');
-  await preview.goto(base + '/profile');
-  await preview.waitForURL('**/login');
-  assert.equal(previewCalls, 0);
-  await preview.close();
   console.log(
-    'PASS loading/error/retry vs absent child, validation, browser back/discard, duplicate-save blocking, responsive profile, preview API isolation and protected route',
+    'PASS loading/error/retry vs absent child, validation, browser back/discard, duplicate-save blocking, responsive profile, authenticated profile',
   );
 } catch (error) {
   console.log((await page.locator('body').innerText()).slice(-1800));

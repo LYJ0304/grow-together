@@ -76,24 +76,7 @@ try {
     .getByRole('button', { name: '내 프로필 열기', exact: true })
     .click();
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
-  await page
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await page.getByRole('tab', { name: '질문', exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole('textbox', { name: '상담 질문 입력', exact: true })
-      .inputValue(),
-    '',
-  );
-  await page.getByRole('tab', { name: '기록', exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole('button', { name: '작성하던 일기 이어 쓰기', exact: true })
-      .count(),
-    0,
-  );
-  console.log('PASS account switch and preview clear diary/question drafts');
+  console.log('PASS account switch clears diary/question drafts');
 } finally {
   await browser.close();
 }

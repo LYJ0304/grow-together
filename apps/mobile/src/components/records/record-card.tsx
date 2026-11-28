@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRecordPreview } from '../../lib/use-records';
-import { parseDiaryDate } from '../../lib/diary-storage';
+import { parseDiaryDate } from '../../lib/diary-date';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { ActionButton } from '../action-button';

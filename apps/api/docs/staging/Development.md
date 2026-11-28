@@ -90,7 +90,6 @@ cd apps/mobile
 npm ci
 export EXPO_PUBLIC_APP_ENV=staging
 export EXPO_PUBLIC_API_URL=https://macbook.example.ts.net
-export EXPO_PUBLIC_ENABLE_AUTH_BYPASS=false
 export EXPO_PACKAGER_PROXY_URL=https://macbook.example.ts.net:8443
 npm start -- --localhost --port 18081 --dev-client
 ```

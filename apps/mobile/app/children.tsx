@@ -28,7 +28,6 @@ import { SafeAreaView } from '@/components/safe-area-view';
 import { useAuth } from '../src/components/auth-provider';
 import {
   childGenderLabels,
-  saveChildProfile,
   type ChildGender,
   validateChildProfile,
   type ChildProfileErrors,
@@ -36,15 +35,13 @@ import {
 import { ApiError } from '../src/lib/api/errors';
 import { createChildApi } from '../src/lib/features/child/childApi';
 import { useChildProfile } from '../src/lib/use-child-profile';
-
 export default function ChildrenScreen() {
   const { accountKey, epoch } = useAuth();
   return <ChildrenEditor key={`${epoch}:${accountKey}`} />;
 }
-
 function ChildrenEditor() {
   const profile = useChildProfile();
-  const { client, epoch, status } = useAuth();
+  const { client, epoch } = useAuth();
   const api = createChildApi(client);
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -123,12 +120,9 @@ function ChildrenEditor() {
     setNotice('');
     try {
       const input = { name: name.trim(), birthday: birthday.trim(), gender };
-      const value =
-        status === 'preview'
-          ? await saveChildProfile(profile.accountKey, input)
-          : creating
-            ? await api.createProfile(input)
-            : await api.saveProfile(input);
+      const value = creating
+        ? await api.createProfile(input)
+        : await api.saveProfile(input);
       if (!current()) return;
       if (gender && value.gender !== gender) {
         throw new Error('성별 저장을 확인하지 못했어요. 다시 시도해주세요.');
@@ -211,9 +205,7 @@ function ChildrenEditor() {
           </Text>
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
-              {status === 'preview'
-                ? '이 기기에 저장되는 미리보기용 아이 정보예요.'
-                : '로그인한 계정에 저장되는 아이 정보예요.'}
+              {'로그인한 계정에 저장되는 아이 정보예요.'}
             </Text>
           </View>
           {error ? (
@@ -413,7 +405,6 @@ function ChildrenEditor() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   keyboard: { flex: 1 },

@@ -19,9 +19,7 @@
 
 - 로그인한 사용자는 기존 `/api/v1/diary?month=YYYY-MM`와
   `/api/v1/diary/by-date?date=YYYY-MM-DD`를 사용한다. API/DB 계약은 변경하지 않았다.
-- 미리보기는 기존 기기 로컬 일기만 읽으며 서버 일기 API를 호출하지 않는다.
-- 월 마커의 기존 `savedDiaryDates` 키를 유지한다. 미리보기 목록은 전체 저장 날짜를 한 번
-  읽고, 로그인한 목록은 실제 표시 범위의 월별 조회를 공유한다.
+- 월 마커의 `savedDiaryDates` 키를 유지하며 실제 표시 범위의 월별 조회를 공유한다.
 - 두 뷰의 RecordCard는 `diaryByDate` 캐시의 원본 데이터를 공유한다. `select`로 UI에 필요한
   본문·첫 사진·실제 ID만 투영하므로 Main/DiaryEditor의 캐시 형식은 바꾸지 않는다.
 - 월 최대 31개 날짜를 FlatList로 렌더링한다. 실제 보이는 카드만 상세 조회를 활성화하며

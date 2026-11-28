@@ -37,13 +37,6 @@ vm.runInNewContext(source, {
         },
       };
     if (name === '../components/auth-provider') return { useAuth: () => auth };
-    if (name === './child-profile')
-      return {
-        readChildProfile: async (key) => {
-          calls.push(['local', key]);
-          return null;
-        },
-      };
     if (name === './features/child/childApi')
       return {
         createChildApi: (client) => ({
@@ -64,11 +57,6 @@ assert.equal((await options.queryFn()).name, '서버');
 assert.deepEqual(calls, [['api', client]]);
 assert.deepEqual(Array.from(options.queryKey), ['childProfile', 'user-1', 1]);
 calls.length = 0;
-auth = { client, status: 'preview', accountKey: 'preview', epoch: 2 };
-module.exports.useChildProfile();
-assert.equal(options.enabled, true);
-assert.equal(await options.queryFn(), null);
-assert.deepEqual(calls, [['local', 'preview']]);
 for (const status of ['restoring', 'signedOut', 'restoreError']) {
   calls.length = 0;
   auth = { client, status, accountKey: null, epoch: 3 };
@@ -78,5 +66,5 @@ for (const status of ['restoring', 'signedOut', 'restoreError']) {
   assert.deepEqual(calls, []);
 }
 console.log(
-  'PASS child query: server for authenticated users, local preview, disabled outside session',
+  'PASS child query: server for authenticated users, disabled outside session',
 );

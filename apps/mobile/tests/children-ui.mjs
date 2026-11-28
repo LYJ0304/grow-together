@@ -221,58 +221,6 @@ try {
       `PASS ${timezoneId}: profile create/edit/restore, cancel, errors, account isolation and responsive layout`,
     );
   }
-  const preview = await browser.newContext();
-  const previewRequests = [];
-  await preview.route('**/api/**', async (route) => {
-    previewRequests.push(route.request().url());
-    await route.abort();
-  });
-  const page = await preview.newPage();
-  await page.goto(`${url}/login`);
-  await page.getByRole('button', { name: '인증 없이 미리보기 진입' }).click();
-  await page.waitForURL('**/main');
-  await page
-    .getByRole('button', { name: '내 프로필 열기', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: '아이 정보 관리', exact: true })
-    .click();
-  await page
-    .getByText('이 기기에 저장되는 미리보기용 아이 정보예요.')
-    .waitFor();
-  await page.getByRole('button', { name: '아이 추가', exact: true }).click();
-  await page
-    .getByRole('textbox', { name: '아이 이름', exact: true })
-    .fill('미리보기 아이');
-  const birthday = page.getByLabel('생년월일', { exact: true });
-  assert.equal(await birthday.textContent(), '날짜 선택');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
-  await page
-    .getByRole('alert')
-    .filter({ hasText: /생년월일/ })
-    .waitFor();
-  await selectDate(page, '생년월일', '2024-02-29');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
-  await page
-    .getByRole('heading', { name: '아이 프로필', exact: true })
-    .locator('..')
-    .getByText('미리보기 아이', { exact: true })
-    .waitFor();
-  await page.getByRole('button', { name: '이전 화면으로 돌아가기' }).click();
-  await page
-    .getByText('미리보기 아이 · 2024년 2월 29일', { exact: true })
-    .waitFor();
-  await page
-    .getByRole('button', { name: '아이 정보 관리', exact: true })
-    .click();
-  await page
-    .getByRole('heading', { name: '아이 프로필', exact: true })
-    .locator('..')
-    .getByText('미리보기 아이', { exact: true })
-    .waitFor();
-  assert.deepEqual(previewRequests, []);
-  await preview.close();
-  console.log('PASS preview: local profile save/restore without API requests');
 } finally {
   await browser.close();
 }

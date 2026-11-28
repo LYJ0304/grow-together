@@ -44,19 +44,10 @@ import {
   type DiaryGenerationResult,
   type DiarySourceRecords,
 } from '../../../src/lib/diary-generation';
-import {
-  diaryDateKey,
-  parseDiaryDate,
-  readDiary,
-  saveDiary,
-  updateDiary,
-  deleteDiary,
-  type SavedDiary,
-} from '../../../src/lib/diary-storage';
+import { diaryDateKey, parseDiaryDate } from '../../../src/lib/diary-date';
 import { createTodoApi } from '../../../src/lib/features/todo/todoApi';
 import { createDiaryApi } from '../../../src/lib/features/diary/diaryApi';
 import { ApiError } from '../../../src/lib/api/errors';
-
 export default function DiaryScreen() {
   const { date, mode, id, todoId } = useLocalSearchParams<{
     date?: string;
@@ -66,7 +57,6 @@ export default function DiaryScreen() {
   }>();
   return <DiaryEditor key={`${date}:${mode}:${id}:${todoId}`} />;
 }
-
 function DiaryEditor() {
   const params = useLocalSearchParams<{
     date?: string;
@@ -75,7 +65,6 @@ function DiaryEditor() {
     todoId?: string;
   }>();
   const { client, status, epoch } = useAuth();
-  const preview = status === 'preview';
   const queryClient = useQueryClient();
   const [date, setDate] = useState(
     () => parseDiaryDate(params.date) ?? new Date(),
@@ -114,7 +103,7 @@ function DiaryEditor() {
       ? Number(params.id)
       : dateLookup.data?.id;
   const viewing = params.mode === 'view' || !!params.id || !!id;
-  const prefix = `diary:${dateKey}:${viewing ? (id ?? 'preview') : 'new'}:`;
+  const prefix = `diary:${dateKey}:${viewing ? (id ?? 'missing') : 'new'}:`;
   const [bodyHeight, setBodyHeight] = useState(190);
   const entryTodoId = Number(params.todoId);
   const hasEntryTodo =
@@ -137,7 +126,7 @@ function DiaryEditor() {
     prefix + 'editing',
     null,
   );
-  const [source, setSource] = useSessionValue<DiarySourceRecords | undefined>(
+  const [, setSource] = useSessionValue<DiarySourceRecords | undefined>(
     prefix + 'source',
     undefined,
   );
@@ -185,20 +174,19 @@ function DiaryEditor() {
       });
   }, [completion, busy, client, epoch, dateKey]);
   const api = createDiaryApi(client);
-  const savedKey = [
-    'savedDiary',
-    preview ? 'preview' : epoch,
-    preview ? dateKey : id,
-  ];
-  const savedQuery = useQuery<
-    | (SavedDiary & { files?: DiaryFileResponse[]; activityIds?: number[] })
-    | null
-  >({
+  const savedKey = ['savedDiary', epoch, id];
+  const savedQuery = useQuery<{
+    date: string;
+    content: string;
+    photoUris: string[];
+    sourceRecords?: DiarySourceRecords;
+    files?: DiaryFileResponse[];
+    activityIds?: number[];
+  } | null>({
     queryKey: savedKey,
-    enabled: viewing && (preview || !!id),
+    enabled: viewing && !!id,
     retry: false,
     queryFn: async () => {
-      if (preview) return readDiary(dateKey);
       const diary = await api.getDiary(id!);
       return {
         date: dateKey,
@@ -303,7 +291,6 @@ function DiaryEditor() {
       const generated = await generateDiary(date, records);
       if (!stillActive()) return;
       setSource(records);
-
       setResult(generated);
       setDraft(generated.content);
       setEditing(null);
@@ -322,7 +309,7 @@ function DiaryEditor() {
   const persist = async () => {
     const content = viewing ? editing : draft;
     if (pending.current || !content?.trim() || uncertain) return;
-    if (!preview && content.trim().length > 1000) {
+    if (content.trim().length > 1000) {
       setNotice(
         '서버 일기 본문은 1000자 이내로 작성해주세요. 내용은 유지돼요.',
       );
@@ -334,7 +321,7 @@ function DiaryEditor() {
     let createStarted = false;
     try {
       const diaryFiles: DiaryFileRequest[] = [];
-      if (!preview) {
+      {
         for (const uri of photos) {
           const existing = savedQuery.data?.files?.find(
             (file) => file.imageUrl === uri,
@@ -353,18 +340,7 @@ function DiaryEditor() {
           diaryFiles.push({ fileId });
         }
       }
-      if (preview) {
-        if (viewing) await updateDiary(dateKey, content, photos);
-        else
-          await saveDiary({
-            date: dateKey,
-            content: content.trim(),
-            photoUris: photos,
-            emotions: [],
-            growthPoints: [],
-            sourceRecords: source,
-          });
-      } else if (viewing) {
+      if (viewing) {
         // Keep image URLs and todo associations supplied by the server when editing the body.
         const original = await api.getDiary(id!);
         if (!stillActive()) return;
@@ -383,7 +359,6 @@ function DiaryEditor() {
         });
       }
       if (!stillActive()) return;
-
       setCompletion('saved');
       clearSessionValues(prefix);
       void queryClient.invalidateQueries({ queryKey: ['savedDiary'] });
@@ -421,10 +396,8 @@ function DiaryEditor() {
     setBusy(true);
     setNotice('');
     try {
-      if (preview) await deleteDiary(dateKey);
-      else await api.deleteDiary(id!);
+      await api.deleteDiary(id!);
       if (!stillActive()) return;
-
       setCompletion('deleted');
       clearSessionValues(prefix);
       setConfirm(null);
@@ -516,7 +489,7 @@ function DiaryEditor() {
     }
   };
   const display = viewing ? (savedQuery.data?.content ?? '') : draft;
-  const unavailable = viewing && !preview && !id;
+  const unavailable = viewing && !id;
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -573,13 +546,9 @@ function DiaryEditor() {
             {viewing ? '하루의 일기' : '오늘의 일기'}
           </Text>
           <Text style={styles.meta}>
-            {preview
-              ? '미리보기 · 이 기기에만 저장돼요.'
-              : '저장 전 내용은 이 로그인 세션에서 유지돼요.'}
+            {'저장 전 내용은 이 로그인 세션에서 유지돼요.'}
           </Text>
-          {!preview &&
-          !params.id &&
-          (dateLookup.isPending || dateLookup.isError) ? (
+          {!params.id && (dateLookup.isPending || dateLookup.isError) ? (
             <View style={styles.card}>
               <Text style={styles.body}>
                 {dateLookup.isError
@@ -660,8 +629,7 @@ function DiaryEditor() {
                     ]}
                   />
                   <Text style={styles.meta}>
-                    {(viewing ? (editing ?? '') : draft).length} /{' '}
-                    {preview ? '미리보기' : '1000자'}
+                    {(viewing ? (editing ?? '') : draft).length} / {'1000자'}
                   </Text>
                 </View>
               )}
@@ -672,7 +640,7 @@ function DiaryEditor() {
                     : photos
                 }
                 editable={!viewing || editing !== null}
-                canAdd={preview || status === 'authenticated'}
+                canAdd={status === 'authenticated'}
                 busy={busy || preparing || generating}
                 onAdd={() => void pickPhotos()}
                 onRemove={(index) =>
@@ -696,12 +664,7 @@ function DiaryEditor() {
                   </Pressable>
                   {activitiesOpen ? (
                     <View style={{ gap: 10 }}>
-                      {preview ? (
-                        <Text style={styles.meta}>
-                          미리보기에서는 실제 활동을 불러오지 않아요. 본문만으로
-                          작성해도 괜찮아요.
-                        </Text>
-                      ) : todos.isPending ? (
+                      {todos.isPending ? (
                         <Text style={styles.meta}>활동을 불러오고 있어요.</Text>
                       ) : todos.isError ? (
                         <>

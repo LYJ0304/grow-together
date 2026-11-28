@@ -164,24 +164,9 @@ try {
   guest.setDefaultNavigationTimeout(120000);
   await guest.goto(base + '/contact');
   await guest.waitForURL('**/login');
-  await guest
-    .getByRole('button', { name: '인증 없이 미리보기 진입', exact: true })
-    .click();
-  await guest.waitForURL('**/main');
-  await guest.getByRole('tab', { name: '마이', exact: true }).click();
-  await guest.getByRole('button', { name: '알림 설정', exact: true }).click();
-  await guest
-    .getByRole('switch', { name: '일정 시작 알림', exact: true })
-    .waitFor();
-  assert.equal(
-    await guest
-      .getByRole('switch', { name: '일정 시작 알림', exact: true })
-      .getAttribute('aria-checked'),
-    'false',
-  );
   await guest.close();
   console.log(
-    'PASS support menus/FAQ keyboard/contact reset & disabled send/notification pointer and keyboard/reset/12 responsive routes/no writes or permission prompt/guest and preview guards',
+    'PASS support screens, interactions, responsive layout and signed-out guard',
   );
 } finally {
   await browser.close();

@@ -19,7 +19,7 @@ const deferred = () => {
   return { promise, resolve };
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function setup(handler, saved = null, preview) {
+function setup(handler, saved = null) {
   let stored = saved;
   let clears = 0;
   const cache = new Map([['old-user', 'private']]);
@@ -36,7 +36,6 @@ function setup(handler, saved = null, preview) {
     process: {
       env: {
         EXPO_PUBLIC_API_URL: 'http://localhost:18069',
-        EXPO_PUBLIC_ENABLE_AUTH_BYPASS: preview,
       },
     },
     fetch: handler,
@@ -247,32 +246,6 @@ const login = (c) =>
   };
   await s.client.logout();
   assert.equal(s.client.getSnapshot().status, 'storageError');
-  await assert.rejects(
-    s.client.request('/api/v1/todos'),
-    (e) => e.status === 401,
-  );
-}
-// Staging QA preview defaults on, honors opt-out, and never authenticates API requests.
-for (const [setting, enabled] of [
-  [undefined, true],
-  ['true', true],
-  ['false', false],
-  ['', false],
-  ['invalid', false],
-]) {
-  const s = setup(
-    async () => {
-      throw new Error('must not fetch');
-    },
-    null,
-    setting,
-  );
-  await s.client.restore();
-  await s.client.preview();
-  assert.equal(
-    s.client.getSnapshot().status,
-    enabled ? 'preview' : 'signedOut',
-  );
   await assert.rejects(
     s.client.request('/api/v1/todos'),
     (e) => e.status === 401,
@@ -495,6 +468,5 @@ console.log('Auth session checks passed');
   await client.logout();
   assert.equal(client.getSnapshot().accountKey, null);
   assert.notEqual(client.getSnapshot().epoch, first.epoch);
-  await client.preview();
-  assert.equal(client.getSnapshot().accountKey, 'preview');
+  assert.equal(typeof client.preview, 'undefined');
 }
