@@ -37,104 +37,105 @@ public class WeeklyReportService {
     private final Map<Key, Entry> cache = new LinkedHashMap<>(16, .75f, true);
     private final Map<Key, CompletableFuture<ReportInsight>> flights = new HashMap<>();
 
+    private sealed interface Reservation {
+        record Cached(ReportInsight insight) implements Reservation {}
+        record Start(CompletableFuture<ReportInsight> flight) implements Reservation {}
+        record Join(CompletableFuture<ReportInsight> flight) implements Reservation {}
+        enum Busy implements Reservation { INSTANCE }
+    }
+
     public WeeklyReportResponse get(Long owner, LocalDate week) {
         var snapshot = reader.read(owner, week);
         if (snapshot.restriction() != null) return snapshot.report();
-        var key = key(owner, snapshot);
-        synchronized (cache) {
-            prune();
-            var hit = cache.get(key);
-            if (hit != null) return snapshot.with(hit.insight());
-            boolean stale = cache.keySet().stream()
-                    .anyMatch(k -> k.owner().equals(owner) && k.week().equals(key.week()));
-            return stale ? snapshot.with(ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED")) : snapshot.report();
-        }
+        var cached = cachedInsight(key(owner, snapshot));
+        return cached == null ? snapshot.report() : snapshot.with(cached);
     }
 
-    /*
-     * TODO(refactor): 리뷰 합의에 따라 flag/분기 구조 개선은 후속 작업으로 미룬다.
-     * https://github.com/LYJ0304/grow-together/pull/190#discussion_r4546615445
-     *
-     * 문제: cache hit, leader 여부, 대기, 생성, freshness 확인, 완료/실패 정리가 한 흐름에 섞여
-     * 분기 사이의 순서와 자원 수명까지 함께 추적해야 한다. boolean 개수 자체가 개선 목표는 아니다.
-     * leader는 호출자가 동작을 고르는 flag argument가 아닌 로컬 상태이므로, 이름만 enum으로
-     * 바꾸거나 모든 boolean을 금지하지 말고 각 경로의 책임/불변식을 먼저 드러낸다.
-     * 1. 예약 결정, 생성 담당 경로, 기존 요청 대기 경로, 결과 재검증/반영을 의도가 보이는 함수로
-     *    추출한다. 예약 결과를 Cached/Join/Start/Busy처럼 데이터와 함께 표현하는 작은 결과 타입을
-     *    검토해 future + leader의 조합을 여러 곳에서 재해석하지 않게 한다. 거대한 상태 머신이나
-     *    Strategy 상속 계층을 미리 도입할 필요는 없다.
-     * 2. cache 확인과 in-flight 조회/등록/용량 판정은 같은 임계 구역의 원자적 예약으로 유지한다.
-     *    보조 객체로 옮기더라도 잠금을 나눠 같은 key의 생성 담당자가 둘이 되는 일을 막아야 한다.
-     *    DB/HTTP 호출과 future 대기는 모니터 밖에 두고, 완료/예외 전파와 finally의 등록 해제를
-     *    경로별로 검토한다. 기존 대기 deadline과 interrupt 복원 동작을 유지한다.
-     * 3. user/week/sourceHash/promptVersion key, LRU 128개, 성공 15분/실패 30초 TTL,
-     *    동시 key 16개와 BUSY/재시도 정책을 보존한다. GET이 Worker를 호출하게 만들지 않는다.
-     *    생성 후 캐시 반영 전과 반환 전의 원본 재검증은 단순 중복으로 보고 제거하지 않는다.
-     *    STALE 결과는 게시하지 않고, Worker 실패에도 통계/기억과 기존 인사이트 상태를 유지한다.
-     * 완료 검증: Service 테스트의 같은 key 단일 호출/다른 owner 격리/TTL·용량·실패 재시도와
-     * 예약 해제·대기 timeout/interrupt 경로를 먼저 보강한다. Integration/Postgres 테스트로
-     * 생성 중 원본 수정·삭제 후 낡은 결과가 노출되지 않는지 확인한 뒤 작은 단계로 추출한다.
-     * 분기별 책임을 독립적으로 설명·검증할 수 있게 되면 이 TODO를 제거한다.
-     * 아래 자료는 분리 기준의 참고 자료이며 로컬 boolean 자체를 오류로 규정하는 근거가 아니다.
-     * Extract Function: https://refactoring.com/catalog/extractFunction.html
-     * Flag Argument (적용 범위/예외): https://martinfowler.com/bliki/FlagArgument.html
-     */
     public WeeklyReportResponse generate(Long owner, LocalDate week) {
         var before = reader.read(owner, week);
         if (before.restriction() != null) return before.report();
         var key = key(owner, before);
-        CompletableFuture<ReportInsight> flight;
-        boolean leader;
+        return switch (reserve(key)) {
+            case Reservation.Cached cached -> before.with(cached.insight());
+            case Reservation.Busy ignored -> before.with(ReportInsight.of(ReportInsightState.UNAVAILABLE, "BUSY"));
+            case Reservation.Start start -> latestResponse(owner, key, generateAndPublish(owner, before, key, start.flight()));
+            case Reservation.Join join -> latestResponse(owner, key, awaitExisting(join.flight()));
+        };
+    }
+
+    private ReportInsight cachedInsight(Key key) {
         synchronized (cache) {
             prune();
             var hit = cache.get(key);
-            if (hit != null && hit.insight().state() == ReportInsightState.AVAILABLE) return before.with(hit.insight());
-            flight = flights.get(key);
-            leader = flight == null;
-            if (leader) {
-                if (flights.size() >= IN_FLIGHT_CAPACITY) return before.with(ReportInsight.of(ReportInsightState.UNAVAILABLE, "BUSY"));
-                flight = new CompletableFuture<>();
-                flights.put(key, flight);
-            }
+            if (hit != null) return hit.insight();
+            boolean stale = cache.keySet().stream()
+                    .anyMatch(k -> k.owner().equals(key.owner()) && k.week().equals(key.week()));
+            return stale ? ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED") : null;
         }
+    }
 
-        ReportInsight insight;
-        if (leader) {
-            try {
-                // Reader transactions and the cache monitor end before the HTTP call.
-                insight = call(before.input());
-                var latest = reader.read(owner, before.report().period().start());
-                if (!latest.report().sourceHash().equals(key.hash())) {
-                    insight = ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED");
-                } else {
-                    synchronized (cache) {
-                        prune();
-                        if (flights.get(key) == flight) cache.put(key, new Entry(insight, clock.instant()));
-                        while (cache.size() > CACHE_CAPACITY) cache.remove(cache.keySet().iterator().next());
-                    }
-                }
-                flight.complete(insight);
-            } catch (RuntimeException ex) {
-                flight.completeExceptionally(ex);
-                throw ex;
-            } finally {
-                synchronized (cache) {
-                    flights.remove(key);
-                }
-            }
-        } else {
-            try {
-                insight = flight.get(40, TimeUnit.SECONDS);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                insight = ReportInsight.of(ReportInsightState.UNAVAILABLE, "WORKER_UNAVAILABLE");
-            } catch (TimeoutException ex) {
-                insight = ReportInsight.of(ReportInsightState.UNAVAILABLE, "TIMEOUT");
-            } catch (ExecutionException ex) {
-                insight = ReportInsight.of(ReportInsightState.UNAVAILABLE, "WORKER_UNAVAILABLE");
+    // Cache lookup, joining and ownership assignment share one atomic reservation boundary.
+    private Reservation reserve(Key key) {
+        synchronized (cache) {
+            prune();
+            var hit = cache.get(key);
+            if (hit != null && hit.insight().state() == ReportInsightState.AVAILABLE)
+                return new Reservation.Cached(hit.insight());
+            var existing = flights.get(key);
+            if (existing != null) return new Reservation.Join(existing);
+            if (flights.size() >= IN_FLIGHT_CAPACITY) return Reservation.Busy.INSTANCE;
+            var created = new CompletableFuture<ReportInsight>();
+            flights.put(key, created);
+            return new Reservation.Start(created);
+        }
+    }
+
+    private ReportInsight generateAndPublish(Long owner, WeeklyReportReader.Snapshot before, Key key,
+            CompletableFuture<ReportInsight> flight) {
+        try {
+            // No monitor spans a DB read or HTTP call; the reader ends its transaction before HTTP.
+            var insight = refreshAndPublish(owner, key, flight, call(before.input()));
+            flight.complete(insight);
+            return insight;
+        } catch (RuntimeException failure) {
+            flight.completeExceptionally(failure);
+            throw failure;
+        } finally {
+            synchronized (cache) {
+                // Retirement can replace a slot while its old leader is still returning.
+                flights.remove(key, flight);
             }
         }
-        var latest = reader.read(owner, before.report().period().start());
+    }
+
+    private ReportInsight refreshAndPublish(Long owner, Key key, CompletableFuture<ReportInsight> flight,
+            ReportInsight insight) {
+        var latest = reader.read(owner, key.week());
+        if (!latest.report().sourceHash().equals(key.hash()))
+            return ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED");
+        synchronized (cache) {
+            prune();
+            if (flights.get(key) == flight) cache.put(key, new Entry(insight, clock.instant()));
+            while (cache.size() > CACHE_CAPACITY) cache.remove(cache.keySet().iterator().next());
+        }
+        return insight;
+    }
+
+    private ReportInsight awaitExisting(CompletableFuture<ReportInsight> flight) {
+        try {
+            return flight.get(40, TimeUnit.SECONDS);
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            return ReportInsight.of(ReportInsightState.UNAVAILABLE, "WORKER_UNAVAILABLE");
+        } catch (TimeoutException failure) {
+            return ReportInsight.of(ReportInsightState.UNAVAILABLE, "TIMEOUT");
+        } catch (ExecutionException failure) {
+            return ReportInsight.of(ReportInsightState.UNAVAILABLE, "WORKER_UNAVAILABLE");
+        }
+    }
+
+    private WeeklyReportResponse latestResponse(Long owner, Key key, ReportInsight insight) {
+        var latest = reader.read(owner, key.week());
         return latest.with(latest.report().sourceHash().equals(key.hash())
                 ? insight : ReportInsight.of(ReportInsightState.STALE, "SOURCE_CHANGED"));
     }

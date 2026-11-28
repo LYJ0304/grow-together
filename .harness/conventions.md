@@ -207,6 +207,14 @@ release branches; a single long-lived branch does not prohibit separate worktree
   connections, CI/CD and promotion of artifacts need separately authorized setup.
   Never infer deployed state from tags, an environment name, or this document.
 
+## Code quality
+
+Use the [maintainable code and Spring API guide](references/clean-code.md) for the
+changed code. Identify responsibilities, ownership and transaction/concurrency
+invariants before extraction; assess the final diff against those same invariants.
+Briefly include the design change and behavior-preservation evidence in the handoff.
+This supplements existing verification and does not add an approval or review stage.
+
 ## TDD
 
 Apply this procedure to behavior changes in all implementation work, including

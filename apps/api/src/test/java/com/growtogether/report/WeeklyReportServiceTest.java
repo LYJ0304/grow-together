@@ -44,6 +44,33 @@ class WeeklyReportServiceTest {
         } finally {release.countDown();}
     }
 
+    @Test void retiredLeaderCannotReleaseItsReplacementFlight() throws Exception {
+        var oldEntered=new CountDownLatch(1);var newEntered=new CountDownLatch(1);
+        var releaseOld=new CountDownLatch(1);var releaseNew=new CountDownLatch(1);
+        var calls=new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(invocation->{
+            int number=calls.incrementAndGet();
+            if(number==1){oldEntered.countDown();assertThat(releaseOld.await(5,TimeUnit.SECONDS)).isTrue();}
+            if(number==2){newEntered.countDown();assertThat(releaseNew.await(5,TimeUnit.SECONDS)).isTrue();}
+            return result(invocation.getArgument(0));
+        }).when(worker).generate(any());
+        try(var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            var old=pool.submit(()->service.generate(1L,WEEK));
+            assertThat(oldEntered.await(5,TimeUnit.SECONDS)).isTrue();
+            service.accountWithdrawn(new com.growtogether.user.AccountWithdrawn(1L));
+            // Models another request whose source read already passed before retirement.
+            var replacement=pool.submit(()->service.generate(1L,WEEK));
+            assertThat(newEntered.await(5,TimeUnit.SECONDS)).isTrue();
+            releaseOld.countDown();old.get(5,TimeUnit.SECONDS);
+            var participant=pool.submit(()->service.generate(1L,WEEK));
+            try {
+                assertThatThrownBy(()->participant.get(200,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            } finally {releaseNew.countDown();}
+            replacement.get(5,TimeUnit.SECONDS);participant.get(5,TimeUnit.SECONDS);
+            assertThat(calls.get()).isEqualTo(2);
+        } finally {releaseOld.countDown();releaseNew.countDown();}
+    }
+
     @Test void getNeverGeneratesAndPostReusesOnlyFreshSuccessfulResult() {
         assertThat(service.get(1L,WEEK).insight().state()).isEqualTo(ReportInsightState.NOT_GENERATED);
         verifyNoInteractions(worker);

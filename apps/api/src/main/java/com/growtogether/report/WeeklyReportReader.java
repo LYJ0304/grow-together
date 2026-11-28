@@ -62,93 +62,126 @@ public class WeeklyReportReader {
     private record HashSource(Long owner, LocalDate start, boolean current, LocalDate referenceDay,
                               List<TodoSource> todos, List<Long> eligibleIds, List<DiarySource> diaries, ProfileSource profile) {}
 
-    /*
-     * TODO(refactor): 리뷰 합의에 따라 구조 분리는 후속 작업으로 미룬다.
-     * https://github.com/LYJ0304/grow-together/pull/190#discussion_r4546614913
-     *
-     * 문제: read()에 기간/월령 정책, JPA 조회, 집계, API/Worker 투영, hash 생성이 섞여 있다.
-     * 단순히 메서드 길이를 줄이는 대신, 서로 다른 변경 이유(SRP)를 격리하는 방향으로 진행한다.
-     * 1. 먼저 의미 있는 private 함수부터 추출해 read()를 단계 조율자로 만든다. 기간 결정 ->
-     *    owner 범위 원본 수집 -> 순수 집계 -> API/Worker 투영 순서와 입력/출력을 드러낸다.
-     *    재사용/응집도상 필요가 확인될 때만 별도 컴포넌트로 옮기며 단계마다 클래스를 만들지 않는다.
-     * 2. Clock의 now는 한 번만 읽어 모든 단계에 전달한다. owner 조회와 lazy 관계 복사는 기존
-     *    read-only 트랜잭션 안에서 끝내고, 계산 단계에는 변경하지 않는 값 스냅샷을 전달한다.
-     *    계산 함수가 Repository/Clock을 다시 호출하거나 JPA 관계를 변경하지 않도록 한다.
-     * 3. 통계/순위/기억 생성과 Worker 입력 선별은 별도 이름으로 표현한다. 전체 planned와 경과
-     *    eligible 분모, 0분모 null, 일기 날짜 distinct, 실제 owner+주간 연결만 사용하는 규칙,
-     *    날짜 없는 legacy 제외, 결정적 정렬/동률 및 Unicode 발췌/개수 제한을 그대로 보존한다.
-     * 4. sourceHash는 출력/Worker 샘플로 줄이기 전의 전체 원본, eligible IDs, 프로필, 기준일을
-     *    계속 반영해야 한다. DTO 조립 편의를 위해 hash 근거를 발췌 목록으로 대체하지 않는다.
-     *    내부 hash 재료와 외부 전송 재료를 구분해 Worker로 이름/생일/사진 URL이 새지 않게 한다.
-     * 완료 검증: Reader 단위 테스트로 시간 경계/미래 일정/0분모/순위/샘플 밖 변경을 고정한 뒤
-     * 작은 추출마다 실행한다. Repository/Integration/Postgres 테스트로 소유권·실제 관계를,
-     * Contract 테스트로 JSON fixture와 동일한 응답/Worker 입력을 확인하고 이 TODO를 제거한다.
-     * 아래 자료의 원칙을 현재 코드에 적용한 제안이며, 특정 클래스 분할을 강제하는 규칙은 아니다.
-     * SRP: https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html
-     * Extract Function: https://refactoring.com/catalog/extractFunction.html
-     */
+    private record ReadPeriod(ReportPeriod report, LocalDate referenceDay) {}
+    private record OwnedSources(List<TodoSource> all, List<TodoSource> eligible,
+                                List<DiarySource> diaries, ProfileSource profile) {}
+
     @Transactional(readOnly = true)
     public Snapshot read(Long owner, LocalDate requested) {
-        var now = OffsetDateTime.ofInstant(clock.instant(), SEOUL);
+        var period = selectPeriod(requested, OffsetDateTime.ofInstant(clock.instant(), SEOUL));
+        requireOwner(owner);
+        var sources = loadSources(owner, period);
+        var completed = sources.eligible().stream().filter(TodoSource::completed).toList();
+        var metrics = calculateMetrics(period, sources, completed);
+        var ranked = rankActivities(completed);
+        var memories = selectMemories(sources);
+        var child = childContext(sources.profile(), period.referenceDay());
+        var sourceHash = hashSource(owner, period, sources);
+        var evidence = selectWorkerEvidence(completed, sources.diaries());
+        return assembleSnapshot(period, metrics, ranked, memories, child, sourceHash, evidence);
+    }
+
+    private ReadPeriod selectPeriod(LocalDate requested, OffsetDateTime now) {
         var today = now.toLocalDate();
         var thisMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         var start = requested == null ? thisMonday : requested;
         if (start.getYear() < 1 || start.getYear() > 9998 || start.getDayOfWeek() != DayOfWeek.MONDAY
                 || start.isAfter(thisMonday))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지난 주 또는 이번 주 월요일을 선택해 주세요.");
-        if (!users.existsById(owner)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "계정을 찾을 수 없어요.");
         var end = start.plusWeeks(1);
         boolean current = start.equals(thisMonday);
-        var reference = current ? today : end.minusDays(1);
-        var period = new ReportPeriod(start, end.minusDays(1), end, now, current);
-        var all = todos.findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(owner, start, end);
-        var eligible = all.stream().filter(t -> !current || !t.getScheduledDate().atTime(t.getScheduledTime())
-                .isAfter(now.toLocalDateTime())).toList();
-        var completed = eligible.stream().filter(Todo::isCompleted).toList();
-        var visible = eligible.stream().collect(Collectors.toMap(Todo::getId, t -> t));
-        var dated = diaries.findByUserIdAndDiaryDateGreaterThanEqualAndDiaryDateLessThanOrderByDiaryDateAsc(
-                owner, start, current ? today.plusDays(1) : end);
-        var diarySources = dated.stream().sorted(Comparator.comparing(com.growtogether.diary.domain.Diary::getDiaryDate)
+        return new ReadPeriod(new ReportPeriod(start, end.minusDays(1), end, now, current),
+                current ? today : end.minusDays(1));
+    }
+
+    private void requireOwner(Long owner) {
+        if (!users.existsById(owner))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "계정을 찾을 수 없어요.");
+    }
+
+    // Copy lazy relations before leaving read()'s transaction. Calculations below use values only.
+    private OwnedSources loadSources(Long owner, ReadPeriod period) {
+        var range = period.report();
+        var all = todos.findByUserIdAndScheduledDateGreaterThanEqualAndScheduledDateLessThanOrderByScheduledDateAscScheduledTimeAscIdAsc(
+                        owner, range.start(), range.endExclusive()).stream()
+                .map(t -> new TodoSource(t.getId(), t.getPlanName(), t.getContent(), t.getScheduledDate(),
+                        t.getScheduledTime(), t.isCompleted(), t.getChildReaction())).toList();
+        var eligible = all.stream().filter(t -> !range.current()
+                || !t.date().atTime(t.time()).isAfter(range.asOf().toLocalDateTime())).toList();
+        var visibleIds = eligible.stream().map(TodoSource::id).collect(Collectors.toSet());
+        var diaryEnd = range.current() ? range.asOf().toLocalDate().plusDays(1) : range.endExclusive();
+        var diarySources = diaries.findByUserIdAndDiaryDateGreaterThanEqualAndDiaryDateLessThanOrderByDiaryDateAsc(
+                        owner, range.start(), diaryEnd).stream()
+                .sorted(Comparator.comparing(com.growtogether.diary.domain.Diary::getDiaryDate)
                         .thenComparing(com.growtogether.diary.domain.Diary::getId))
                 .map(d -> new DiarySource(d.getId(), d.getDiaryDate(), d.getContent(), d.getTodos().stream()
-                        .filter(t -> owner.equals(t.getUserId()) && visible.containsKey(t.getId()))
+                        .filter(t -> owner.equals(t.getUserId()) && visibleIds.contains(t.getId()))
                         .sorted(Comparator.comparing(Todo::getScheduledDate).thenComparing(Todo::getScheduledTime)
                                 .thenComparing(Todo::getId)).map(Todo::getId).toList())).toList();
-        var daily = start.datesUntil(end).map(day -> new ReportDaily(day,
-                completed.stream().filter(t -> t.getScheduledDate().equals(day)).count())).toList();
-        var metrics = new ReportMetrics(all.size(), eligible.size(), completed.size(),
-                diarySources.stream().map(DiarySource::date).distinct().count(),
-                eligible.isEmpty() ? null : (double) completed.size() / eligible.size(), daily);
-        var ranked = completed.stream().collect(Collectors.groupingBy(t -> t.getPlanName().trim(), Collectors.counting()))
-                .entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed()
-                        .thenComparing(Map.Entry.comparingByKey())).map(e -> new ReportActivity(e.getKey(), e.getValue())).toList();
-        var memories = diarySources.stream().limit(7).map(d -> new ReportMemory(d.id(), d.date(), excerpt(d.content()),
-                d.links().stream().limit(20).map(id -> new ReportLinkedTodo(id, visible.get(id).getPlanName())).toList(),
-                d.links().size() > 20)).toList();
         ChildProfile profile = children.findById(owner).orElse(null);
         var profileSource = profile == null ? null : new ProfileSource(profile.getName(), profile.getBirthday(),
                 profile.getPrematurityStatus(), profile.getExpectedDueDate(),
                 profile.getConcerns().stream().sorted().toList(), profile.getAvailableActivityTime());
-        long months = profile == null ? -1 : ChronoUnit.MONTHS.between(profile.getBirthday(), reference);
-        boolean validProfile = profile != null && !profile.getBirthday().isAfter(reference) && months >= 0 && months <= 72;
-        var child = validProfile ? new ReportChildContext((int) months, reference, profileSource.concerns(), profileSource.availableTime()) : null;
-        var hash = hash(new HashSource(owner, start, current, reference,
-                all.stream().map(t -> new TodoSource(t.getId(), t.getPlanName(), t.getContent(),
-                        t.getScheduledDate(), t.getScheduledTime(), t.isCompleted(), t.getChildReaction())).toList(), eligible.stream().map(Todo::getId).toList(), diarySources, profileSource));
-        var sources = new ReportWorkerSources(completed.stream().limit(50).map(t -> new ReportWorkerTodo(t.getId(),
-                        t.getPlanName(), t.getScheduledDate(), t.getScheduledTime(), t.getChildReaction())).toList(),
+        return new OwnedSources(all, eligible, diarySources, profileSource);
+    }
+
+    private ReportMetrics calculateMetrics(ReadPeriod period, OwnedSources sources, List<TodoSource> completed) {
+        var daily = period.report().start().datesUntil(period.report().endExclusive())
+                .map(day -> new ReportDaily(day, completed.stream().filter(t -> t.date().equals(day)).count())).toList();
+        return new ReportMetrics(sources.all().size(), sources.eligible().size(), completed.size(),
+                sources.diaries().stream().map(DiarySource::date).distinct().count(),
+                sources.eligible().isEmpty() ? null : (double) completed.size() / sources.eligible().size(), daily);
+    }
+
+    private List<ReportActivity> rankActivities(List<TodoSource> completed) {
+        return completed.stream().collect(Collectors.groupingBy(t -> t.title().trim(), Collectors.counting()))
+                .entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .map(e -> new ReportActivity(e.getKey(), e.getValue())).toList();
+    }
+
+    private List<ReportMemory> selectMemories(OwnedSources sources) {
+        var visible = sources.eligible().stream().collect(Collectors.toMap(TodoSource::id, t -> t));
+        return sources.diaries().stream().limit(7).map(d -> new ReportMemory(d.id(), d.date(), excerpt(d.content()),
+                d.links().stream().limit(20).map(id -> new ReportLinkedTodo(id, visible.get(id).title())).toList(),
+                d.links().size() > 20)).toList();
+    }
+
+    private ReportChildContext childContext(ProfileSource profile, LocalDate reference) {
+        if (profile == null) return null;
+        long months = ChronoUnit.MONTHS.between(profile.birthday(), reference);
+        if (profile.birthday().isAfter(reference) || months < 0 || months > 72) return null;
+        return new ReportChildContext((int) months, reference, profile.concerns(), profile.availableTime());
+    }
+
+    private String hashSource(Long owner, ReadPeriod period, OwnedSources sources) {
+        // Hash the complete ordered sources, never the limited API/Worker projections.
+        return hash(new HashSource(owner, period.report().start(), period.report().current(), period.referenceDay(),
+                sources.all(), sources.eligible().stream().map(TodoSource::id).toList(), sources.diaries(), sources.profile()));
+    }
+
+    private ReportWorkerSources selectWorkerEvidence(List<TodoSource> completed, List<DiarySource> diarySources) {
+        return new ReportWorkerSources(completed.stream().limit(50).map(t -> new ReportWorkerTodo(t.id(),
+                        t.title(), t.date(), t.time(), t.childReaction())).toList(),
                 diarySources.stream().filter(d -> d.content() != null && !d.content().isBlank()).limit(7)
                         .map(d -> new ReportWorkerDiary(d.id(), d.date(), excerpt(d.content()))).toList(), completed.size() > 50);
-        String restriction = !validProfile ? "PROFILE_UNAVAILABLE"
-                : sources.todos().isEmpty() && sources.diaries().isEmpty() ? "NO_EVIDENCE" : null;
-        var report = new WeeklyReportResponse(period, metrics, ranked.stream().limit(5).toList(), ranked.size() > 5,
-                memories, hash, PROMPT_VERSION, ReportInsight.of(restriction == null ? ReportInsightState.NOT_GENERATED
-                        : ReportInsightState.INSUFFICIENT_EVIDENCE, restriction));
-        return new Snapshot(report, new ReportWorkerRequest(hash, PROMPT_VERSION,
-                new ReportWorkerPeriod(start, end.minusDays(1), end, now, current),
-                new ReportWorkerMetrics(metrics.planned(), metrics.eligible(), metrics.completed(), metrics.diaryDays(),
-                        metrics.completionRate(), metrics.daily()), child, sources), restriction);
     }
+
+    private Snapshot assembleSnapshot(ReadPeriod period, ReportMetrics metrics, List<ReportActivity> ranked,
+            List<ReportMemory> memories, ReportChildContext child, String sourceHash, ReportWorkerSources evidence) {
+        String restriction = child == null ? "PROFILE_UNAVAILABLE"
+                : evidence.todos().isEmpty() && evidence.diaries().isEmpty() ? "NO_EVIDENCE" : null;
+        var range = period.report();
+        var report = new WeeklyReportResponse(range, metrics, ranked.stream().limit(5).toList(), ranked.size() > 5,
+                memories, sourceHash, PROMPT_VERSION, ReportInsight.of(restriction == null ? ReportInsightState.NOT_GENERATED
+                        : ReportInsightState.INSUFFICIENT_EVIDENCE, restriction));
+        var input = new ReportWorkerRequest(sourceHash, PROMPT_VERSION,
+                new ReportWorkerPeriod(range.start(), range.end(), range.endExclusive(), range.asOf(), range.current()),
+                new ReportWorkerMetrics(metrics.planned(), metrics.eligible(), metrics.completed(), metrics.diaryDays(),
+                        metrics.completionRate(), metrics.daily()), child, evidence);
+        return new Snapshot(report, input, restriction);
+    }
+
     static String excerpt(String content) {
         if (content == null) return "";
         return content.substring(0, content.offsetByCodePoints(0, Math.min(240, content.codePointCount(0, content.length()))));

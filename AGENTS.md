@@ -15,6 +15,9 @@
    Update it alongside external API behavior changes; when affected or uncertain,
    follow the [contract sync procedure](.harness/references/openapi.md).
 10. Preserve module boundaries when extending the system.
+11. Apply the [maintainable code and Spring API guide](.harness/references/clean-code.md)
+    when implementing, refactoring or reviewing changed code. Prefer clear responsibilities
+    and verified invariants over mechanical method/class splitting.
 
 ## Mobile visual rules
 
